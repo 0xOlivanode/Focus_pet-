@@ -1,0 +1,11 @@
+# Root .gitignore
+
+# Dependencies
+node_modules/
+
+# Mac
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
