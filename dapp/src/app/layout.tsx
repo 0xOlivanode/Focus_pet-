@@ -14,21 +14,28 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://focus-pet-theta.vercel.app"),
-  title: "FocusPet | Gamified Deep Work",
+  title: "FocusPet | Your Gamified Deep Work Companion",
   description:
     "Transform your focus into a pet! Hatch dinosaurs, earn G$, and climb the leaderboard by staying away from distractions.",
   openGraph: {
-    title: "FocusPet | Gamified Deep Work",
+    title: "FocusPet | Your Gamified Deep Work Companion",
     description:
       "Hatch dinosaurs, earn G$, and climb the leaderboard by staying focused.",
-    images: ["https://focus-pet-theta.vercel.app/api/og"],
+    images: [
+      {
+        url: "/api/og",
+        width: 1200,
+        height: 630,
+        alt: "FocusPet - Gamified Deep Work",
+      },
+    ],
     type: "website",
     url: "https://focus-pet-theta.vercel.app",
     siteName: "FocusPet",
   },
   twitter: {
     card: "summary_large_image",
-    title: "FocusPet | Gamified Deep Work",
+    title: "FocusPet | Your Gamified Deep Work Companion",
     description:
       "Hatch dinosaurs, earn G$, and climb the leaderboard by staying focused.",
     images: ["https://focus-pet-theta.vercel.app/api/og"],
