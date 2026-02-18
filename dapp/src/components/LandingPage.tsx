@@ -1,94 +1,114 @@
 "use client";
 
-import React from "react";
-import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Sparkles, Brain, Zap, Heart, ArrowRight } from "lucide-react";
+import { ArrowRight, Clock, Trophy, Heart } from "lucide-react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function LandingPage() {
-  return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-indigo-500/30 overflow-hidden relative font-sans">
-      {/* Background Gradients */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] mix-blend-screen animate-pulse delay-1000" />
-      </div>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
 
-      {/* Navbar directly integrated as simple header */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
-        <div className="flex items-center gap-2">
-          <span className="text-3xl">
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { type: "spring", stiffness: 100 },
+    },
+  };
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30 overflow-x-hidden">
+      {/* Header */}
+      <header className="fixed top-0 w-full z-50 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-900">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <img
               src="/focus-pet-logo.jpeg"
-              className="rounded-full h-10 w-10"
-              alt=""
+              alt="FocusPet Logo"
+              className="w-8 h-8 rounded-full shadow-sm"
             />
-          </span>
-          <span className="font-bold text-xl tracking-tight">FocusPet</span>
+            <h1 className="font-bold text-xl tracking-tight">FocusPet</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <Link
+              href="/app"
+              className="text-sm font-medium hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors hidden sm:block"
+            >
+              Launch App
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <a
-            href="https://gooddollar.org"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-neutral-400 hover:text-white transition-colors"
-          >
-            Powered by GoodDollar
-          </a>
-        </div>
-      </nav>
+      </header>
 
       {/* Hero Section */}
-      <main className="relative z-10 flex flex-col items-center justify-center pt-20 px-4 text-center max-w-4xl mx-auto">
+      <main className="pt-32 pb-20 px-6">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative inline-block mb-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="max-w-4xl mx-auto text-center relative"
         >
-          <span className="absolute -top-6 -right-8 text-2xl animate-bounce delay-700">
-            ✨
-          </span>
-          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-sm font-medium text-indigo-300 mb-6 mx-auto w-fit">
-            <Sparkles size={14} />
-            <span>Regenerative Attention Economy</span>
-          </div>
-        </motion.div>
+          {/* Floating Emojis Background */}
+          <motion.div
+            animate={{ y: [0, -20, 0] }}
+            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+            className="absolute -top-10 left-10 text-6xl opacity-20 pointer-events-none hidden md:block"
+          >
+            🦕
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 20, 0] }}
+            transition={{
+              repeat: Infinity,
+              duration: 5,
+              ease: "easeInOut",
+              delay: 1,
+            }}
+            className="absolute top-20 right-10 text-6xl opacity-20 pointer-events-none hidden md:block"
+          >
+            🥚
+          </motion.div>
 
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
-          className="text-6xl md:text-8xl font-black tracking-tighter mb-6 bg-linear-to-b from-white to-white/60 bg-clip-text text-transparent"
-        >
-          Reclaim Your
-          <br />
-          <span className="bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Focus
-          </span>
-        </motion.h1>
+          <motion.div variants={itemVariants} className="mb-6 inline-block">
+            <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+              Live on Celo Sepolia
+            </span>
+          </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-          className="text-lg md:text-xl text-neutral-400 max-w-2xl mb-10 leading-relaxed"
-        >
-          Gamify your productivity with a soulbound companion that grows as you
-          work. Earn real rewards for your attention.
-        </motion.p>
+          <motion.h1
+            variants={itemVariants}
+            className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-linear-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400"
+          >
+            Turn Your Focus <br /> Into A Pet.
+          </motion.h1>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="flex flex-col items-center gap-4"
-        >
-          <div className="flex gap-x-2 items-center">
+          <motion.p
+            variants={itemVariants}
+            className="text-lg md:text-xl text-neutral-600 dark:text-neutral-400 mb-10 max-w-2xl mx-auto leading-relaxed"
+          >
+            A gamified productivity companion that rewards your deep work
+            sessions with **XP & GoodDollar (G$)**. Stay focused, hatch your
+            pet, and climb the global leaderboard.
+          </motion.p>
+
+          <motion.div
+            variants={itemVariants}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
             <div className="relative group">
               <div className="absolute -inset-1 bg-linear-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-              <div className="relative bg-black rounded-xl p-1">
+              <div className="relative bg-white dark:bg-black rounded-xl p-1">
                 <ConnectButton
                   label="Start Your Journey"
                   showBalance={false}
@@ -99,47 +119,67 @@ export function LandingPage() {
 
             <Link
               href="/app"
-              className="flex items-center gap-2  py-2 px-6 rounded-sm text-neutral-400 hover:text-white transition-colors text-sm font-medium group"
+              className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-all active:scale-95"
             >
-              Go to App{" "}
+              Enter App
               <ArrowRight
-                size={16}
+                size={18}
                 className="group-hover:translate-x-1 transition-transform"
               />
             </Link>
-          </div>
-
-          <p className="text-xs text-neutral-500 mt-8">
-            Built on Celo • Powered by G$
-          </p>
+          </motion.div>
         </motion.div>
 
-        {/* Feature Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-32 w-full text-left">
+        {/* Features Grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="max-w-5xl mx-auto mt-32 grid md:grid-cols-3 gap-8"
+        >
           <FeatureCard
-            icon={<Brain className="text-indigo-400" />}
-            title="Focus-to-Earn"
-            description="Turn your attention span into a tangible asset. Every minute of deep work strengthens your companion."
-            delay={0.5}
+            icon={<Clock className="text-indigo-500" size={32} />}
+            title="Focus to Earn"
+            description="Start a 25-minute timer. Complete it to feed your pet and earn XP."
           />
           <FeatureCard
-            icon={<Heart className="text-pink-400" />}
-            title="Soulbound Growth"
-            description="Your pet is tied to your identity. It reflects your consistency and cannot be bought or sold."
-            delay={0.6}
+            icon={<Heart className="text-red-500" size={32} />}
+            title="Raise Your Pet"
+            description="Your pet evolves from an Egg to a Dragon as you build consistent habits."
           />
           <FeatureCard
-            icon={<Zap className="text-yellow-400" />}
-            title="Positive Sum"
-            description="Feed your pet with G$ to support a global UBI ecosystem. Personal growth meets social impact."
-            delay={0.7}
+            icon={<Trophy className="text-yellow-500" size={32} />}
+            title="Compete & Win"
+            description="Climb the weekly leaderboard and earn GoodDollar (G$) rewards."
           />
+        </motion.div>
+
+        {/* How it Works / Steps */}
+        <div className="mt-32 max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-16">How it Works</h2>
+          <div className="space-y-12">
+            <Step
+              num={1}
+              title="Connect & Mint"
+              desc="Connect your Celo wallet to receive your unique Soulbound Pet Egg."
+            />
+            <Step
+              num={2}
+              title="Start a Session"
+              desc="Choose a focus task and start the timer. No distractions allowed!"
+            />
+            <Step
+              num={3}
+              title="Claim Rewards"
+              desc="Sign your session to verify it, grow your pet, and earn tokens."
+            />
+          </div>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full text-center py-8 text-neutral-600 text-sm mt-20 border-t border-neutral-900">
-        <p>© 2024 FocusPet. All rights reserved.</p>
+      <footer className="py-8 text-center text-sm text-neutral-500 border-t border-neutral-100 dark:border-neutral-900">
+        <p>Built with ❤️ on Celo • Powered by GoodDollar</p>
       </footer>
     </div>
   );
@@ -149,25 +189,40 @@ function FeatureCard({
   icon,
   title,
   description,
-  delay,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
-  delay: number;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: delay }}
-      className="p-6 rounded-3xl bg-neutral-900/50 border border-white/5 backdrop-blur-sm hover:bg-neutral-800/50 transition-colors"
-    >
-      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-4 text-2xl">
-        {icon}
+    <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 hover:border-indigo-500/30 transition-colors">
+      <div className="mb-4">{icon}</div>
+      <h3 className="font-bold text-lg mb-2">{title}</h3>
+      <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function Step({
+  num,
+  title,
+  desc,
+}: {
+  num: number;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="flex items-start gap-4 md:gap-6">
+      <div className="shrink-0 w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-lg">
+        {num}
       </div>
-      <h3 className="text-xl font-bold mb-2 text-white">{title}</h3>
-      <p className="text-neutral-400 text-sm leading-relaxed">{description}</p>
-    </motion.div>
+      <div>
+        <h3 className="font-bold text-xl mb-1">{title}</h3>
+        <p className="text-neutral-600 dark:text-neutral-400">{desc}</p>
+      </div>
+    </div>
   );
 }

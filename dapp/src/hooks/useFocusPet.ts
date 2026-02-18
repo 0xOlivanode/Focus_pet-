@@ -10,11 +10,14 @@ import { FocusPetABI } from "@/config/abi";
 import { useEffect, useState } from "react";
 
 // Replace with deployed address
-const CONTRACT_ADDRESS = "0x4514FB3ffbbC7F125c20077d04066b36232239B3"; // Celo Sepolia
+const CONTRACT_ADDRESS = "0xC9b85d65AA4ea2239Da8cd4214F62c21fb76B089"; // Celo Sepolia
 
 export function useFocusPet() {
   const { address } = useAccount();
   const [isSigning, setIsSigning] = useState(false);
+  const [lastAction, setLastAction] = useState<
+    "focus" | "shop" | "profile" | null
+  >(null);
 
   const {
     writeContract,
@@ -72,6 +75,16 @@ export function useFocusPet() {
       stateMutability: "nonpayable",
       type: "function",
     },
+    {
+      inputs: [
+        { name: "owner", type: "address" },
+        { name: "spender", type: "address" },
+      ],
+      name: "allowance",
+      outputs: [{ name: "", type: "uint256" }],
+      stateMutability: "view",
+      type: "function",
+    },
   ];
 
   const { data: gBalance, refetch: refetchGBalance } = useReadContract({
@@ -82,7 +95,16 @@ export function useFocusPet() {
     query: { enabled: !!address },
   });
 
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: G_DOLLAR_ADDRESS,
+    abi: ERC20ABI,
+    functionName: "allowance",
+    args: address ? [address, CONTRACT_ADDRESS] : undefined,
+    query: { enabled: !!address },
+  });
+
   const approveG = (amount: bigint) => {
+    setLastAction("shop");
     writeContract({
       address: G_DOLLAR_ADDRESS,
       abi: ERC20ABI,
@@ -92,6 +114,7 @@ export function useFocusPet() {
   };
 
   const buyFood = () => {
+    setLastAction("shop");
     writeContract({
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
@@ -101,6 +124,7 @@ export function useFocusPet() {
   };
 
   const revivePet = () => {
+    setLastAction("shop");
     writeContract({
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
@@ -109,7 +133,18 @@ export function useFocusPet() {
     });
   };
 
+  const setNames = (username: string, petName: string) => {
+    setLastAction("profile");
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: FocusPetABI,
+      functionName: "setNames",
+      args: [username, petName],
+    });
+  };
+
   const recordSession = async (minutes: number) => {
+    setLastAction("focus");
     try {
       setIsSigning(true);
       // 1. Get Signature from Backend
@@ -154,7 +189,11 @@ export function useFocusPet() {
   // Helper to determine if user has a pet (birthTime > 0)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pet = petData as any;
-  const hasPet = pet && Number(pet[3]) > 0; // birthTime is index 3 in struct
+  const xp = pet ? Number(pet[0]) : 0;
+  const health = pet ? Number(pet[1]) : 100;
+  const hasPet = pet && Number(pet[3]) > 0; // birthTime is index 3
+  const username = pet ? (pet[4] as string) : "";
+  const petName = pet ? (pet[5] as string) : "Unnamed Pet";
 
   return {
     petData,
@@ -170,6 +209,7 @@ export function useFocusPet() {
     recordSession,
     buyFood,
     revivePet,
+    setNames,
     // Economy
     gBalance,
     approveG,
@@ -178,5 +218,12 @@ export function useFocusPet() {
     isSigning,
     isProcessing: isSigning || isPending || isConfirming,
     isLoadingPet,
+    xp,
+    health,
+    username,
+    petName,
+    lastAction,
+    allowance: allowance ? (allowance as bigint) : BigInt(0),
+    refetchAllowance,
   };
 }

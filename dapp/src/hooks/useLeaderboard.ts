@@ -3,13 +3,14 @@ import { usePublicClient } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
 import { parseAbiItem } from "viem";
 
-const CONTRACT_ADDRESS = "0x4514FB3ffbbC7F125c20077d04066b36232239B3"; // Celo Sepolia
+const CONTRACT_ADDRESS = "0xC9b85d65AA4ea2239Da8cd4214F62c21fb76B089"; // Celo Sepolia
 
 export type LeaderboardEntry = {
   rank: number;
   address: string;
   xp: number;
   health: number;
+  username?: string;
 };
 
 export function useLeaderboard() {
@@ -28,18 +29,42 @@ export function useLeaderboard() {
         // We start from a recent block to save time, or 0 (earlier deployment block)
         // Since it's a testnet and fresh deploy, 0 or "earliest" is fine, but safer to use a block if known.
         // Let's use 'earliest' for now as the chain is Sepolia (fast enough).
-        const logs = await publicClient.getLogs({
-          address: CONTRACT_ADDRESS,
-          event: parseAbiItem(
-            "event PetFed(address indexed owner, uint256 newHealth, uint256 newXp)",
-          ),
-          fromBlock: "earliest",
-        });
+        const [fedLogs, nameLogs] = await Promise.all([
+          publicClient.getLogs({
+            address: CONTRACT_ADDRESS,
+            event: parseAbiItem(
+              "event PetFed(address indexed owner, uint256 newHealth, uint256 newXp)",
+            ),
+            fromBlock: "earliest",
+          }),
+          publicClient.getLogs({
+            address: CONTRACT_ADDRESS,
+            event: parseAbiItem(
+              "event NamesUpdated(address indexed owner, string username, string petName)",
+            ),
+            fromBlock: "earliest",
+          }),
+        ]);
 
         // Aggregation: Map owner -> latest data (highest XP)
-        const userData: Record<string, { xp: number; health: number }> = {};
+        const userData: Record<
+          string,
+          { xp: number; health: number; username?: string }
+        > = {};
 
-        for (const log of logs) {
+        // Parse Names first
+        for (const log of nameLogs) {
+          const { owner, username } = log.args;
+          if (!owner || !username) continue;
+          userData[owner] = {
+            ...userData[owner],
+            username,
+            xp: userData[owner]?.xp || 0,
+            health: userData[owner]?.health || 0,
+          };
+        }
+
+        for (const log of fedLogs) {
           const { owner, newHealth, newXp } = log.args;
           if (!owner || newXp === undefined || newHealth === undefined)
             continue;
@@ -47,10 +72,9 @@ export function useLeaderboard() {
           const currentXp = Number(newXp);
           const currentHealth = Number(newHealth);
 
-          // Always take the entry with higher XP (progressing)
-          // Or if same XP, maybe latest? logic: XP only goes up usually.
           if (!userData[owner] || currentXp > userData[owner].xp) {
             userData[owner] = {
+              ...userData[owner],
               xp: currentXp,
               health: currentHealth,
             };
@@ -63,6 +87,7 @@ export function useLeaderboard() {
             address,
             xp: data.xp,
             health: data.health,
+            username: data.username,
           }))
           .sort((a, b) => b.xp - a.xp) // Descending
           .map((entry, index) => ({

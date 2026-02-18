@@ -11,6 +11,8 @@ contract FocusPet is Ownable {
         uint256 health;
         uint256 lastInteraction;
         uint256 birthTime;
+        string username;
+        string petName;
     }
 
     mapping(address => Pet) public pets;
@@ -29,6 +31,7 @@ contract FocusPet is Ownable {
     event PetFed(address indexed owner, uint256 newHealth, uint256 newXp);
     event ItemPurchased(address indexed buyer, string item);
     event PetBorn(address indexed owner);
+    event NamesUpdated(address indexed owner, string username, string petName);
 
     constructor(address _engagementRewards, address _goodDollar) Ownable(msg.sender) {
         engagementRewards = IEngagementRewards(_engagementRewards);
@@ -45,7 +48,9 @@ contract FocusPet is Ownable {
             xp: 0,
             health: MAX_HEALTH,
             lastInteraction: block.timestamp,
-            birthTime: block.timestamp
+            birthTime: block.timestamp,
+            username: "",
+            petName: "Unnamed Egg"
         });
         emit PetBorn(owner);
     }
@@ -129,6 +134,13 @@ contract FocusPet is Ownable {
         }
 
         emit PetFed(msg.sender, pet.health, pet.xp);
+    }
+
+    function setNames(string memory _username, string memory _petName) public hasPet {
+        Pet storage pet = pets[msg.sender];
+        pet.username = _username;
+        pet.petName = _petName;
+        emit NamesUpdated(msg.sender, _username, _petName);
     }
 
     function getPet(address owner) public view returns (Pet memory) {

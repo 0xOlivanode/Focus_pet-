@@ -1,7 +1,10 @@
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { formatEther } from "viem";
+import { useAccount } from "wagmi";
+import { SocialShare } from "./SocialShare";
 
 export function Leaderboard() {
+  const { address } = useAccount();
   const { leaderboard, isLoading } = useLeaderboard();
 
   const getAvatar = (xp: number) => {
@@ -55,10 +58,28 @@ export function Leaderboard() {
               <div className="w-8 h-8 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center text-lg">
                 {getAvatar(entry.xp)}
               </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-sm">
-                  {formatAddress(entry.address)}
-                </span>
+              <div className="flex flex-col grow min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm truncate">
+                    {entry.username
+                      ? `@${entry.username}`
+                      : formatAddress(entry.address)}
+                  </span>
+                  {address &&
+                    entry.address.toLowerCase() === address.toLowerCase() && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                          YOU
+                        </span>
+                        <div className="inline-flex">
+                          <SocialShare
+                            text={`I'm ranked #${entry.rank} on the @FocusPet leaderboard! 🏆 Can you beat me? #FocusPet #Celo`}
+                            className="bg-transparent"
+                          />
+                        </div>
+                      </div>
+                    )}
+                </div>
                 <span className="text-[10px] text-neutral-500">
                   {entry.xp} mins focused
                 </span>
