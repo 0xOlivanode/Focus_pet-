@@ -7,13 +7,16 @@ import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { formatEther } from "viem";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SocialShare } from "@/components/SocialShare";
 import { User, Edit2, X, HelpCircle } from "lucide-react";
 import confetti from "canvas-confetti";
 import { OnboardingModal } from "@/components/OnboardingModal";
+import { ClaimReward } from "@/components/ClaimReward";
+
+import { Suspense } from "react";
 
 const TIMERS = {
   FOCUS: 25 * 60,
@@ -21,9 +24,10 @@ const TIMERS = {
   LONG: 15 * 60,
 };
 
-export default function AppPage() {
+function AppPageContent() {
   const { isConnected } = useAccount();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const {
     petData,
@@ -81,6 +85,24 @@ export default function AppPage() {
       router.push("/");
     }
   }, [isConnected, router]);
+
+  // Verification Success Listener
+  useEffect(() => {
+    const isVerified = searchParams.get("isVerified");
+    if (isVerified === "true") {
+      // CELEBRATION!
+      confetti({
+        particleCount: 200,
+        spread: 100,
+        origin: { y: 0.5 },
+        colors: ["#6366f1", "#10b981", "#3b82f6"],
+      });
+
+      // Clean up URL to avoid repeating on refresh
+      const newPath = window.location.pathname;
+      window.history.replaceState({}, "", newPath);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (isConfirming) {
@@ -282,12 +304,14 @@ export default function AppPage() {
 
         <PetView stage={stage} xp={xp} health={health} mood={mood} />
 
-        {/* Timer Section */}
         <FocusTimer
           onComplete={handleSessionComplete}
           onStart={() => setMood("focused")}
           onPause={() => setMood("sleeping")}
         />
+
+        {/* GoodDollar Daily Reward */}
+        <ClaimReward />
 
         {/* Pet Shop Section */}
         <div className="w-full mt-8 bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-4 md:p-6 border border-neutral-100 dark:border-neutral-800">
@@ -514,5 +538,19 @@ export default function AppPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AppPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white dark:bg-neutral-950 flex items-center justify-center text-neutral-500 font-medium italic">
+          Loading FocusPet...
+        </div>
+      }
+    >
+      <AppPageContent />
+    </Suspense>
   );
 }

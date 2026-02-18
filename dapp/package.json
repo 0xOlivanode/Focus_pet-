@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@goodsdks/citizen-sdk": "^1.2.3",
+    "@goodsdks/identity-sdk": "^1.0.5",
     "@rainbow-me/rainbowkit": "^2",
     "@tanstack/react-query": "^5.90.21",
     "@types/canvas-confetti": "^1.9.0",

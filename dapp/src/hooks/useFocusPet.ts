@@ -10,7 +10,7 @@ import { FocusPetABI } from "@/config/abi";
 import { useEffect, useState } from "react";
 
 // Replace with deployed address
-const CONTRACT_ADDRESS = "0xC9b85d65AA4ea2239Da8cd4214F62c21fb76B089"; // Celo Sepolia
+const CONTRACT_ADDRESS = "0x9289F74f356271cEfe691c88963aC961C6efa422"; // Celo Mainnet
 
 export function useFocusPet() {
   const { address } = useAccount();
