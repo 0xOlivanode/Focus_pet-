@@ -14,7 +14,7 @@ type TimerState = "idle" | "running" | "paused" | "completed";
 
 interface FocusTimerProps {
   initialMinutes?: number;
-  onComplete?: () => void;
+  onComplete?: (durationMinutes: number) => void;
 }
 
 export function FocusTimer({
@@ -67,17 +67,12 @@ export function FocusTimer({
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            setStatus("completed");
-            onComplete?.();
             return 0;
           }
-
           // Random Check-in Logic (1% chance per second)
           if (!showCheckIn && Math.random() < 0.005 && prev > 60) {
             setShowCheckIn(true);
           }
-
           return prev - 1;
         });
       }, 1000);
@@ -86,7 +81,16 @@ export function FocusTimer({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [status, showCheckIn, onComplete]);
+  }, [status, showCheckIn]);
+
+  // Handle completion
+  useEffect(() => {
+    if (timeLeft === 0 && status === "running") {
+      setStatus("completed");
+      if (timerRef.current) clearInterval(timerRef.current);
+      onComplete?.(duration / 60);
+    }
+  }, [timeLeft, status, onComplete, duration]);
 
   // Check-in timeout logic
   useEffect(() => {
@@ -105,7 +109,7 @@ export function FocusTimer({
     <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto p-6">
       {/* Duration Selector */}
       <div className="flex gap-2 mb-8 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-full">
-        {[10, 25, 45].map((mins) => (
+        {[0.5, 10, 25, 45].map((mins) => (
           <button
             key={mins}
             onClick={() => handleDurationSelect(mins)}

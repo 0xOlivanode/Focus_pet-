@@ -14,7 +14,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 const config = getDefaultConfig({
   appName: "FocusPet",
   projectId: "YOUR_PROJECT_ID", // Replace with valid WalletConnect ID
-  chains: [celo, celoAlfajores],
+  chains: [celoAlfajores],
   ssr: true,
 });
 
