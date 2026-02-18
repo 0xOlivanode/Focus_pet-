@@ -3,7 +3,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Sparkles, Brain, Zap, Heart } from "lucide-react";
+import { Sparkles, Brain, Zap, Heart, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export function LandingPage() {
   return (
@@ -88,7 +89,19 @@ export function LandingPage() {
               />
             </div>
           </div>
-          <p className="text-xs text-neutral-500 mt-2">
+
+          <Link
+            href="/app"
+            className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors text-sm font-medium mt-4 group"
+          >
+            Go to App{" "}
+            <ArrowRight
+              size={16}
+              className="group-hover:translate-x-1 transition-transform"
+            />
+          </Link>
+
+          <p className="text-xs text-neutral-500 mt-8">
             Built on Celo • Powered by G$
           </p>
         </motion.div>
