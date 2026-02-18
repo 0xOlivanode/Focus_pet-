@@ -15,94 +15,122 @@ export async function GET(request: Request) {
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "#0a0a0a",
-        backgroundImage:
-          "radial-gradient(circle at 50% 50%, #1e1b4b 0%, #0a0a0a 100%)",
+        backgroundImage: "linear-gradient(to bottom right, #0a0a0a, #1e1b4b)",
         color: "white",
-        fontFamily: "Inter, sans-serif",
         padding: "40px",
       }}
     >
-      {/* Decorative Grid */}
+      {/* Pattern Replacement */}
       <div
         style={{
+          display: "flex",
           position: "absolute",
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundImage: "radial-gradient(#4f46e5 0.5px, transparent 0.5px)",
-          backgroundSize: "24px 24px",
           opacity: 0.1,
-        }}
-      />
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "20px",
-          marginBottom: "40px",
         }}
       >
         <div
           style={{
-            fontSize: "120px",
-            filter: "drop-shadow(0 0 20px rgba(99, 102, 241, 0.4))",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "30px",
+            padding: "30px",
           }}
         >
-          🦖
+          {Array.from({ length: 48 }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                width: "6px",
+                height: "6px",
+                backgroundColor: "#6366f1",
+                borderRadius: "50%",
+              }}
+            />
+          ))}
         </div>
       </div>
 
-      <h1
+      <div
         style={{
-          fontSize: "100px",
+          display: "flex",
+          fontSize: "140px",
+          marginBottom: "30px",
+        }}
+      >
+        🦖
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          fontSize: "110px",
           fontWeight: 900,
-          margin: 0,
-          letterSpacing: "-0.05em",
-          background: "linear-gradient(to right, #818cf8, #c084fc)",
-          backgroundClip: "text",
-          color: "transparent",
-          textAlign: "center",
+          color: "#818cf8",
+          marginBottom: "10px",
         }}
       >
         FocusPet
-      </h1>
+      </div>
 
-      <p
+      <div
         style={{
-          fontSize: "42px",
+          display: "flex",
+          fontSize: "46px",
           color: "#94a3b8",
-          marginTop: "20px",
           fontWeight: 500,
           textAlign: "center",
-          maxWidth: "800px",
+          maxWidth: "900px",
+          marginTop: "10px",
         }}
       >
         Hatch, grow, and climb the leaderboard by staying focused.
-      </p>
+      </div>
 
       <div
         style={{
           display: "flex",
           marginTop: "60px",
           alignItems: "center",
-          gap: "12px",
+          gap: "24px",
           backgroundColor: "rgba(255, 255, 255, 0.05)",
-          padding: "12px 24px",
+          padding: "16px 40px",
           borderRadius: "100px",
           border: "1px solid rgba(255, 255, 255, 0.1)",
         }}
       >
-        <span style={{ fontSize: "24px", fontWeight: 700, color: "#818cf8" }}>
+        <div
+          style={{
+            display: "flex",
+            fontSize: "30px",
+            fontWeight: 700,
+            color: "#818cf8",
+          }}
+        >
           Live on Celo
-        </span>
-        <span style={{ fontSize: "24px", color: "rgba(255,255,255,0.3)" }}>
-          •
-        </span>
-        <span style={{ fontSize: "24px", fontWeight: 700, color: "#94a3b8" }}>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: "30px",
+            color: "rgba(255,255,255,0.2)",
+          }}
+        >
+          |
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: "30px",
+            fontWeight: 700,
+            color: "#94a3b8",
+          }}
+        >
           Earn G$
-        </span>
+        </div>
       </div>
     </div>,
     {

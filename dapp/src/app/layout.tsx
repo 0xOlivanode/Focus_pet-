@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     title: "FocusPet | Gamified Deep Work",
     description:
       "Hatch dinosaurs, earn G$, and climb the leaderboard by staying focused.",
-    images: ["/api/og"],
+    images: ["https://focus-pet-theta.vercel.app/api/og"],
     type: "website",
     url: "https://focus-pet-theta.vercel.app",
     siteName: "FocusPet",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "FocusPet | Gamified Deep Work",
     description:
       "Hatch dinosaurs, earn G$, and climb the leaderboard by staying focused.",
-    images: ["/api/og"],
+    images: ["https://focus-pet-theta.vercel.app/api/og"],
     creator: "@FocusPet",
   },
   other: {
