@@ -18,7 +18,13 @@ export function LandingPage() {
       {/* Navbar directly integrated as simple header */}
       <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-2">
-          <span className="text-3xl">🦅</span>
+          <span className="text-3xl">
+            <img
+              src="/focus-pet-logo.png"
+              className="rounded-full h-10 w-10"
+              alt=""
+            />
+          </span>
           <span className="font-bold text-xl tracking-tight">FocusPet</span>
         </div>
         <div className="flex items-center gap-4">

@@ -103,23 +103,39 @@ export function useFocusPet() {
     });
   };
 
-  const recordSession = (minutes: number) => {
-    // GoodDollar Engagement App Claim Args:
-    const inviter = "0x0000000000000000000000000000000000000000"; // No inviter
-    const validUntilBlock = BigInt(999999999999); // Future block
-    const signature = "0x"; // Empty signature for now (assume subsequent claim or test)
+  const recordSession = async (minutes: number) => {
+    try {
+      // 1. Get Signature from Backend
+      const response = await fetch("/api/sign-reward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userAddress: address,
+          minutes,
+        }),
+      });
 
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: FocusPetABI,
-      functionName: "focusSession",
-      args: [
-        BigInt(Math.max(1, Math.round(minutes))), // Ensure integer for 0.5 mins
-        inviter,
-        validUntilBlock,
-        signature,
-      ],
-    });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to sign");
+
+      const { signature, validUntilBlock, inviter } = data;
+
+      // 2. Send Transaction
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: FocusPetABI,
+        functionName: "focusSession",
+        args: [
+          BigInt(Math.max(1, Math.round(minutes))),
+          inviter,
+          BigInt(validUntilBlock),
+          signature,
+        ],
+      });
+    } catch (e) {
+      console.error("Session Record Error:", e);
+      alert("Failed to secure reward signature!");
+    }
   };
 
   // Helper to determine if user has a pet (birthTime > 0)
