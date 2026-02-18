@@ -15,11 +15,15 @@ type TimerState = "idle" | "running" | "paused" | "completed";
 interface FocusTimerProps {
   initialMinutes?: number;
   onComplete?: (durationMinutes: number) => void;
+  onStart?: () => void;
+  onPause?: () => void;
 }
 
 export function FocusTimer({
   initialMinutes = 25,
   onComplete,
+  onStart,
+  onPause,
 }: FocusTimerProps) {
   const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
   const [status, setStatus] = useState<TimerState>("idle");
@@ -42,9 +46,11 @@ export function FocusTimer({
   const toggleTimer = () => {
     if (status === "running") {
       setStatus("paused");
+      onPause?.();
       if (timerRef.current) clearInterval(timerRef.current);
     } else {
       setStatus("running");
+      onStart?.();
     }
   };
 

@@ -113,8 +113,7 @@ export default function AppPage() {
 
   const handleSessionComplete = (minutes: number) => {
     recordSession(minutes); // Record actual duration
-    setMood("focused");
-    setTimeout(() => setMood("happy"), 5000);
+    setMood("happy");
   };
 
   if (!isConnected) {
@@ -223,7 +222,11 @@ export default function AppPage() {
         <PetView stage={getStage(xp)} xp={xp} health={health} mood={mood} />
 
         {/* Timer Section */}
-        <FocusTimer onComplete={handleSessionComplete} />
+        <FocusTimer
+          onComplete={handleSessionComplete}
+          onStart={() => setMood("focused")}
+          onPause={() => setMood("sleeping")}
+        />
 
         {/* Pet Shop Section */}
         <div className="w-full mt-8 bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-6 border border-neutral-100 dark:border-neutral-800">
