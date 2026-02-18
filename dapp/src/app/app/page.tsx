@@ -11,10 +11,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { formatEther } from "viem";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SocialShare } from "@/components/SocialShare";
-import { User, Edit2, X, HelpCircle } from "lucide-react";
-import confetti from "canvas-confetti";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { ClaimReward } from "@/components/ClaimReward";
+import { motion, AnimatePresence } from "framer-motion";
+import confetti from "canvas-confetti";
+import {
+  Gift,
+  Sparkles,
+  AlertCircle,
+  Loader2,
+  ExternalLink,
+  HelpCircle,
+  User,
+  Edit2,
+  X,
+} from "lucide-react";
 
 import { Suspense } from "react";
 
@@ -40,6 +51,7 @@ function AppPageContent() {
     isPending,
     isConfirming,
     isConfirmed,
+    hash,
     refetch,
     writeError,
     receiptError,
@@ -190,59 +202,137 @@ function AppPageContent() {
 
   if (!hasPet) {
     return (
-      <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center p-4 text-center">
-        <div className="text-9xl mb-8 animate-bounce">🥚</div>
-        <h1 className="text-2xl font-bold mb-2">Welcome to FocusPet</h1>
-        <p className="text-neutral-500 mb-8 max-w-sm">
-          Your pet is tied to your account. Complete your first focus session or
-          buy food to hatch your egg!
-        </p>
+      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+        {/* Immersive Background Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 blur-[120px] rounded-full" />
+        <div className="absolute top-1/4 left-1/4 w-[300px] h-[300px] bg-purple-500/5 blur-[100px] rounded-full" />
 
-        <div className="flex flex-col gap-4 w-full max-w-sm">
-          <button
-            onClick={() => setShowOnboarding(true)}
-            className="w-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 py-3 rounded-xl font-bold border border-indigo-100 dark:border-indigo-800 transition-all hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center justify-center gap-2"
+        <div className="relative z-10 flex flex-col items-center max-w-lg w-full">
+          {/* Floating Egg Container */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="relative mb-12"
           >
-            <HelpCircle size={18} />
-            See How it Works
-          </button>
+            <motion.div
+              animate={{
+                y: [0, -20, 0],
+                rotate: [-1, 1, -1],
+              }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              className="text-[140px] leading-none drop-shadow-[0_0_30px_rgba(165,180,252,0.3)] select-none"
+            >
+              🥚
+            </motion.div>
 
-          <div className="bg-neutral-100 dark:bg-neutral-900 p-6 rounded-2xl">
-            <h3 className="font-bold mb-4">Start by Focusing</h3>
-            <FocusTimer onComplete={handleSessionComplete} />
-          </div>
+            {/* Soft Glow Under Egg */}
+            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-24 h-4 bg-indigo-500/20 blur-xl rounded-full animate-pulse" />
+
+            {/* Thought Bubble */}
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 1.5, duration: 0.5 }}
+              className="absolute -right-12 -top-4 bg-white/10 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest text-indigo-300"
+            >
+              Quietly waiting...
+            </motion.div>
+          </motion.div>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+          >
+            <h1 className="text-5xl font-black mb-4 tracking-tighter bg-clip-text text-transparent bg-linear-to-b from-white to-white/60">
+              Your Journey Awaits
+            </h1>
+            <p className="text-neutral-400 mb-10 text-lg font-medium leading-relaxed">
+              Your pet is sleeping inside this egg. <br />
+              Focus to give it the energy it needs to hatch.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.8 }}
+            className="w-full flex flex-col gap-6"
+          >
+            {/* Glassmorphism Timer Card */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[40px] shadow-2xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-linear-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+              <div className="relative z-10 flex flex-col items-center">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-6 block">
+                  First Step: Hatching
+                </span>
+                <FocusTimer onComplete={handleSessionComplete} />
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowOnboarding(true)}
+              className="flex items-center justify-center gap-2 text-neutral-500 hover:text-white transition-colors font-bold text-sm tracking-wide"
+            >
+              <HelpCircle size={18} />
+              How does this work?
+            </button>
+          </motion.div>
         </div>
 
         {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
 
-        {/* Loading Overlay for first session */}
-        {isProcessing && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex flex-col items-center justify-center text-white p-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-indigo-500/20 blur-3xl animate-pulse rounded-full" />
-              <div className="text-8xl mb-8 animate-bounce relative z-10">
-                🐣
+        {/* Loading Overlay */}
+        <AnimatePresence>
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-50 flex flex-col items-center justify-center text-white p-4"
+            >
+              <div className="relative">
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute inset-0 bg-indigo-500/40 blur-3xl rounded-full"
+                />
+                <div className="text-9xl mb-12 relative z-10">🐣</div>
               </div>
-            </div>
-            <h2 className="text-3xl font-black mb-3 tracking-tight">
-              Hatching Your Pet...
-            </h2>
-            <p className="text-neutral-400 text-center max-w-xs leading-relaxed">
-              {isSigning
-                ? "Securing your focus reward on-chain..."
-                : isPending
-                  ? "Please confirm the transaction in your wallet..."
-                  : isConfirming
-                    ? "Waking up your new friend... almost there!"
-                    : "Finalizing your pet's birth..."}
-            </p>
-            <div className="mt-12 flex gap-2">
-              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" />
-            </div>
-          </div>
-        )}
+              <h2 className="text-4xl font-black mb-4 tracking-tight">
+                Hatching...
+              </h2>
+              <p className="text-neutral-400 text-center max-w-xs font-medium leading-relaxed mb-6">
+                {isSigning
+                  ? "Securing focus reward..."
+                  : isPending
+                    ? "Confirm in your wallet..."
+                    : isConfirming
+                      ? "Waking up your new friend..."
+                      : "Almost there!"}
+              </p>
+
+              {/* View on Explorer Link */}
+              {hash && (
+                <a
+                  href={`https://celoscan.io/tx/${hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 text-xs font-bold transition-colors bg-white/5 px-3 py-1.5 rounded-full border border-white/5"
+                >
+                  View on CeloScan
+                  <ExternalLink size={12} />
+                </a>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -336,7 +426,13 @@ function AppPageContent() {
             {allowance === BigInt(0) && (
               <div className="col-span-2 animate-in fade-in slide-in-from-top-2 duration-500">
                 <button
-                  onClick={() => approveG(BigInt("100000000000000000000"))} // Approve 100 G$
+                  onClick={() =>
+                    approveG(
+                      BigInt(
+                        "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                      ),
+                    )
+                  } // Infinite Approval
                   className="w-full bg-indigo-600 dark:bg-indigo-600 text-white py-4 px-6 rounded-2xl font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 flex flex-col items-center gap-1 group"
                 >
                   <span className="flex items-center gap-2">
@@ -354,10 +450,10 @@ function AppPageContent() {
 
             <button
               onClick={() => buyFood()}
-              disabled={health >= 100 || isPending || allowance === BigInt(0)}
+              disabled={isPending || allowance === BigInt(0)}
               className={`group flex flex-col items-center justify-center gap-3 p-6 rounded-3xl transition-all border-2 ${
-                allowance === BigInt(0)
-                  ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-60 cursor-not-allowed"
+                isPending || allowance === BigInt(0)
+                  ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-40 cursor-not-allowed grayscale"
                   : "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 active:scale-95"
               }`}
             >
@@ -376,8 +472,8 @@ function AppPageContent() {
               onClick={() => revivePet()}
               disabled={health > 0 || isPending || allowance === BigInt(0)}
               className={`group flex flex-col items-center justify-center gap-3 p-6 rounded-3xl transition-all border-2 ${
-                allowance === BigInt(0)
-                  ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-60 cursor-not-allowed"
+                health > 0 || isPending || allowance === BigInt(0)
+                  ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-40 cursor-not-allowed grayscale"
                   : "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 active:scale-95"
               }`}
             >
@@ -391,6 +487,26 @@ function AppPageContent() {
                 </p>
               </div>
             </button>
+
+            {/* Error Message Display */}
+            {(writeError || receiptError) && (
+              <div className="col-span-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl flex items-start gap-3 text-red-600 dark:text-red-400">
+                <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                <div className="text-xs font-bold leading-relaxed">
+                  <p className="mb-1 uppercase tracking-widest text-[10px]">
+                    Transaction Failed
+                  </p>
+                  <p className="opacity-90">
+                    {writeError?.message ||
+                      receiptError?.message ||
+                      "An unknown error occurred."}
+                  </p>
+                  <p className="mt-2 text-[10px] opacity-70">
+                    Make sure you have enough CELO for gas!
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

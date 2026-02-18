@@ -26,9 +26,21 @@ export function ClaimReward() {
   const [status, setStatus] = useState<
     "not_whitelisted" | "can_claim" | "already_claimed" | "loading"
   >("loading");
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const checkEntitlement = async () => {
-    if (!address || !publicClient || !walletClient || !identitySDK) return;
+    if (
+      !address ||
+      !publicClient ||
+      !walletClient ||
+      !identitySDK ||
+      !isMounted
+    )
+      return;
 
     try {
       setIsLoading(true);
@@ -62,6 +74,7 @@ export function ClaimReward() {
 
     try {
       setIsClaiming(true);
+
       const claimSDK = new ClaimSDK({
         account: address,
         publicClient: publicClient as any,
@@ -74,8 +87,6 @@ export function ClaimReward() {
       await checkEntitlement();
     } catch (error: any) {
       console.error("Claim failed:", error);
-      // If the SDK handles redirect for FV, let it happen.
-      // Otherwise, we might need to handle specific errors here.
     } finally {
       setIsClaiming(false);
     }

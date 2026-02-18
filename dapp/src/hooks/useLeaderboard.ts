@@ -3,7 +3,7 @@ import { usePublicClient } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
 import { parseAbiItem } from "viem";
 
-const CONTRACT_ADDRESS = "0xC9b85d65AA4ea2239Da8cd4214F62c21fb76B089"; // Celo Sepolia
+const CONTRACT_ADDRESS = "0x9289F74f356271cEfe691c88963aC961C6efa422"; // Celo Mainnet
 
 export type LeaderboardEntry = {
   rank: number;
@@ -35,14 +35,14 @@ export function useLeaderboard() {
             event: parseAbiItem(
               "event PetFed(address indexed owner, uint256 newHealth, uint256 newXp)",
             ),
-            fromBlock: "earliest",
+            fromBlock: BigInt(59551357),
           }),
           publicClient.getLogs({
             address: CONTRACT_ADDRESS,
             event: parseAbiItem(
               "event NamesUpdated(address indexed owner, string username, string petName)",
             ),
-            fromBlock: "earliest",
+            fromBlock: BigInt(59551357),
           }),
         ]);
 

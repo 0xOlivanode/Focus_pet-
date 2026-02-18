@@ -8,7 +8,7 @@ import {
 } from "@rainbow-me/rainbowkit";
 import { celo } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, http } from "wagmi";
+import { WagmiProvider, http, fallback } from "wagmi";
 import { ThemeProvider } from "next-themes";
 import "@rainbow-me/rainbowkit/styles.css";
 
@@ -17,7 +17,10 @@ const config = getDefaultConfig({
   projectId: "a615d03b7ef9bf7b6a4117a0a9ec5845", // Replace with valid WalletConnect ID
   chains: [celo],
   transports: {
-    [celo.id]: http(),
+    [celo.id]: fallback([
+      http(), // Default Celo RPC
+      http("https://rpc.ankr.com/celo"), // Backup Ankr RPC
+    ]),
   },
 });
 
