@@ -115,15 +115,17 @@ contract FocusPet is Ownable {
         pet.lastInteraction = block.timestamp;
 
         // Claim GoodDollar Reward
-        try engagementRewards.appClaim(
-            msg.sender,
-            inviter,
-            validUntilBlock,
-            signature
-        ) returns (bool success) {
-            // Reward claimed successfully
-        } catch {
-            // Reward claim failed, but we continue
+        if (address(engagementRewards).code.length > 0) {
+            try engagementRewards.appClaim(
+                msg.sender,
+                inviter,
+                validUntilBlock,
+                signature
+            ) returns (bool) {
+                // Reward claimed successfully
+            } catch {
+                // Reward claim failed, but we continue
+            }
         }
 
         emit PetFed(msg.sender, pet.health, pet.xp);

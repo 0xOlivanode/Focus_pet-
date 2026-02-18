@@ -20,7 +20,7 @@ export function LandingPage() {
         <div className="flex items-center gap-2">
           <span className="text-3xl">
             <img
-              src="/focus-pet-logo.png"
+              src="/focus-pet-logo.jpeg"
               className="rounded-full h-10 w-10"
               alt=""
             />
@@ -85,27 +85,29 @@ export function LandingPage() {
           transition={{ duration: 0.5, delay: 0.4 }}
           className="flex flex-col items-center gap-4"
         >
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-linear-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-            <div className="relative bg-black rounded-xl p-1">
-              <ConnectButton
-                label="Start Your Journey"
-                showBalance={false}
-                accountStatus="address"
-              />
+          <div className="flex gap-x-2 items-center">
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-linear-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+              <div className="relative bg-black rounded-xl p-1">
+                <ConnectButton
+                  label="Start Your Journey"
+                  showBalance={false}
+                  accountStatus="address"
+                />
+              </div>
             </div>
-          </div>
 
-          <Link
-            href="/app"
-            className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors text-sm font-medium mt-4 group"
-          >
-            Go to App{" "}
-            <ArrowRight
-              size={16}
-              className="group-hover:translate-x-1 transition-transform"
-            />
-          </Link>
+            <Link
+              href="/app"
+              className="flex items-center gap-2  py-2 px-6 rounded-sm text-neutral-400 hover:text-white transition-colors text-sm font-medium group"
+            >
+              Go to App{" "}
+              <ArrowRight
+                size={16}
+                className="group-hover:translate-x-1 transition-transform"
+              />
+            </Link>
+          </div>
 
           <p className="text-xs text-neutral-500 mt-8">
             Built on Celo • Powered by G$

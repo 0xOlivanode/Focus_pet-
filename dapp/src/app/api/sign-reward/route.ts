@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createWalletClient, http, toHex, keccak256, encodePacked } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { celo, celoAlfajores } from "viem/chains";
+import { celo, celoSepolia } from "viem/chains";
 
 // 1. Setup Signer (APP_PRIVATE_KEY from .env)
-const PRIVATE_KEY = process.env.APP_PRIVATE_KEY as `0x${string}`;
+const pkRaw = process.env.APP_PRIVATE_KEY;
+const PRIVATE_KEY = pkRaw?.startsWith("0x") ? pkRaw : `0x${pkRaw}`;
 const TARGET_CHAIN =
-  process.env.NEXT_PUBLIC_CHAIN_ID === "42220" ? celo : celoAlfajores;
+  process.env.NEXT_PUBLIC_CHAIN_ID === "42220" ? celo : celoSepolia;
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,11 +39,11 @@ export async function POST(req: NextRequest) {
     // Changing validUntilBlock to a fixed large number for simplicity in this MVP,
     // or you can fetch public client block number.
     // Let's use a standard "valid for 1 hour" approach approximately.
-    const currentBlockApprox = BigInt(Date.now() / 5000); // Rough approximation since 1970
+    const currentBlockApprox = BigInt(Math.floor(Date.now() / 5000)); // Rough approximation since 1970
     const expiryBlock = BigInt(99999999999); // Simpler for MVP: Just expire far in future or use a fetched block.
 
     // 3. Create Signature
-    const account = privateKeyToAccount(PRIVATE_KEY);
+    const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
 
     // Message Construction must match Smart Contract `recover` logic:
     // keccak256(abi.encodePacked(user, inviter, validUntilBlock))

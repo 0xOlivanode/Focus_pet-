@@ -1,62 +1,47 @@
-import React from "react";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { formatEther } from "viem";
 
-type LeaderboardEntry = {
-  rank: number;
-  name: string;
-  avatar: string;
-  minutesFocused: number;
-  gEarned: string; // G$ amount (BigInt string)
-};
-
-const MOCK_DATA: LeaderboardEntry[] = [
-  {
-    rank: 1,
-    name: "alice.eth",
-    avatar: "👩‍🚀",
-    minutesFocused: 1250,
-    gEarned: "500000000000000000000",
-  }, // 500 G$
-  {
-    rank: 2,
-    name: "bob.lens",
-    avatar: "🧙‍♂️",
-    minutesFocused: 980,
-    gEarned: "320000000000000000000",
-  }, // 320 G$
-  {
-    rank: 3,
-    name: "charlie.fc",
-    avatar: "🧛",
-    minutesFocused: 850,
-    gEarned: "150000000000000000000",
-  }, // 150 G$
-  {
-    rank: 4,
-    name: "you",
-    avatar: "🦅",
-    minutesFocused: 25,
-    gEarned: "10000000000000000000",
-  }, // 10 G$
-  { rank: 5, name: "dave.eth", avatar: "🧟", minutesFocused: 0, gEarned: "0" },
-];
-
 export function Leaderboard() {
+  const { leaderboard, isLoading } = useLeaderboard();
+
+  const getAvatar = (xp: number) => {
+    if (xp < 100) return "🥚";
+    if (xp < 500) return "🐣";
+    if (xp < 2000) return "🦖";
+    if (xp < 5000) return "🐉";
+    return "👑";
+  };
+
+  const formatAddress = (addr: string) => {
+    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+  };
+
   return (
     <div className="w-full mt-8 bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-neutral-100 dark:border-neutral-800 shadow-sm">
       <div className="flex items-center gap-2 mb-6">
         <span className="text-2xl">🏆</span>
-        <h2 className="font-bold text-xl">Weekly Top Focusers</h2>
+        <h2 className="font-bold text-xl">Top Focusers (All-Time)</h2>
       </div>
 
       <div className="space-y-4">
-        {MOCK_DATA.map((entry) => (
+        {isLoading && (
+          <div className="text-center py-8 text-neutral-500 animate-pulse">
+            Loading leaderboard...
+          </div>
+        )}
+
+        {!isLoading && leaderboard.length === 0 && (
+          <div className="text-center py-8 text-neutral-500">
+            No focus sessions recorded yet. Be the first!
+          </div>
+        )}
+
+        {leaderboard.map((entry) => (
           <div
             key={entry.rank}
             className={`flex items-center justify-between p-3 rounded-xl ${
-              entry.name === "you"
-                ? "bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800"
-                : "bg-neutral-50 dark:bg-neutral-800/50"
+              // Highlight "you" if we had address context, but for now just standard
+              "bg-neutral-50 dark:bg-neutral-800/50"
             }`}
           >
             <div className="flex items-center gap-3">
@@ -68,19 +53,21 @@ export function Leaderboard() {
                 #{entry.rank}
               </span>
               <div className="w-8 h-8 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center text-lg">
-                {entry.avatar}
+                {getAvatar(entry.xp)}
               </div>
               <div className="flex flex-col">
-                <span className="font-semibold text-sm">{entry.name}</span>
+                <span className="font-semibold text-sm">
+                  {formatAddress(entry.address)}
+                </span>
                 <span className="text-[10px] text-neutral-500">
-                  {entry.minutesFocused} mins focused
+                  {entry.xp} mins focused
                 </span>
               </div>
             </div>
 
             <div className="text-right">
-              <span className="block font-mono font-bold text-green-600 dark:text-green-400 text-sm">
-                +{parseFloat(formatEther(BigInt(entry.gEarned))).toFixed(0)} G$
+              <span className="block font-mono font-bold text-indigo-600 dark:text-indigo-400 text-sm">
+                {entry.xp} XP
               </span>
             </div>
           </div>

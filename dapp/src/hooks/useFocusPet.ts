@@ -7,13 +7,15 @@ import {
   useAccount,
 } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Replace with deployed address
-const CONTRACT_ADDRESS = "0x256dFFF8e9B86eb652DE66a41e1f86C8da89668F";
+const CONTRACT_ADDRESS = "0x4514FB3ffbbC7F125c20077d04066b36232239B3"; // Celo Sepolia
 
 export function useFocusPet() {
   const { address } = useAccount();
+  const [isSigning, setIsSigning] = useState(false);
+
   const {
     writeContract,
     data: hash,
@@ -36,7 +38,11 @@ export function useFocusPet() {
   }, [writeError, receiptError]);
 
   // Read Pet Data by Address
-  const { data: petData, refetch } = useReadContract({
+  const {
+    data: petData,
+    refetch,
+    isLoading: isLoadingPet,
+  } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: FocusPetABI,
     functionName: "pets",
@@ -105,6 +111,7 @@ export function useFocusPet() {
 
   const recordSession = async (minutes: number) => {
     try {
+      setIsSigning(true);
       // 1. Get Signature from Backend
       const response = await fetch("/api/sign-reward", {
         method: "POST",
@@ -121,20 +128,26 @@ export function useFocusPet() {
       const { signature, validUntilBlock, inviter } = data;
 
       // 2. Send Transaction
-      writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: FocusPetABI,
-        functionName: "focusSession",
-        args: [
-          BigInt(Math.max(1, Math.round(minutes))),
-          inviter,
-          BigInt(validUntilBlock),
-          signature,
-        ],
-      });
+      writeContract(
+        {
+          address: CONTRACT_ADDRESS,
+          abi: FocusPetABI,
+          functionName: "focusSession",
+          args: [
+            BigInt(Math.max(1, Math.round(minutes))),
+            inviter,
+            BigInt(validUntilBlock),
+            signature,
+          ],
+        },
+        {
+          onSettled: () => setIsSigning(false), // Stop signing state when wallet opens/fails
+        },
+      );
     } catch (e) {
       console.error("Session Record Error:", e);
       alert("Failed to secure reward signature!");
+      setIsSigning(false);
     }
   };
 
@@ -161,5 +174,9 @@ export function useFocusPet() {
     gBalance,
     approveG,
     refetchGBalance,
+    // UX
+    isSigning,
+    isProcessing: isSigning || isPending || isConfirming,
+    isLoadingPet,
   };
 }

@@ -26,6 +26,9 @@ export default function AppPage() {
     refetch,
     writeError,
     receiptError,
+    isSigning,
+    isProcessing,
+    isLoadingPet,
   } = useFocusPet();
 
   // Local state for UI responsiveness while tx confirms
@@ -49,8 +52,10 @@ export default function AppPage() {
   // Parse BigInt data from contract
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pet = petData as any;
-  const xp = pet ? Number(pet.xp) : 0;
-  const health = pet ? Number(pet.health) : 100;
+  // If pet is an array (Tuple from contract): [xp, health, lastInteraction, birthTime]
+  // If it's undefined, default to 0/100
+  const xp = pet ? Number(pet[0]) : 0;
+  const health = pet ? Number(pet[1]) : 100;
 
   // Logic to calculate stage based on XP
   const getStage = (xp: number): PetStage => {
@@ -69,6 +74,16 @@ export default function AppPage() {
 
   if (!isConnected) {
     return null; // Redirecting...
+  }
+
+  // Initial Loading State
+  if (isLoadingPet) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-500">
+        <div className="animate-spin text-4xl mb-4">🦅</div>
+        <p className="animate-pulse">Loading FocusPet...</p>
+      </div>
+    );
   }
 
   // Account-Based: If they don't have a pet yet (birthTime == 0),
@@ -98,9 +113,13 @@ export default function AppPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30">
       {/* Header */}
-      <header className="p-4 flex items-center justify-between border-b border-neutral-100 dark:border-neutral-900">
+      <header className="p-4 px-20 flex items-center justify-between border-b border-neutral-100 dark:border-neutral-900">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">🦅</span>
+          <img
+            src="/focus-pet-logo.jpeg"
+            className="rounded-full h-10 w-10"
+            alt=""
+          />
           <h1 className="font-bold text-lg tracking-tight">FocusPet</h1>
         </div>
         <div className="flex items-center gap-4 text-sm font-medium">
@@ -180,6 +199,23 @@ export default function AppPage() {
         {/* Social Leaderboard */}
         <Leaderboard />
       </main>
+
+      {/* Full Screen Loading Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white p-4">
+          <div className="text-6xl mb-4 animate-bounce">⏳</div>
+          <h2 className="text-2xl font-bold mb-2">Processing...</h2>
+          <p className="text-neutral-300 text-center animate-pulse">
+            {isSigning
+              ? "Securing Reward Signature (Backend)..."
+              : isPending
+                ? "Please Confirm in Wallet..."
+                : isConfirming
+                  ? "Waiting for Transaction Confirmation..."
+                  : "Finalizing..."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
