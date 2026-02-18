@@ -13,14 +13,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FocusPet",
-  description: "Focus to grow your pet. Earn G$.",
+  metadataBase: new URL("https://focus-pet-.vercel.app"),
+  title: "FocusPet | Gamified Deep Work",
+  description:
+    "Transform your focus into a pet! Hatch dinosaurs, earn G$, and climb the leaderboard by staying away from distractions.",
+  openGraph: {
+    title: "FocusPet | Gamified Deep Work",
+    description:
+      "Hatch dinosaurs, earn G$, and climb the leaderboard by staying focused.",
+    images: ["/api/og"],
+    type: "website",
+    url: "https://focus-pet-.vercel.app",
+    siteName: "FocusPet",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FocusPet | Gamified Deep Work",
+    description:
+      "Hatch dinosaurs, earn G$, and climb the leaderboard by staying focused.",
+    images: ["/api/og"],
+    creator: "@FocusPet",
+  },
   other: {
     "fc:frame": "vNext",
-    "fc:frame:image": "https://focus-pet-frame.vercel.app/api/og", // Placeholder
+    "fc:frame:image": "https://focus-pet-.vercel.app/api/og",
     "fc:frame:button:1": "Start Focusing",
     "fc:frame:button:1:action": "link",
-    "fc:frame:button:1:target": "https://focus-pet-frame.vercel.app",
+    "fc:frame:button:1:target": "https://focus-pet-.vercel.app",
   },
 };
 
