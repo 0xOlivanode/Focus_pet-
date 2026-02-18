@@ -11,6 +11,7 @@ import { formatEther } from "viem";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SocialShare } from "@/components/SocialShare";
 import { User, Edit2, X } from "lucide-react";
+import confetti from "canvas-confetti";
 
 const TIMERS = {
   FOCUS: 25 * 60,
@@ -73,8 +74,25 @@ export default function AppPage() {
       refetch();
       refetchAllowance();
       router.refresh(); // Refresh Next.js server components/data if any
+
+      // Celebration confetti for focus sessions!
+      if (lastAction === "focus") {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ["#6366f1", "#8b5cf6", "#ec4899"],
+        });
+      }
     }
-  }, [isConfirmed, isConfirming, refetch, refetchAllowance, router]);
+  }, [
+    isConfirmed,
+    isConfirming,
+    lastAction,
+    refetch,
+    refetchAllowance,
+    router,
+  ]);
 
   // Parse BigInt data from contract
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -335,7 +353,7 @@ export default function AppPage() {
       {/* Edit Profile Modal */}
       {isEditModalOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300"
+          className="fixed inset-0 bg-black/60 backdrop-blur-md z-100 flex items-center justify-center p-4 animate-in fade-in duration-300"
           onClick={() => setIsEditModalOpen(false)}
         >
           <div

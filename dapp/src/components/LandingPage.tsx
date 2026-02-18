@@ -15,7 +15,7 @@ export function LandingPage() {
         staggerChildren: 0.1,
       },
     },
-  };
+  } as const;
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -24,7 +24,7 @@ export function LandingPage() {
       opacity: 1,
       transition: { type: "spring", stiffness: 100 },
     },
-  };
+  } as const;
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30 overflow-x-hidden">
