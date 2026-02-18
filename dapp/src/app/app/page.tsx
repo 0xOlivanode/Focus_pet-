@@ -1,6 +1,7 @@
 "use client";
 import { FocusTimer } from "@/components/FocusTimer";
-import { PetView, PetStage, PetMood } from "@/components/PetView";
+import { PetView } from "@/components/PetView";
+import { PetStage, PetMood, getPetStage } from "@/utils/pet";
 import { Leaderboard } from "@/components/Leaderboard";
 import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
@@ -10,8 +11,9 @@ import { useRouter } from "next/navigation";
 import { formatEther } from "viem";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SocialShare } from "@/components/SocialShare";
-import { User, Edit2, X } from "lucide-react";
+import { User, Edit2, X, HelpCircle } from "lucide-react";
 import confetti from "canvas-confetti";
+import { OnboardingModal } from "@/components/OnboardingModal";
 
 const TIMERS = {
   FOCUS: 25 * 60,
@@ -46,11 +48,25 @@ export default function AppPage() {
     lastAction,
     allowance,
     refetchAllowance,
+    refetchGBalance,
   } = useFocusPet();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [tempUsername, setTempUsername] = useState("");
   const [tempPetName, setTempPetName] = useState("");
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    const hasSeen = localStorage.getItem("focus-pet-onboarding");
+    if (!hasSeen) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  const handleCloseOnboarding = () => {
+    localStorage.setItem("focus-pet-onboarding", "true");
+    setShowOnboarding(false);
+  };
 
   useEffect(() => {
     if (username) setTempUsername(username);
@@ -73,9 +89,12 @@ export default function AppPage() {
     if (isConfirmed) {
       refetch();
       refetchAllowance();
+      if (typeof refetchGBalance === "function") {
+        (refetchGBalance as () => void)();
+      }
       router.refresh(); // Refresh Next.js server components/data if any
 
-      // Celebration confetti for focus sessions!
+      // Celebration confetti for focus sessions or level ups!
       if (lastAction === "focus") {
         confetti({
           particleCount: 150,
@@ -91,25 +110,36 @@ export default function AppPage() {
     lastAction,
     refetch,
     refetchAllowance,
+    refetchGBalance,
     router,
   ]);
 
   // Parse BigInt data from contract
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pet = petData as any;
-  // If pet is an array (Tuple from contract): [xp, health, lastInteraction, birthTime]
-  // If it's undefined, default to 0/100
-  const xp = pet ? Number(pet[0]) : 0;
   const health = pet ? Number(pet[1]) : 100;
+  const xp = pet ? Number(pet[0]) : 0;
+  const stage = getPetStage(xp);
 
-  // Logic to calculate stage based on XP
-  const getStage = (xp: number): PetStage => {
-    if (xp < 100) return "egg";
-    if (xp < 500) return "baby";
-    if (xp < 2000) return "teen";
-    if (xp < 5000) return "adult";
-    return "elder";
-  };
+  // Level Up Ceremony Detection
+  const [prevStage, setPrevStage] = useState<PetStage | null>(null);
+
+  useEffect(() => {
+    if (pet && !isLoadingPet) {
+      const currentStage = getPetStage(Number(pet[0]));
+      if (prevStage && prevStage !== currentStage) {
+        // LEVEL UP CEREMONY!
+        confetti({
+          particleCount: 200,
+          spread: 100,
+          origin: { y: 0.3 },
+          colors: ["#fbbf24", "#f59e0b", "#d97706"], // Gold colors
+          shapes: ["star"],
+        });
+      }
+      setPrevStage(currentStage);
+    }
+  }, [xp, isLoadingPet, pet, prevStage]);
 
   const handleSessionComplete = (minutes: number) => {
     recordSession(minutes); // Record actual duration
@@ -146,25 +176,49 @@ export default function AppPage() {
           buy food to hatch your egg!
         </p>
 
-        <div className="bg-neutral-100 dark:bg-neutral-900 p-6 rounded-2xl w-full max-w-sm">
-          <h3 className="font-bold mb-4">Start by Focusing</h3>
-          <FocusTimer onComplete={handleSessionComplete} />
+        <div className="flex flex-col gap-4 w-full max-w-sm">
+          <button
+            onClick={() => setShowOnboarding(true)}
+            className="w-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 py-3 rounded-xl font-bold border border-indigo-100 dark:border-indigo-800 transition-all hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center justify-center gap-2"
+          >
+            <HelpCircle size={18} />
+            See How it Works
+          </button>
+
+          <div className="bg-neutral-100 dark:bg-neutral-900 p-6 rounded-2xl">
+            <h3 className="font-bold mb-4">Start by Focusing</h3>
+            <FocusTimer onComplete={handleSessionComplete} />
+          </div>
         </div>
+
+        {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
 
         {/* Loading Overlay for first session */}
         {isProcessing && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white p-4">
-            <div className="text-6xl mb-4 animate-bounce">🐣</div>
-            <h2 className="text-2xl font-bold mb-2">Hatching Your Pet...</h2>
-            <p className="text-neutral-300 text-center animate-pulse">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex flex-col items-center justify-center text-white p-4">
+            <div className="relative">
+              <div className="absolute inset-0 bg-indigo-500/20 blur-3xl animate-pulse rounded-full" />
+              <div className="text-8xl mb-8 animate-bounce relative z-10">
+                🐣
+              </div>
+            </div>
+            <h2 className="text-3xl font-black mb-3 tracking-tight">
+              Hatching Your Pet...
+            </h2>
+            <p className="text-neutral-400 text-center max-w-xs leading-relaxed">
               {isSigning
-                ? "Preparing your reward..."
+                ? "Securing your focus reward on-chain..."
                 : isPending
-                  ? "Please confirm in your wallet..."
+                  ? "Please confirm the transaction in your wallet..."
                   : isConfirming
-                    ? "Hatching your new friend..."
-                    : "Almost there..."}
+                    ? "Waking up your new friend... almost there!"
+                    : "Finalizing your pet's birth..."}
             </p>
+            <div className="mt-12 flex gap-2">
+              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" />
+            </div>
           </div>
         )}
       </div>
@@ -174,7 +228,7 @@ export default function AppPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30">
       {/* Header */}
-      <header className="p-4 px-20 flex items-center justify-between border-b border-neutral-100 dark:border-neutral-900">
+      <header className="p-4 px-4 md:px-20 flex items-center justify-between border-b border-neutral-100 dark:border-neutral-900">
         <div className="flex items-center gap-2">
           <img
             src="/focus-pet-logo.jpeg"
@@ -183,7 +237,14 @@ export default function AppPage() {
           />
           <h1 className="font-bold text-lg tracking-tight">FocusPet</h1>
         </div>
-        <div className="flex items-center gap-4 text-sm font-medium">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <button
+            onClick={() => setShowOnboarding(true)}
+            className="p-2 rounded-full text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+            title="How to Play"
+          >
+            <HelpCircle size={22} />
+          </button>
           <ThemeToggle />
           <button
             onClick={() => setIsEditModalOpen(true)}
@@ -219,7 +280,7 @@ export default function AppPage() {
           </p>
         </div>
 
-        <PetView stage={getStage(xp)} xp={xp} health={health} mood={mood} />
+        <PetView stage={stage} xp={xp} health={health} mood={mood} />
 
         {/* Timer Section */}
         <FocusTimer
@@ -229,7 +290,7 @@ export default function AppPage() {
         />
 
         {/* Pet Shop Section */}
-        <div className="w-full mt-8 bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-6 border border-neutral-100 dark:border-neutral-800">
+        <div className="w-full mt-8 bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-4 md:p-6 border border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-xl flex items-center gap-2">
               <span className="text-2xl">🛍️</span> Pet Shop
@@ -247,7 +308,7 @@ export default function AppPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:gap-4">
             {allowance === BigInt(0) && (
               <div className="col-span-2 animate-in fade-in slide-in-from-top-2 duration-500">
                 <button
@@ -352,6 +413,8 @@ export default function AppPage() {
         {/* Social Leaderboard */}
         <Leaderboard />
       </main>
+
+      {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
 
       {/* Edit Profile Modal */}
       {isEditModalOpen && (

@@ -1,11 +1,10 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Heart, Zap, Sparkles } from "lucide-react";
 
-export type PetStage = "egg" | "baby" | "teen" | "adult" | "elder";
-export type PetMood = "happy" | "sad" | "sleeping" | "focused";
+import { PetStage, PetMood, getPetEmoji, getStageName } from "@/utils/pet";
 
 interface PetViewProps {
   stage: PetStage;
@@ -16,6 +15,42 @@ interface PetViewProps {
 
 export function PetView({ stage, health, xp, mood }: PetViewProps) {
   const [thought, setThought] = React.useState<string | null>(null);
+  const [isPoked, setIsPoked] = React.useState(false);
+  const [popups, setPopups] = React.useState<{ id: number; value: string }[]>(
+    [],
+  );
+  const lastXpRef = React.useRef(xp);
+
+  // Handle XP Popups
+  React.useEffect(() => {
+    if (xp > lastXpRef.current) {
+      const diff = xp - lastXpRef.current;
+      const id = Date.now();
+      setPopups((prev) => [...prev, { id, value: `+${diff} XP` }]);
+      setTimeout(() => {
+        setPopups((prev) => prev.filter((p) => p.id !== id));
+      }, 2000);
+    }
+    lastXpRef.current = xp;
+  }, [xp]);
+
+  // Handle Poke
+  const handlePoke = () => {
+    if (isPoked) return;
+    setIsPoked(true);
+
+    // Random poked thought
+    const pokedThoughts = [
+      "Hehe! 😄",
+      "That tickles! ✨",
+      "Rawr! 🦖",
+      "Focus time? 🧠",
+      "I'm awake! ⚡",
+    ];
+    setThought(pokedThoughts[Math.floor(Math.random() * pokedThoughts.length)]);
+
+    setTimeout(() => setIsPoked(false), 1000);
+  };
 
   // Contextual messages
   React.useEffect(() => {
@@ -36,19 +71,21 @@ export function PetView({ stage, health, xp, mood }: PetViewProps) {
       return null;
     };
 
-    setThought(getThought());
+    if (!isPoked) {
+      setThought(getThought());
+    }
 
     // Cycle thoughts occasionally if happy
-    if (mood === "happy") {
+    if (mood === "happy" && !isPoked) {
       const interval = setInterval(() => {
         setThought(getThought());
       }, 8000);
       return () => clearInterval(interval);
     }
-  }, [mood, health, xp]);
+  }, [mood, health, xp, isPoked]);
 
   // Determine animation based on mood
-  const variants = {
+  const variants: Variants = {
     happy: {
       y: [0, -12, 0],
       transition: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
@@ -71,26 +108,17 @@ export function PetView({ stage, health, xp, mood }: PetViewProps) {
       ],
       transition: { repeat: Infinity, duration: 2 },
     },
+    poked: {
+      scale: [1, 1.4, 0.9, 1.1, 1],
+      rotate: [0, 15, -15, 10, 0],
+      y: [0, -40, 0],
+      transition: { duration: 0.6, ease: "backOut" },
+    },
   };
 
   // Determine Emoji/SVG based on Stage
   const getPetContent = () => {
-    switch (stage) {
-      case "egg":
-        return <span className="text-8xl select-none">🥚</span>;
-      case "baby":
-        return <span className="text-8xl select-none">🐣</span>;
-      case "teen":
-        return <span className="text-8xl select-none">🦖</span>;
-      case "adult":
-        return <span className="text-8xl select-none">🐉</span>;
-      case "elder":
-        return <span className="text-8xl select-none">👑</span>;
-    }
-  };
-
-  const getStageName = () => {
-    return stage.charAt(0).toUpperCase() + stage.slice(1);
+    return <span className="text-8xl">{getPetEmoji(stage)}</span>;
   };
 
   // Health Color
@@ -98,6 +126,23 @@ export function PetView({ stage, health, xp, mood }: PetViewProps) {
 
   return (
     <div className="w-full mb-8 relative">
+      {/* XP Popups */}
+      <AnimatePresence>
+        {popups.map((p) => (
+          <motion.div
+            key={p.id}
+            initial={{ opacity: 0, y: 0, scale: 0.5 }}
+            animate={{ opacity: 1, y: -100, scale: 1.2 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute left-1/2 -translate-x-1/2 z-100 pointer-events-none"
+          >
+            <span className="bg-linear-to-r from-amber-400 to-amber-600 text-white px-3 py-1 rounded-full text-sm font-black shadow-lg border border-white/20">
+              {p.value}
+            </span>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
       {/* Status Bar */}
       <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-1.5 rounded-full shadow-lg flex items-center gap-4 text-xs font-bold text-neutral-500 z-10 w-max animate-in fade-in slide-in-from-bottom-2">
         <div className="flex items-center gap-1.5" title="Health">
@@ -119,10 +164,10 @@ export function PetView({ stage, health, xp, mood }: PetViewProps) {
       </div>
 
       {/* Main Pet Container */}
-      <div className="w-full h-72 bg-neutral-50 dark:bg-neutral-900/50 rounded-[2.5rem] border border-neutral-100 dark:border-neutral-800 flex items-center justify-center overflow-hidden relative group transition-all duration-500 shadow-inner">
+      <div className="w-full h-64 md:h-72 bg-neutral-50 dark:bg-neutral-900/50 rounded-[2rem] md:rounded-[2.5rem] border border-neutral-100 dark:border-neutral-800 flex items-center justify-center overflow-hidden relative group transition-all duration-500 shadow-inner">
         {/* Background Ambient Glow */}
         <div
-          className={`absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] opacity-40 blur-3xl transition-colors duration-1000
+          className={`absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] opacity-40 blur-3xl transition-colors duration-1000
              ${
                mood === "happy"
                  ? "from-amber-200/50 to-transparent"
@@ -145,27 +190,32 @@ export function PetView({ stage, health, xp, mood }: PetViewProps) {
         ></div>
 
         {/* Thought Bubble */}
-        {thought && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            key={thought}
-            className="absolute top-12 bg-white dark:bg-neutral-800 px-4 py-2 rounded-2xl rounded-bl-sm shadow-xl border border-neutral-100 dark:border-neutral-700 z-20"
-          >
-            <p className="text-xs font-bold text-neutral-600 dark:text-neutral-200 whitespace-nowrap">
-              {thought}
-            </p>
-            {/* Pointer */}
-            <div className="absolute -bottom-2 left-2 w-4 h-4 bg-white dark:bg-neutral-800 border-r border-b border-neutral-100 dark:border-neutral-700 rotate-45" />
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {thought && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: -10 }}
+              key={thought}
+              className="absolute top-12 bg-white dark:bg-neutral-800 px-4 py-2 rounded-2xl rounded-bl-sm shadow-xl border border-neutral-100 dark:border-neutral-700 z-20"
+            >
+              <p className="text-xs font-bold text-neutral-600 dark:text-neutral-200 whitespace-nowrap">
+                {thought}
+              </p>
+              {/* Pointer */}
+              <div className="absolute -bottom-2 left-2 w-4 h-4 bg-white dark:bg-neutral-800 border-r border-b border-neutral-100 dark:border-neutral-700 rotate-45" />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* The Pet */}
         <motion.div
-          animate={variants[mood]}
+          animate={isPoked ? "poked" : mood}
+          variants={variants}
           className="relative z-10 cursor-pointer"
           whileHover={{ scale: 1.15 }}
           whileTap={{ scale: 0.9 }}
+          onClick={handlePoke}
         >
           {getPetContent()}
         </motion.div>
@@ -177,7 +227,7 @@ export function PetView({ stage, health, xp, mood }: PetViewProps) {
               <Sparkles size={12} className="text-amber-400 animate-pulse" />
             )}
             Lvl {Math.floor(xp / 100) + 1} <span className="opacity-30">•</span>{" "}
-            {getStageName()}
+            {getStageName(stage)}
           </div>
 
           {/* XP Bar */}

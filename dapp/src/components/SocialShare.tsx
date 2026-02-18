@@ -1,6 +1,8 @@
 "use client";
 
+import React, { useState } from "react";
 import { Share2 } from "lucide-react";
+import { ShareModal } from "./ShareModal";
 
 interface SocialShareProps {
   text: string;
@@ -10,36 +12,31 @@ interface SocialShareProps {
 
 export function SocialShare({
   text,
-  url = "https://focus-pet.vercel.app", // Fallback URL
+  url = "https://focus-pet-theta.vercel.app", // Updated to correct domain
   className = "",
 }: SocialShareProps) {
-  const encodedText = encodeURIComponent(text);
-  const encodedUrl = encodeURIComponent(url);
-
-  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
-  const farcasterUrl = `https://warpcast.com/~/compose?text=${encodedText}&embeds[]=${encodedUrl}`;
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <span className="text-sm font-medium text-neutral-500 mr-2">Share:</span>
-      <a
-        href={twitterUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-neutral-800 transition-colors"
-        title="Share on Twitter / X"
-      >
-        <span className="text-sm font-bold">𝕏</span>
-      </a>
-      <a
-        href={farcasterUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-        title="Share on Farcaster"
+    <>
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(true);
+        }}
+        className={`flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all active:scale-90 ${className}`}
+        title="Share Achievement"
       >
         <Share2 size={16} />
-      </a>
-    </div>
+      </button>
+
+      <ShareModal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        text={text}
+        url={url}
+      />
+    </>
   );
 }

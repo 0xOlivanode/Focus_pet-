@@ -48,6 +48,11 @@ export function FocusTimer({
       setStatus("paused");
       onPause?.();
       if (timerRef.current) clearInterval(timerRef.current);
+    } else if (status === "completed") {
+      // Restart logic
+      setTimeLeft(duration);
+      setStatus("running");
+      onStart?.();
     } else {
       setStatus("running");
       onStart?.();
@@ -119,13 +124,15 @@ export function FocusTimer({
           <button
             key={mins}
             onClick={() => handleDurationSelect(mins)}
-            disabled={status !== "idle"}
+            disabled={status !== "idle" && status !== "completed"}
             className={cn(
               "px-4 py-2 rounded-full text-sm font-medium transition-all",
               duration === mins * 60
                 ? "bg-white dark:bg-black shadow-sm text-black dark:text-white"
                 : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300",
-              status !== "idle" && "opacity-50 cursor-not-allowed",
+              status !== "idle" &&
+                status !== "completed" &&
+                "opacity-50 cursor-not-allowed",
             )}
           >
             {mins}m
@@ -188,9 +195,18 @@ export function FocusTimer({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={toggleTimer}
-            className="w-16 h-16 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30"
+            className={cn(
+              "w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all",
+              status === "completed"
+                ? "bg-green-500 shadow-green-500/30"
+                : "bg-indigo-600 shadow-indigo-500/30",
+            )}
           >
-            <Play className="w-6 h-6 ml-1" />
+            {status === "completed" ? (
+              <CheckCircle2 className="w-6 h-6 text-white" />
+            ) : (
+              <Play className="w-6 h-6 ml-1" />
+            )}
           </motion.button>
         ) : (
           <motion.button
