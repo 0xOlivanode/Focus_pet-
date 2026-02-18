@@ -1,7 +1,13 @@
 "use client";
 import { FocusTimer } from "@/components/FocusTimer";
 import { PetView } from "@/components/PetView";
-import { PetStage, PetMood, getPetStage } from "@/utils/pet";
+import {
+  PetStage,
+  PetMood,
+  getPetStage,
+  getNextStageInfo,
+  getStageName,
+} from "@/utils/pet";
 import { Leaderboard } from "@/components/Leaderboard";
 import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
@@ -25,7 +31,9 @@ import {
   User,
   Edit2,
   X,
+  Clock,
 } from "lucide-react";
+import { NotificationToast, ToastType } from "@/components/NotificationToast";
 
 import { Suspense } from "react";
 
@@ -71,6 +79,31 @@ function AppPageContent() {
   const [tempUsername, setTempUsername] = useState("");
   const [tempPetName, setTempPetName] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Toast State
+  const [toast, setToast] = useState<{
+    isVisible: boolean;
+    title: string;
+    message: string;
+    type: ToastType;
+    showShare?: boolean;
+    shareText?: string;
+  }>({
+    isVisible: false,
+    title: "",
+    message: "",
+    type: "success",
+  });
+
+  const showToast = (
+    title: string,
+    message: string,
+    type: ToastType = "success",
+    showShare = false,
+    shareText = "",
+  ) => {
+    setToast({ isVisible: true, title, message, type, showShare, shareText });
+  };
 
   useEffect(() => {
     const hasSeen = localStorage.getItem("focus-pet-onboarding");
@@ -136,6 +169,25 @@ function AppPageContent() {
           origin: { y: 0.6 },
           colors: ["#6366f1", "#8b5cf6", "#ec4899"],
         });
+        showToast(
+          "Focus Recorded! 🏆",
+          "Your pet is growing stronger and your status is updated on-chain.",
+          "achievement",
+          true,
+          `I just focused for 25 minutes with FocusPet! 🦅 My pet is leveling up on Celo. #FocusPet #BuildWithCelo`,
+        );
+      } else if (lastAction === "shop") {
+        showToast(
+          "Shop Success! 🛍️",
+          "Your items have been delivered and your pet is happy.",
+          "success",
+        );
+      } else if (lastAction === "profile") {
+        showToast(
+          "Profile Updated! 👤",
+          "Your on-chain identity has been saved successfully.",
+          "info",
+        );
       }
     }
   }, [
@@ -154,6 +206,7 @@ function AppPageContent() {
   const health = pet ? Number(pet[1]) : 100;
   const xp = pet ? Number(pet[0]) : 0;
   const stage = getPetStage(xp);
+  const nextStageInfo = getNextStageInfo(xp);
 
   // Level Up Ceremony Detection
   const [prevStage, setPrevStage] = useState<PetStage | null>(null);
@@ -273,6 +326,30 @@ function AppPageContent() {
                   First Step: Hatching
                 </span>
                 <FocusTimer onComplete={handleSessionComplete} />
+
+                {/* Hatching Progress Bar */}
+                <div className="w-full mt-8 pt-6 border-t border-white/5">
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                      Hatch Progress
+                    </span>
+                    <span className="text-xs font-black text-indigo-400">
+                      {xp}/{nextStageInfo.targetXp}m
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${nextStageInfo.progress}%` }}
+                      className="h-full bg-linear-to-r from-indigo-500 to-purple-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                    />
+                  </div>
+                  <p className="text-[10px] text-neutral-500 mt-2 font-medium italic">
+                    {nextStageInfo.remaining > 0
+                      ? `Focus for ${nextStageInfo.remaining} more minutes to see your pet!`
+                      : "Ready to hatch! Record one more session."}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -384,15 +461,35 @@ function AppPageContent() {
               <Edit2 size={16} />
             </button>
           </h2>
-          <p className="text-neutral-500 font-medium flex items-center justify-center gap-1">
-            Raised by{" "}
-            <span className="text-indigo-500 font-bold">
-              @{username || "focuser"}
-            </span>
-          </p>
+
+          <div className="flex flex-col items-center gap-4 mt-2 mb-6">
+            <p className="text-neutral-500 font-bold flex items-center justify-center gap-1.5 bg-neutral-50 dark:bg-neutral-900/40 px-4 py-1.5 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+              <span className="opacity-60 text-[10px] uppercase tracking-wider font-black">
+                By
+              </span>
+              <span className="text-indigo-500 font-extrabold text-sm">
+                @{username || "focuser"}
+              </span>
+              <span className="w-1 h-1 bg-neutral-300 dark:bg-neutral-700 rounded-full mx-1" />
+              <Clock size={14} className="text-indigo-500" />
+              <span className="text-neutral-700 dark:text-neutral-300 font-black text-sm">
+                {xp >= 60 ? `${Math.floor(xp / 60)}h ${xp % 60}m` : `${xp}m`}
+              </span>
+              <span className="opacity-60 text-[10px] uppercase tracking-wider font-black">
+                Total
+              </span>
+            </p>
+
+          </div>
         </div>
 
-        <PetView stage={stage} xp={xp} health={health} mood={mood} />
+        <PetView
+          stage={stage}
+          xp={xp}
+          health={health}
+          mood={mood}
+          nextStageInfo={nextStageInfo}
+        />
 
         <FocusTimer
           onComplete={handleSessionComplete}
@@ -511,48 +608,24 @@ function AppPageContent() {
         </div>
 
         {isPending && (
-          <p className="mt-4 text-xs text-indigo-500 animate-pulse">
+          <p className="mt-4 text-xs text-indigo-500 animate-pulse text-center">
             Transaction pending...
           </p>
-        )}
-
-        {(writeError || receiptError) && (
-          <p className="mt-4 text-xs text-red-500 max-w-xs wrap-break-word">
-            Error: {(writeError || receiptError)?.message}
-          </p>
-        )}
-
-        {/* Success Message for Focus Session */}
-        {isConfirmed && lastAction === "focus" && (
-          <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-center animate-fade-in border border-green-200 dark:border-green-800 w-full">
-            <p className="font-bold text-lg">Session Recorded! 🎉</p>
-            <p className="text-sm mb-3">Your pet is growing stronger.</p>
-            <div className="flex justify-center">
-              <SocialShare
-                text={`I just focused for 25 minutes with FocusPet! 🦅 My pet is leveling up on Celo. #FocusPet #BuildWithCelo`}
-                url="https://focus-pet.vercel.app"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Feedback for Shop Actions */}
-        {isConfirmed && lastAction === "shop" && (
-          <div className="mt-4 p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-lg text-center animate-fade-in border border-indigo-200 dark:border-indigo-800 w-full text-sm font-medium">
-            Shop updated! 🛍️ Check your treats or balance.
-          </div>
-        )}
-
-        {/* Feedback for Profile Updates */}
-        {isConfirmed && lastAction === "profile" && (
-          <div className="mt-4 p-3 bg-neutral-50 dark:bg-neutral-900/40 text-neutral-700 dark:text-neutral-300 rounded-lg text-center animate-fade-in border border-neutral-200 dark:border-neutral-800 w-full text-sm font-medium">
-            Identity updated on-chain! 👤
-          </div>
         )}
 
         {/* Social Leaderboard */}
         <Leaderboard />
       </main>
+
+      <NotificationToast
+        isVisible={toast.isVisible}
+        onClose={() => setToast((prev) => ({ ...prev, isVisible: false }))}
+        title={toast.title}
+        message={toast.message}
+        type={toast.type}
+        showShare={toast.showShare}
+        shareText={toast.shareText}
+      />
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
 

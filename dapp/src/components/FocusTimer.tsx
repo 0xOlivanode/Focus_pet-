@@ -205,7 +205,7 @@ export function FocusTimer({
             {status === "completed" ? (
               <CheckCircle2 className="w-6 h-6 text-white" />
             ) : (
-              <Play className="w-6 h-6 ml-1" />
+              <Play className="w-6 h-6 ml-1 text-white" />
             )}
           </motion.button>
         ) : (
@@ -215,7 +215,7 @@ export function FocusTimer({
             onClick={toggleTimer}
             className="w-16 h-16 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30"
           >
-            <Pause className="w-6 h-6" />
+            <Pause className="w-6 h-6 text-white" />
           </motion.button>
         )}
 
@@ -228,7 +228,7 @@ export function FocusTimer({
             onClick={resetTimer}
             className="w-16 h-16 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 flex items-center justify-center"
           >
-            <Square className="w-5 h-5" />
+            <Square className="w-5 h-5 text-white" />
           </motion.button>
         )}
       </div>

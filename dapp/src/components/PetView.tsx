@@ -4,16 +4,29 @@ import React from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Heart, Zap, Sparkles } from "lucide-react";
 
-import { PetStage, PetMood, getPetEmoji, getStageName } from "@/utils/pet";
+import {
+  PetStage,
+  PetMood,
+  getPetEmoji,
+  getStageName,
+  StageInfo,
+} from "@/utils/pet";
 
 interface PetViewProps {
   stage: PetStage;
   health: number;
   xp: number;
   mood: PetMood;
+  nextStageInfo?: StageInfo;
 }
 
-export function PetView({ stage, health, xp, mood }: PetViewProps) {
+export function PetView({
+  stage,
+  health,
+  xp,
+  mood,
+  nextStageInfo,
+}: PetViewProps) {
   const [thought, setThought] = React.useState<string | null>(null);
   const [isPoked, setIsPoked] = React.useState(false);
   const [popups, setPopups] = React.useState<{ id: number; value: string }[]>(
@@ -221,8 +234,8 @@ export function PetView({ stage, health, xp, mood }: PetViewProps) {
         </motion.div>
 
         {/* Stage Label */}
-        <div className="absolute bottom-6 flex flex-col items-center">
-          <div className="flex items-center gap-2 text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em] bg-white/50 dark:bg-black/20 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/20 dark:border-white/5 transition-all group-hover:bg-white/80 dark:group-hover:bg-black/40">
+        <div className="absolute bottom-6 flex flex-col items-center w-full px-8">
+          <div className="flex items-center gap-2 text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-[0.2em] bg-white/50 dark:bg-black/20 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/20 dark:border-white/5 transition-all group-hover:bg-white/80 dark:group-hover:bg-black/40 mb-3">
             {stage !== "egg" && stage !== "baby" && (
               <Sparkles size={12} className="text-amber-400 animate-pulse" />
             )}
@@ -230,15 +243,26 @@ export function PetView({ stage, health, xp, mood }: PetViewProps) {
             {getStageName(stage)}
           </div>
 
-          {/* XP Bar */}
-          <div className="w-36 h-2 bg-neutral-200 dark:bg-neutral-800 rounded-full mt-3 overflow-hidden p-0.5 border border-neutral-100/50 dark:border-neutral-700/50">
-            <motion.div
-              className="h-full bg-linear-to-r from-amber-400 to-amber-500 rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${xp % 100}%` }}
-              transition={{ type: "spring", stiffness: 50 }}
-            />
-          </div>
+          {/* XP / Evolution Bar */}
+          {nextStageInfo && nextStageInfo.nextStage !== "none" && (
+            <div className="w-full max-w-[160px] relative group/bar cursor-help">
+              <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden p-0.5 border border-neutral-100/50 dark:border-neutral-700/50">
+                <motion.div
+                  className="h-full bg-linear-to-r from-amber-400 to-amber-500 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${nextStageInfo.progress}%` }}
+                  transition={{ type: "spring", stiffness: 50 }}
+                />
+              </div>
+
+              {/* Tooltip */}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-neutral-900 dark:bg-neutral-800 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl z-50 border border-white/10">
+                {nextStageInfo.remaining}m more until{" "}
+                {getStageName(nextStageInfo.nextStage as PetStage)} evolution
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
