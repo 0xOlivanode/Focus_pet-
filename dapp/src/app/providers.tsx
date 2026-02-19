@@ -12,6 +12,8 @@ import { WagmiProvider, http, fallback } from "wagmi";
 import { ThemeProvider } from "next-themes";
 import "@rainbow-me/rainbowkit/styles.css";
 
+import { AudioProvider } from "@/hooks/useAudio";
+
 const config = getDefaultConfig({
   appName: "FocusPet",
   projectId: "a615d03b7ef9bf7b6a4117a0a9ec5845", // Replace with valid WalletConnect ID
@@ -31,7 +33,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <RainbowKitProvider>{children}</RainbowKitProvider>
+          <RainbowKitProvider>
+            <AudioProvider>{children}</AudioProvider>
+          </RainbowKitProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>

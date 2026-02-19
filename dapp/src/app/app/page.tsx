@@ -34,6 +34,8 @@ import {
   Clock,
 } from "lucide-react";
 import { NotificationToast, ToastType } from "@/components/NotificationToast";
+import { useAudio } from "@/hooks/useAudio";
+import { SoundMenu } from "@/components/SoundMenu";
 
 import { Suspense } from "react";
 
@@ -105,6 +107,8 @@ function AppPageContent() {
     setToast({ isVisible: true, title, message, type, showShare, shareText });
   };
 
+  const { playSound } = useAudio();
+
   useEffect(() => {
     const hasSeen = localStorage.getItem("focus-pet-onboarding");
     if (!hasSeen) {
@@ -142,6 +146,7 @@ function AppPageContent() {
         origin: { y: 0.5 },
         colors: ["#6366f1", "#10b981", "#3b82f6"],
       });
+      playSound("success");
 
       // Clean up URL to avoid repeating on refresh
       const newPath = window.location.pathname;
@@ -169,6 +174,7 @@ function AppPageContent() {
           origin: { y: 0.6 },
           colors: ["#6366f1", "#8b5cf6", "#ec4899"],
         });
+        playSound("success");
         showToast(
           "Focus Recorded! 🏆",
           "Your pet is growing stronger and your status is updated on-chain.",
@@ -182,6 +188,7 @@ function AppPageContent() {
           "Your items have been delivered and your pet is happy.",
           "success",
         );
+        playSound("pop");
       } else if (lastAction === "profile") {
         showToast(
           "Profile Updated! 👤",
@@ -223,6 +230,7 @@ function AppPageContent() {
           colors: ["#fbbf24", "#f59e0b", "#d97706"], // Gold colors
           shapes: ["star"],
         });
+        playSound("success");
       }
       setPrevStage(currentStage);
     }
@@ -231,6 +239,7 @@ function AppPageContent() {
   const handleSessionComplete = (minutes: number) => {
     recordSession(minutes); // Record actual duration
     setMood("happy");
+    playSound("click");
   };
 
   if (!isConnected) {
@@ -339,10 +348,12 @@ function AppPageContent() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={async () => {
+                    playSound("hatch");
                     // Trigger immediate hatch logic
                     await handleSessionComplete(0);
                   }}
                   disabled={isProcessing}
+                  onMouseEnter={() => playSound("hover")}
                   className="relative group/btn overflow-hidden bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black text-sm shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.5)] transition-all duration-300"
                 >
                   <span className="relative z-10 flex items-center gap-2">
@@ -436,15 +447,22 @@ function AppPageContent() {
         </div>
         <div className="flex items-center gap-2 text-sm font-medium">
           <button
-            onClick={() => setShowOnboarding(true)}
+            onClick={() => {
+              setShowOnboarding(true);
+              playSound("click"); // Added sound
+            }}
             className="p-2 rounded-full text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
             title="How to Play"
           >
             <HelpCircle size={22} />
           </button>
           <ThemeToggle />
+          <SoundMenu />
           <button
-            onClick={() => setIsEditModalOpen(true)}
+            onClick={() => {
+              setIsEditModalOpen(true);
+              playSound("click"); // Added sound
+            }}
             className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
             title="Edit Profile"
           >
@@ -463,7 +481,10 @@ function AppPageContent() {
           <h2 className="text-3xl font-black tracking-tight mb-1 flex items-center justify-center gap-2">
             {petName || "Unnamed Pet"}
             <button
-              onClick={() => setIsEditModalOpen(true)}
+              onClick={() => {
+                setIsEditModalOpen(true);
+                playSound("click"); // Added sound
+              }}
               className="text-neutral-400 hover:text-indigo-500 transition-colors"
             >
               <Edit2 size={16} />
@@ -530,17 +551,18 @@ function AppPageContent() {
             {allowance === BigInt(0) && (
               <div className="col-span-2 animate-in fade-in slide-in-from-top-2 duration-500">
                 <button
-                  onClick={() =>
+                  onClick={() => {
                     approveG(
                       BigInt(
                         "115792089237316195423570985008687907853269984665640564039457584007913129639935",
                       ),
-                    )
-                  } // Infinite Approval
+                    );
+                    playSound("click"); // Added sound
+                  }} // Infinite Approval
                   className="w-full bg-indigo-600 dark:bg-indigo-600 text-white py-4 px-6 rounded-2xl font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 flex flex-col items-center gap-1 group"
                 >
                   <span className="flex items-center gap-2">
-                    Enable Shopping �
+                    Enable Shopping 🛒
                     <span className="group-hover:translate-x-1 transition-transform">
                       →
                     </span>
@@ -553,7 +575,10 @@ function AppPageContent() {
             )}
 
             <button
-              onClick={() => buyFood()}
+              onClick={() => {
+                buyFood();
+                playSound("buy"); // Added sound
+              }}
               disabled={isPending || allowance === BigInt(0)}
               className={`group flex flex-col items-center justify-center gap-3 p-6 rounded-3xl transition-all border-2 ${
                 isPending || allowance === BigInt(0)
@@ -573,7 +598,10 @@ function AppPageContent() {
             </button>
 
             <button
-              onClick={() => revivePet()}
+              onClick={() => {
+                revivePet();
+                playSound("buy"); // Added sound
+              }}
               disabled={health > 0 || isPending || allowance === BigInt(0)}
               className={`group flex flex-col items-center justify-center gap-3 p-6 rounded-3xl transition-all border-2 ${
                 health > 0 || isPending || allowance === BigInt(0)
@@ -640,14 +668,20 @@ function AppPageContent() {
       {isEditModalOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-md z-100 flex items-center justify-center p-4 animate-in fade-in duration-300"
-          onClick={() => setIsEditModalOpen(false)}
+          onClick={() => {
+            setIsEditModalOpen(false);
+            playSound("click"); // Added sound
+          }}
         >
           <div
             className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-3xl p-8 shadow-2xl border border-neutral-100 dark:border-neutral-800 relative transform transition-all animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setIsEditModalOpen(false)}
+              onClick={() => {
+                setIsEditModalOpen(false);
+                playSound("click"); // Added sound
+              }}
               className="absolute top-6 right-6 p-2 rounded-xl text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all"
             >
               <X size={20} />
