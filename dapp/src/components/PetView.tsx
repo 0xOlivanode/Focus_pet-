@@ -246,11 +246,11 @@ export function PetView({
           {/* XP / Evolution Bar */}
           {nextStageInfo && nextStageInfo.nextStage !== "none" && (
             <div className="w-full max-w-[160px] relative group/bar cursor-help">
-              <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden p-0.5 border border-neutral-100/50 dark:border-neutral-700/50">
+              <div className="h-2.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden border border-neutral-100/50 dark:border-neutral-700/50">
                 <motion.div
-                  className="h-full bg-linear-to-r from-amber-400 to-amber-500 rounded-full"
+                  className="h-full bg-linear-to-r from-amber-400 to-amber-500 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.5)]"
                   initial={{ width: 0 }}
-                  animate={{ width: `${nextStageInfo.progress}%` }}
+                  animate={{ width: `${Math.max(nextStageInfo.progress, 2)}%` }}
                   transition={{ type: "spring", stiffness: 50 }}
                 />
               </div>
