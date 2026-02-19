@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { userAddress, minutes } = body;
 
-    if (!userAddress || !minutes) {
+    if (!userAddress || minutes === undefined) {
       return NextResponse.json(
         { error: "Missing parameters" },
         { status: 400 },
