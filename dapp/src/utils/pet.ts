@@ -3,7 +3,7 @@ export type PetMood = "happy" | "sad" | "sleeping" | "focused";
 
 export const STAGE_THRESHOLD = {
   EGG: 0,
-  BABY: 60, // Hatch after 60 mins of focus
+  BABY: 0, // Hatch instantly (interactive reveal)
   TEEN: 500,
   ADULT: 2000,
   ELDER: 5000,

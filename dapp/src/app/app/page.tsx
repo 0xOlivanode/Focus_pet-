@@ -318,38 +318,46 @@ function AppPageContent() {
             className="w-full flex flex-col gap-6"
           >
             {/* Glassmorphism Timer Card */}
+            {/* Glassmorphism Hatch Card */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[40px] shadow-2xl relative overflow-hidden group">
               <div className="absolute inset-0 bg-linear-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-              <div className="relative z-10 flex flex-col items-center">
+              <div className="relative z-10 flex flex-col items-center text-center">
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-6 block">
-                  First Step: Hatching
+                  Step 1: Introduction
                 </span>
-                <FocusTimer onComplete={handleSessionComplete} />
 
-                {/* Hatching Progress Bar */}
-                <div className="w-full mt-8 pt-6 border-t border-white/5">
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                      Hatch Progress
-                    </span>
-                    <span className="text-xs font-black text-indigo-400">
-                      {xp}/{nextStageInfo.targetXp}m
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${nextStageInfo.progress}%` }}
-                      className="h-full bg-linear-to-r from-indigo-500 to-purple-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
-                    />
-                  </div>
-                  <p className="text-[10px] text-neutral-500 mt-2 font-medium italic">
-                    {nextStageInfo.remaining > 0
-                      ? `Focus for ${nextStageInfo.remaining} more minutes to see your pet!`
-                      : "Ready to hatch! Record one more session."}
-                  </p>
-                </div>
+                <h2 className="text-2xl font-black text-white mb-2">
+                  Ready to Meet?
+                </h2>
+                <p className="text-neutral-400 text-sm mb-8 max-w-[260px] leading-relaxed">
+                  Your new companion is waiting to hatch. No waiting
+                  required—let's begin your journey now.
+                </p>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={async () => {
+                    // Trigger immediate hatch logic
+                    await handleSessionComplete(0);
+                  }}
+                  disabled={isProcessing}
+                  className="relative group/btn overflow-hidden bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black text-sm shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.5)] transition-all duration-300"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    <Sparkles size={16} className="text-indigo-400" />
+                    HATCH NOW
+                    <Sparkles size={16} className="text-indigo-400" />
+                  </span>
+
+                  {/* Button Sheen */}
+                  <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 ease-in-out" />
+                </motion.button>
+
+                <p className="text-[10px] text-neutral-600 mt-6 font-medium italic">
+                  Completing this action initializes your pet on-chain.
+                </p>
               </div>
             </div>
 
@@ -479,7 +487,6 @@ function AppPageContent() {
                 Total
               </span>
             </p>
-
           </div>
         </div>
 
