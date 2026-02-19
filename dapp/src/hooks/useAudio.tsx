@@ -8,6 +8,7 @@ import React, {
   useState,
   useCallback,
 } from "react";
+import { usePathname } from "next/navigation";
 
 type SoundType = "click" | "hover" | "success" | "hatch" | "pop" | "buy";
 
@@ -72,6 +73,7 @@ export function AudioProvider({
    */
   const [isMusicMuted, setIsMusicMuted] = useState(false);
   const musicRef = useRef<HTMLAudioElement | null>(null);
+  const pathname = usePathname();
 
   // Load music mute state
   useEffect(() => {
@@ -83,7 +85,8 @@ export function AudioProvider({
     // Initialize music
     const music = new Audio("/sounds/background.mp3");
     music.loop = true;
-    music.volume = 0.2; // Low background volume
+    music.volume = 0.1; // Low background volume
+    music.currentTime = 3; // Start from 3s as requested
     musicRef.current = music;
 
     return () => {
@@ -92,12 +95,15 @@ export function AudioProvider({
     };
   }, []);
 
-  // Handle music playback based on mute state
+  // Handle music playback based on mute state and route
   useEffect(() => {
     const music = musicRef.current;
     if (!music) return;
 
-    if (isMusicMuted) {
+    // Only play if not muted AND in the /app route
+    const shouldPlay = !isMusicMuted && pathname?.startsWith("/app");
+
+    if (!shouldPlay) {
       music.pause();
     } else {
       // Try to play, but might be blocked by browser policy until interaction
@@ -105,12 +111,13 @@ export function AudioProvider({
         console.log("Autoplay waiting for interaction", e);
       });
     }
-  }, [isMusicMuted]);
+  }, [isMusicMuted, pathname]);
 
   // Unlock audio on first interaction
   useEffect(() => {
     const handleInteraction = () => {
-      if (musicRef.current && !isMusicMuted && musicRef.current.paused) {
+      const shouldPlay = !isMusicMuted && pathname?.startsWith("/app");
+      if (musicRef.current && shouldPlay && musicRef.current.paused) {
         musicRef.current
           .play()
           .catch((e) => console.error("Music play failed", e));
@@ -124,7 +131,7 @@ export function AudioProvider({
       window.removeEventListener("click", handleInteraction);
       window.removeEventListener("keydown", handleInteraction);
     };
-  }, [isMusicMuted]);
+  }, [isMusicMuted, pathname]);
 
   const toggleMute = useCallback(() => {
     setIsMuted((prev) => {
