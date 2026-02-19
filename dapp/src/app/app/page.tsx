@@ -44,7 +44,7 @@ const TIMERS = {
 };
 
 function AppPageContent() {
-  const { isConnected } = useAccount();
+  const { isConnected, isConnecting, isReconnecting } = useAccount();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -126,10 +126,10 @@ function AppPageContent() {
   const [mood, setMood] = useState<PetMood>("happy");
 
   useEffect(() => {
-    if (!isConnected) {
+    if (!isConnected && !isConnecting && !isReconnecting) {
       router.push("/");
     }
-  }, [isConnected, router]);
+  }, [isConnected, isConnecting, isReconnecting, router]);
 
   // Verification Success Listener
   useEffect(() => {
