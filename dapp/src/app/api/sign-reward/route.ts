@@ -5,7 +5,11 @@ import { celo, celoSepolia } from "viem/chains";
 
 // 1. Setup Signer (APP_PRIVATE_KEY from .env)
 const pkRaw = process.env.APP_PRIVATE_KEY;
-const PRIVATE_KEY = pkRaw?.startsWith("0x") ? pkRaw : `0x${pkRaw}`;
+const PRIVATE_KEY = pkRaw
+  ? pkRaw.startsWith("0x")
+    ? pkRaw
+    : `0x${pkRaw}`
+  : undefined;
 const TARGET_CHAIN =
   process.env.NEXT_PUBLIC_CHAIN_ID === "42220" ? celo : celoSepolia;
 
