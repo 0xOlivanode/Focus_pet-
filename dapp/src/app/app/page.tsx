@@ -9,6 +9,7 @@ import {
   getStageName,
 } from "@/utils/pet";
 import { Leaderboard } from "@/components/Leaderboard";
+import { PetShop } from "@/components/PetShop";
 import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
@@ -569,125 +570,19 @@ function AppPageContent() {
         {/* GoodDollar Daily Reward */}
         <ClaimReward />
 
-        {/* Pet Shop Section */}
-        <div className="w-full mt-8 bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-4 md:p-6 border border-neutral-100 dark:border-neutral-800">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-xl flex items-center gap-2">
-              <span className="text-2xl">🛍️</span> Pet Shop
-            </h2>
-            <div className="text-right">
-              <p className="text-xs text-neutral-500 uppercase font-semibold">
-                Your Balance
-              </p>
-              <p className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">
-                {gBalance
-                  ? parseFloat(formatEther(gBalance as bigint)).toFixed(2)
-                  : "0.00"}{" "}
-                G$
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
-            {allowance === BigInt(0) && (
-              <div className="col-span-2 animate-in fade-in slide-in-from-top-2 duration-500">
-                <button
-                  onClick={() => {
-                    approveG(
-                      BigInt(
-                        "115792089237316195423570985008687907853269984665640564039457584007913129639935",
-                      ),
-                    );
-                    playSound("click"); // Added sound
-                  }} // Infinite Approval
-                  className="w-full bg-indigo-600 dark:bg-indigo-600 text-white py-4 px-6 rounded-2xl font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 flex flex-col items-center gap-1 group"
-                >
-                  <span className="flex items-center gap-2">
-                    Enable Shopping 🛒
-                    <span className="group-hover:translate-x-1 transition-transform">
-                      →
-                    </span>
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
-                    Just a one-time setup to hatch & feed
-                  </span>
-                </button>
-              </div>
-            )}
-
-            <button
-              onClick={() => {
-                buyFood();
-                playSound("buy"); // Added sound
-              }}
-              disabled={isPending || allowance === BigInt(0)}
-              className={`group flex flex-col items-center justify-center gap-3 p-6 rounded-3xl transition-all border-2 ${
-                isPending || allowance === BigInt(0)
-                  ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-40 cursor-not-allowed grayscale"
-                  : "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 active:scale-95"
-              }`}
-            >
-              <div className="text-4xl group-hover:scale-110 transition-transform duration-300">
-                🍎
-              </div>
-              <div className="text-center">
-                <p className="font-black text-sm mb-0.5">Apple Treats</p>
-                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
-                  10 G$
-                </p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                revivePet();
-                playSound("buy"); // Added sound
-              }}
-              disabled={health > 0 || isPending || allowance === BigInt(0)}
-              className={`group flex flex-col items-center justify-center gap-3 p-6 rounded-3xl transition-all border-2 ${
-                health > 0 || isPending || allowance === BigInt(0)
-                  ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-40 cursor-not-allowed grayscale"
-                  : "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 active:scale-95"
-              }`}
-            >
-              <div className="text-4xl group-hover:scale-110 transition-transform duration-300">
-                💊
-              </div>
-              <div className="text-center">
-                <p className="font-black text-sm mb-0.5">Wake Up Pet</p>
-                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
-                  50 G$
-                </p>
-              </div>
-            </button>
-
-            {/* Error Message Display */}
-            {(writeError || receiptError) && (
-              <div className="col-span-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl flex items-start gap-3 text-red-600 dark:text-red-400">
-                <AlertCircle size={18} className="mt-0.5 shrink-0" />
-                <div className="text-xs font-bold leading-relaxed">
-                  <p className="mb-1 uppercase tracking-widest text-[10px]">
-                    Transaction Failed
-                  </p>
-                  <p className="opacity-90">
-                    {writeError?.message ||
-                      receiptError?.message ||
-                      "An unknown error occurred."}
-                  </p>
-                  <p className="mt-2 text-[10px] opacity-70">
-                    Make sure you have enough CELO for gas!
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {isPending && (
-          <p className="mt-4 text-xs text-indigo-500 animate-pulse text-center">
-            Transaction pending...
-          </p>
-        )}
+        <PetShop
+          gBalance={gBalance as bigint | undefined}
+          allowance={allowance}
+          health={health}
+          isPending={isPending || isConfirming}
+          isSuccess={isConfirmed}
+          writeError={writeError}
+          receiptError={receiptError}
+          onApprove={approveG}
+          onBuyFood={buyFood}
+          onRevive={revivePet}
+          playSound={playSound}
+        />
 
         {/* Social Leaderboard */}
         <Leaderboard />
