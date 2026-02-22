@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import {
   motion,
   AnimatePresence,
@@ -24,6 +25,7 @@ import {
   PetStage,
   PetMood,
   getPetEmoji,
+  getPetAsset,
   getStageName,
   StageInfo,
 } from "@/utils/pet";
@@ -164,8 +166,27 @@ export function PetView({
     },
   };
 
-  // Determine Emoji/SVG based on Stage
+  // Determine Emoji/SVG/Asset based on Stage
   const getPetContent = () => {
+    const assetPath = getPetAsset(stage, weather);
+
+    if (assetPath) {
+      return (
+        <div className="relative w-64 h-64 flex items-center justify-center">
+          <Image
+            src={assetPath}
+            alt={getStageName(stage)}
+            width={256}
+            height={256}
+            className={`object-contain transition-all duration-700 ${
+              mood === "sleeping" ? "brightness-50 grayscale-50" : ""
+            }`}
+            priority
+          />
+        </div>
+      );
+    }
+
     return <span className="text-8xl">{getPetEmoji(stage)}</span>;
   };
 

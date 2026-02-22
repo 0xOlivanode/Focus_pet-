@@ -1,3 +1,5 @@
+import { WeatherType } from "@/components/WeatherLayer";
+
 export type PetStage = "egg" | "baby" | "teen" | "adult" | "elder";
 export type PetMood = "happy" | "sad" | "sleeping" | "focused";
 
@@ -32,6 +34,28 @@ export const getPetEmoji = (stage: PetStage): string => {
     default:
       return "🥚";
   }
+};
+
+export const getPetAsset = (
+  stage: PetStage,
+  weather: WeatherType,
+  species: string = "cyber_dino",
+): string | null => {
+  // Map internal stages to file names
+  const stageMap: Record<PetStage, string> = {
+    egg: "egg",
+    baby: "baby",
+    teen: "adult", // Using adult for teen/elder for now
+    adult: "adult",
+    elder: "adult",
+  };
+
+  const fileName = stageMap[stage];
+
+  // For now, the user only has 'sunny' variants
+  // We'll fall back to 'sunny' if requested weather is not available
+  // In the future, this would be: `${fileName}_${weather}.png`
+  return `/assets/pets/${species}/${fileName}_sunny.png`;
 };
 
 export const getStageName = (stage: PetStage): string => {
