@@ -255,7 +255,7 @@ export function useFocusPet() {
       if (diffHrs < 24 || recentInteractionHrs < 24) {
         // If they just focused (last 1 hour), make it Sunny!
         if (recentInteractionHrs < 1) {
-          setWeather("stormy");
+          setWeather("sunny");
         } else {
           setWeather(streak > 1 ? "sunny" : "clear");
         }
