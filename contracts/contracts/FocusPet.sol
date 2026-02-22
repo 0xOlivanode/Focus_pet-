@@ -15,6 +15,9 @@ contract FocusPet is Ownable {
         string petName;
         uint256 streak;
         uint256 lastDailySession;
+        uint256 boostEndTime;   // 2x XP Boost expiration
+        uint256 shieldCount;    // Streak protection shields
+        string activeCosmetic; // Currently equipped cosmetic
     }
 
     mapping(address => Pet) public pets;
@@ -27,13 +30,18 @@ contract FocusPet is Ownable {
     uint256 public constant DECAY_RATE_PER_DAY = 10;
     
     // G$ Prices
-    uint256 public constant PRICE_FOOD = 10 ether; // 10 G$
-    uint256 public constant PRICE_REVIVE = 50 ether; // 50 G$
+    uint256 public constant PRICE_FOOD = 10 ether;
+    uint256 public constant PRICE_SUPER_FOOD = 30 ether;
+    uint256 public constant PRICE_ENERGY_DRINK = 25 ether;
+    uint256 public constant PRICE_SHIELD = 100 ether;
+    uint256 public constant PRICE_REVIVE = 50 ether;
 
     event PetFed(address indexed owner, uint256 newHealth, uint256 newXp);
     event ItemPurchased(address indexed buyer, string item);
     event PetBorn(address indexed owner);
     event NamesUpdated(address indexed owner, string username, string petName);
+    event BoostActivated(address indexed owner, uint256 endTime);
+    event ShieldAdded(address indexed owner, uint256 newCount);
 
     constructor(address _engagementRewards, address _goodDollar) Ownable(msg.sender) {
         engagementRewards = IEngagementRewards(_engagementRewards);
@@ -54,43 +62,106 @@ contract FocusPet is Ownable {
             username: "",
             petName: "Unnamed Egg",
             streak: 1,
-            lastDailySession: block.timestamp
+            lastDailySession: block.timestamp,
+            boostEndTime: 0,
+            shieldCount: 0,
+            activeCosmetic: ""
         });
         emit PetBorn(owner);
     }
 
     // Buy Food: +20 Health, Costs 10 G$
     function buyFood() public {
-        if (pets[msg.sender].birthTime == 0) {
-            _initPet(msg.sender);
-        }
-
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
-        require(pet.health > 0, "Pet is dead. Revive first.");
+        require(pet.health > 0, "Pet is dead");
 
-        // Transfer G$ from user to contract (burn/treasury)
-        bool success = goodDollar.transferFrom(msg.sender, address(this), PRICE_FOOD);
-        require(success, "G$ Transfer failed");
+        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_FOOD), "Transfer failed");
 
         pet.health = min(MAX_HEALTH, pet.health + 20);
         emit PetFed(msg.sender, pet.health, pet.xp);
         emit ItemPurchased(msg.sender, "FOOD");
     }
 
+    // Buy Super Food: 100 Health, Costs 30 G$
+    function buySuperFood() public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        Pet storage pet = pets[msg.sender];
+        require(pet.health > 0, "Pet is dead");
+
+        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_SUPER_FOOD), "Transfer failed");
+
+        pet.health = MAX_HEALTH;
+        emit PetFed(msg.sender, pet.health, pet.xp);
+        emit ItemPurchased(msg.sender, "SUPER_FOOD");
+    }
+
+    // Buy Energy Drink: +24h 2x XP boost, Costs 25 G$
+    function buyEnergyDrink() public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        Pet storage pet = pets[msg.sender];
+        
+        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_ENERGY_DRINK), "Transfer failed");
+
+        if (pet.boostEndTime < block.timestamp) {
+            pet.boostEndTime = block.timestamp + 24 hours;
+        } else {
+            pet.boostEndTime += 24 hours;
+        }
+        
+        emit BoostActivated(msg.sender, pet.boostEndTime);
+        emit ItemPurchased(msg.sender, "ENERGY_DRINK");
+    }
+
+    // Buy Shield: +1 Streak Shield, Costs 100 G$
+    function buyShield() public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        Pet storage pet = pets[msg.sender];
+        
+        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_SHIELD), "Transfer failed");
+
+        pet.shieldCount += 1;
+        emit ShieldAdded(msg.sender, pet.shieldCount);
+        emit ItemPurchased(msg.sender, "SHIELD");
+    }
+
+    mapping(address => mapping(string => bool)) public ownedCosmetics;
+
+    // Buy Cosmetic & Add to Inventory
+    function buyCosmetic(string memory cosmeticId, uint256 price) public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        Pet storage pet = pets[msg.sender];
+
+        require(goodDollar.transferFrom(msg.sender, address(this), price * 1 ether), "Transfer failed");
+
+        ownedCosmetics[msg.sender][cosmeticId] = true;
+        pet.activeCosmetic = cosmeticId;
+        emit ItemPurchased(msg.sender, cosmeticId);
+    }
+
+    // Toggle Owned Cosmetic (Aesthetic Wardrobe)
+    function toggleCosmetic(string memory cosmeticId) public hasPet {
+        require(ownedCosmetics[msg.sender][cosmeticId], "Item not owned");
+        Pet storage pet = pets[msg.sender];
+        
+        if (keccak256(bytes(pet.activeCosmetic)) == keccak256(bytes(cosmeticId))) {
+            pet.activeCosmetic = ""; // Toggle off
+        } else {
+            pet.activeCosmetic = cosmeticId; // Toggle on
+        }
+        emit ItemPurchased(msg.sender, pet.activeCosmetic);
+    }
+
     // Revive Pet: Sets Health to 50, Costs 50 G$
     function revivePet() public {
-        if (pets[msg.sender].birthTime == 0) {
-            _initPet(msg.sender);
-        }
-
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health == 0, "Pet is alive");
 
-        bool success = goodDollar.transferFrom(msg.sender, address(this), PRICE_REVIVE);
-        require(success, "G$ Transfer failed");
+        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_REVIVE), "Transfer failed");
 
         pet.health = 50;
-        pet.lastInteraction = block.timestamp; // Reset interaction timer
+        pet.lastInteraction = block.timestamp;
         emit PetFed(msg.sender, pet.health, pet.xp);
         emit ItemPurchased(msg.sender, "REVIVE");
     }
@@ -101,56 +172,51 @@ contract FocusPet is Ownable {
         uint256 validUntilBlock, 
         bytes memory signature
     ) public {
-        if (pets[msg.sender].birthTime == 0) {
-            _initPet(msg.sender);
-        }
-        
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         
-        // Calculate Decay since last interaction
+        // Calculate Decay
         uint256 timeDiff = block.timestamp - pet.lastInteraction;
-        uint256 daysPassed = timeDiff / 1 days;
-        uint256 healthLoss = daysPassed * DECAY_RATE_PER_DAY;
+        uint256 healthLoss = (timeDiff / 1 days) * DECAY_RATE_PER_DAY;
 
         if (healthLoss > pet.health) {
-             pet.health = 0; // Dormant
+             pet.health = 0;
         } else {
              pet.health -= healthLoss;
         }
 
-        // Streak logic
+        // Streak logic with SHIELD
         uint256 lastSessionDay = pet.lastDailySession / 1 days;
         uint256 currentDay = block.timestamp / 1 days;
 
         if (currentDay > lastSessionDay) {
             if (currentDay == lastSessionDay + 1) {
                 pet.streak += 1;
+            } else if (pet.shieldCount > 0) {
+                pet.shieldCount -= 1; // Shield used! Streak preserved.
+                emit ShieldAdded(msg.sender, pet.shieldCount);
             } else {
                 pet.streak = 1;
             }
             pet.lastDailySession = block.timestamp;
         }
 
-        // Reward logic with streak bonus (5% per day, max 20%)
+        // Reward logic with streak bonus & XP BOOST
         uint256 bonus = (pet.streak > 1) ? min(20, (pet.streak - 1) * 5) : 0;
-        uint256 xpGain = sessionDurationMinutes + (sessionDurationMinutes * bonus / 100);
+        uint256 baseXP = sessionDurationMinutes + (sessionDurationMinutes * bonus / 100);
         
-        pet.xp += xpGain;
+        if (block.timestamp < pet.boostEndTime) {
+            pet.xp += (baseXP * 2); // 2x XP Boost Active!
+        } else {
+            pet.xp += baseXP;
+        }
+
         pet.health = min(MAX_HEALTH, pet.health + 5);
         pet.lastInteraction = block.timestamp;
 
         // Claim GoodDollar Reward
         if (address(engagementRewards).code.length > 0) {
-            try engagementRewards.appClaim(
-                msg.sender,
-                inviter,
-                validUntilBlock,
-                signature
-            ) returns (bool) {
-                // Reward claimed successfully
-            } catch {
-                // Reward claim failed, but we continue
-            }
+            try engagementRewards.appClaim(msg.sender, inviter, validUntilBlock, signature) {} catch {}
         }
 
         emit PetFed(msg.sender, pet.health, pet.xp);

@@ -32,10 +32,24 @@ export function useFocusPet() {
 
   useEffect(() => {
     if (writeError) {
-      console.error("Minting Write Error:", writeError);
+      console.error("Contract Write Error:", writeError);
+
+      // Check for specific cryptic errors
+      if (
+        writeError.message?.includes("gasLimit") ||
+        writeError.message?.includes("null")
+      ) {
+        console.warn(
+          "Possible gas estimation failure. Ensure you have CELO for gas fees and that your pet is initialized.",
+        );
+      }
+
+      if (writeError.message?.includes("insufficient funds")) {
+        console.warn("Insufficient CELO for gas fees.");
+      }
     }
     if (receiptError) {
-      console.error("Minting Receipt Error:", receiptError);
+      console.error("Contract Receipt Error:", receiptError);
     }
   }, [writeError, receiptError]);
 
@@ -110,6 +124,7 @@ export function useFocusPet() {
       abi: ERC20ABI,
       functionName: "approve",
       args: [CONTRACT_ADDRESS, amount],
+      gas: BigInt(100000),
     });
   };
 
@@ -120,6 +135,62 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "buyFood",
       args: [],
+      gas: BigInt(400000),
+    });
+  };
+
+  const buySuperFood = () => {
+    setLastAction("shop");
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: FocusPetABI,
+      functionName: "buySuperFood",
+      args: [],
+      gas: BigInt(400000),
+    });
+  };
+
+  const buyEnergyDrink = () => {
+    setLastAction("shop");
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: FocusPetABI,
+      functionName: "buyEnergyDrink",
+      args: [],
+      gas: BigInt(400000),
+    });
+  };
+
+  const buyShield = () => {
+    setLastAction("shop");
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: FocusPetABI,
+      functionName: "buyShield",
+      args: [],
+      gas: BigInt(400000),
+    });
+  };
+
+  const buyCosmetic = (id: string, price: number) => {
+    setLastAction("shop");
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: FocusPetABI,
+      functionName: "buyCosmetic",
+      args: [id, BigInt(price)],
+      gas: BigInt(500000),
+    });
+  };
+
+  const toggleCosmetic = (id: string) => {
+    setLastAction("shop");
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: FocusPetABI,
+      functionName: "toggleCosmetic",
+      args: [id],
+      gas: BigInt(300000),
     });
   };
 
@@ -130,16 +201,22 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "revivePet",
       args: [],
+      gas: BigInt(500000),
     });
   };
 
   const setNames = (username: string, petName: string) => {
+    if (!hasPet) {
+      alert("Hatch your pet first before setting names!");
+      return;
+    }
     setLastAction("profile");
     writeContract({
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
       functionName: "setNames",
       args: [username, petName],
+      gas: BigInt(300000), // Manual gas limit to bypass estimation errors
     });
   };
 
@@ -174,6 +251,7 @@ export function useFocusPet() {
             BigInt(validUntilBlock),
             signature,
           ],
+          gas: BigInt(500000), // Manual gas limit to bypass estimation errors
         },
         {
           onSuccess: () => {
@@ -203,6 +281,26 @@ export function useFocusPet() {
   const petName = pet ? (pet[5] as string) : "Unnamed Pet";
   const streak = pet && pet[6] ? Number(pet[6]) : 0;
   const lastDailySession = pet && pet[7] ? Number(pet[7]) : 0;
+  const boostEndTime = pet && pet[8] ? Number(pet[8]) : 0;
+  const shieldCount = pet && pet[9] ? Number(pet[9]) : 0;
+  const activeCosmetic = pet && pet[10] ? (pet[10] as string) : "";
+
+  // Ownership Tracking
+  const { data: isSunglassesOwned } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: FocusPetABI,
+    functionName: "ownedCosmetics",
+    args: address ? [address, "sunglasses"] : undefined,
+    query: { enabled: !!address },
+  });
+
+  const { data: isCrownOwned } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: FocusPetABI,
+    functionName: "ownedCosmetics",
+    args: address ? [address, "crown"] : undefined,
+    query: { enabled: !!address },
+  });
 
   // --- Virtual Health Decay (Real-time calculation) ---
   const [health, setHealth] = useState(rawHealth);
@@ -219,8 +317,12 @@ export function useFocusPet() {
         const currentDay = Math.floor(now / (24 * 60 * 60));
 
         if (currentDay > lastSessionDay + 1) {
-          // Missed more than a day
-          setVirtualStreak(0);
+          // Missed more than a day - check if we have a shield to protect it
+          if (shieldCount > 0) {
+            setVirtualStreak(streak);
+          } else {
+            setVirtualStreak(0);
+          }
         } else {
           setVirtualStreak(streak);
         }
@@ -310,6 +412,10 @@ export function useFocusPet() {
     // Actions
     recordSession,
     buyFood,
+    buySuperFood,
+    buyEnergyDrink,
+    buyShield,
+    buyCosmetic,
     revivePet,
     setNames,
     // Economy
@@ -330,5 +436,14 @@ export function useFocusPet() {
     streak: virtualStreak,
     streakBonus,
     weather,
+    // Boosts & Cosmetics
+    boostEndTime,
+    shieldCount,
+    activeCosmetic,
+    toggleCosmetic,
+    inventory: {
+      sunglasses: !!isSunglassesOwned,
+      crown: !!isCrownOwned,
+    },
   };
 }

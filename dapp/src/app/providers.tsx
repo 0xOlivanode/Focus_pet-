@@ -10,6 +10,7 @@ import { celo } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, http, fallback } from "wagmi";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "sonner";
 import "@rainbow-me/rainbowkit/styles.css";
 
 import { AudioProvider } from "@/hooks/useAudio";
@@ -35,6 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <RainbowKitProvider>
             <AudioProvider>{children}</AudioProvider>
+            <Toaster richColors position="bottom-right" />
           </RainbowKitProvider>
         </ThemeProvider>
       </QueryClientProvider>

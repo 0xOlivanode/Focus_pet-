@@ -15,8 +15,9 @@ type TimerState = "idle" | "running" | "paused" | "completed";
 interface FocusTimerProps {
   initialMinutes?: number;
   onComplete?: (durationMinutes: number) => void;
-  onStart?: () => void;
+  onStart?: (note: string) => void;
   onPause?: () => void;
+  onNoteChange?: (note: string) => void;
 }
 
 export function FocusTimer({
@@ -24,10 +25,12 @@ export function FocusTimer({
   onComplete,
   onStart,
   onPause,
+  onNoteChange,
 }: FocusTimerProps) {
   const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
   const [status, setStatus] = useState<TimerState>("idle");
   const [duration, setDuration] = useState(initialMinutes * 60);
+  const [note, setNote] = useState("");
 
   // Anti-cheat state
   const [showCheckIn, setShowCheckIn] = useState(false);
@@ -52,10 +55,10 @@ export function FocusTimer({
       // Restart logic
       setTimeLeft(duration);
       setStatus("running");
-      onStart?.();
+      onStart?.(note);
     } else {
       setStatus("running");
-      onStart?.();
+      onStart?.(note);
     }
   };
 
@@ -139,7 +142,34 @@ export function FocusTimer({
           </button>
         ))}
       </div>
-
+      {/* Focus Note Input */}
+      <div className="w-full mb-8 relative group">
+        <input
+          type="text"
+          value={note}
+          onChange={(e) => {
+            setNote(e.target.value);
+            onNoteChange?.(e.target.value);
+          }}
+          disabled={status === "running" || status === "paused"}
+          placeholder="What are we focusing on?"
+          className={cn(
+            "w-full bg-neutral-100 dark:bg-neutral-800/50 border-2 border-transparent px-6 py-4 rounded-3xl text-sm font-bold text-center transition-all placeholder:text-neutral-400 focus:outline-hidden",
+            status === "running" || status === "paused"
+              ? "opacity-50 border-indigo-500/20 text-indigo-500"
+              : "hover:bg-neutral-200 dark:hover:bg-neutral-800 focus:bg-white dark:focus:bg-neutral-900 focus:border-indigo-500/50 focus:shadow-xl focus:shadow-indigo-500/5",
+          )}
+        />
+        {note && (status === "running" || status === "paused") && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-[8px] font-black text-white px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-indigo-500/30"
+          >
+            ACTIVE INTENTION
+          </motion.div>
+        )}
+      </div>
       {/* Main Timer Display */}
       <div className="relative w-72 h-72 flex items-center justify-center">
         {/* Background Ring */}
@@ -187,7 +217,6 @@ export function FocusTimer({
           </p>
         </div>
       </div>
-
       {/* Controls */}
       <div className="flex gap-4 mt-8">
         {status === "idle" || status === "paused" || status === "completed" ? (
@@ -232,7 +261,6 @@ export function FocusTimer({
           </motion.button>
         )}
       </div>
-
       {/* Popups / Alerts */}
       <AnimatePresence>
         {showCheckIn && (
@@ -260,7 +288,6 @@ export function FocusTimer({
           </motion.div>
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {checkInMissed && (
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-3xl">

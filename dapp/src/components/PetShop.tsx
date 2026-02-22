@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,8 +11,21 @@ import {
   TrendingUp,
   Sparkles,
   Info,
+  Lock,
 } from "lucide-react";
 import { formatEther } from "viem";
+
+interface ShopItem {
+  id: string;
+  name: string;
+  emoji: string;
+  price: number;
+  desc: string;
+  action: () => void;
+  disabled: boolean;
+  disabledReason?: string;
+  image?: string;
+}
 
 interface PetShopProps {
   gBalance: bigint | undefined;
@@ -24,8 +37,22 @@ interface PetShopProps {
   receiptError: any;
   onApprove: (amount: bigint) => void;
   onBuyFood: () => void;
+  onBuySuperFood: () => void;
+  onBuyEnergyDrink: () => void;
+  onBuyShield: () => void;
+  onBuyCosmetic: (id: string, price: number) => void;
+  onToggleCosmetic: (id: string) => void;
+  inventory: Record<string, boolean>;
   onRevive: () => void;
   playSound: (sound: any) => void;
+  showToast: (
+    title: string,
+    message: string,
+    type: "success" | "error" | "info",
+  ) => void;
+  boostEndTime: number;
+  shieldCount: number;
+  activeCosmetic: string;
 }
 
 export function PetShop({
@@ -38,269 +65,361 @@ export function PetShop({
   receiptError,
   onApprove,
   onBuyFood,
+  onBuySuperFood,
+  onBuyEnergyDrink,
+  onBuyShield,
+  onBuyCosmetic,
+  onToggleCosmetic,
+  inventory,
   onRevive,
   playSound,
+  showToast,
+  boostEndTime,
+  shieldCount,
+  activeCosmetic,
 }: PetShopProps) {
+  const [shopCategory, setShopCategory] = useState<
+    "consumables" | "boosts" | "cosmetics"
+  >("consumables");
+
+  const isBoostActive = boostEndTime * 1000 > Date.now();
+
+  // Professional Toast Feedback for Transactions
+  useEffect(() => {
+    if (writeError || receiptError) {
+      const error = writeError || receiptError;
+      const isCancelled = error?.message?.includes("user rejected");
+
+      showToast(
+        isCancelled ? "Purchase Cancelled" : "Transmission Error",
+        isCancelled
+          ? "You declined the request in your wallet."
+          : "Something went wrong on-chain. Please check your network.",
+        "error",
+      );
+    }
+  }, [writeError, receiptError, showToast]);
+
+  const shopItems: Record<string, ShopItem[]> = {
+    consumables: [
+      {
+        id: "apple",
+        name: "Cyber Apple",
+        image: "/assets/shop/apple.png",
+        emoji: "🍎",
+        price: 10,
+        desc: "+20 Health",
+        action: onBuyFood,
+        disabled: health >= 100,
+        disabledReason: health >= 100 ? "Health Full" : undefined,
+      },
+      {
+        id: "golden_apple",
+        name: "Golden Apple",
+        image: "/assets/shop/golden_apple.png",
+        emoji: "✨🍎",
+        price: 30,
+        desc: "Max Health",
+        action: onBuySuperFood,
+        disabled: health >= 100,
+        disabledReason: health >= 100 ? "Health Full" : undefined,
+      },
+    ],
+    boosts: [
+      {
+        id: "energy_drink",
+        name: "Energy Drink",
+        image: "/assets/shop/energy_drink.png",
+        emoji: "🥤",
+        price: 25,
+        desc: "2x XP (24h)",
+        action: onBuyEnergyDrink,
+        disabled: isBoostActive,
+        disabledReason: isBoostActive ? "Boost Active" : undefined,
+      },
+      {
+        id: "shield",
+        name: "Shield Potion",
+        image: "/assets/shop/potion.png",
+        emoji: "🛡️",
+        price: 100,
+        desc: "Streak Shield",
+        action: onBuyShield,
+        disabled: false,
+      },
+    ],
+    cosmetics: [
+      {
+        id: "sunglasses",
+        name: "Cool Shades",
+        emoji: "🕶️",
+        price: 50,
+        desc: "Style +10",
+        action: () =>
+          inventory.sunglasses
+            ? onToggleCosmetic("sunglasses")
+            : onBuyCosmetic("sunglasses", 50),
+        disabled: false,
+      },
+      {
+        id: "crown",
+        name: "Royal Crown",
+        emoji: "👑",
+        price: 500,
+        desc: "Legendary",
+        action: () =>
+          inventory.crown
+            ? onToggleCosmetic("crown")
+            : onBuyCosmetic("crown", 500),
+        disabled: false,
+      },
+    ],
+  };
+
   const balanceFormatted = gBalance
     ? parseFloat(formatEther(gBalance)).toFixed(2)
     : "0.00";
 
   return (
-    <div className="relative w-full mt-12 overflow-hidden rounded-[3.5rem] border border-white/20 dark:border-white/10 bg-white/30 dark:bg-black/40 backdrop-blur-3xl p-6 md:p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)]">
-      {/* Dynamic Mesh Gradient Background */}
-      <div className="absolute inset-0 z-0 opacity-40 dark:opacity-20 pointer-events-none">
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            x: [0, 20, 0],
-            y: [0, -20, 0],
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-indigo-500/30 blur-[120px] rounded-full"
-        />
-        <motion.div
-          animate={{
-            scale: [1.2, 1, 1.2],
-            x: [0, -30, 0],
-            y: [0, 30, 0],
-          }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] bg-pink-500/30 blur-[120px] rounded-full"
-        />
-      </div>
+    <div className="relative w-full mt-8 bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-4 md:p-6 border border-neutral-100 dark:border-neutral-800">
+      {/* Active Effects Header */}
+      {(isBoostActive || shieldCount > 0) && (
+        <div className="flex flex-wrap gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
+          {isBoostActive && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg border border-indigo-200/50 dark:border-800/50 shadow-sm transition-all hover:scale-105">
+              <TrendingUp size={12} className="animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                2x XP Boost Active
+              </span>
+            </div>
+          )}
+          {shieldCount > 0 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-200/50 dark:border-emerald-800/50 shadow-sm transition-all hover:scale-105">
+              <Sparkles size={12} />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                {shieldCount}x Shield Protected
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Header Section */}
-      <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
-        <div className="flex-1">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4 mb-3"
-          >
-            <div className="p-3.5 bg-indigo-600 rounded-[1.5rem] shadow-2xl shadow-indigo-600/40 transform -rotate-6">
-              <ShoppingBag className="text-white" size={24} />
-            </div>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-neutral-900 dark:text-white">
-              Pet Shop
-            </h2>
-          </motion.div>
-          <p className="text-sm md:text-base font-medium text-neutral-500 dark:text-neutral-400 max-w-sm leading-relaxed">
-            Boost your companion's stats with high-fidelity mechanical treats.
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl text-indigo-600 dark:text-indigo-400">
+            <span className="text-xl">🛍️</span>
+          </div>
+          <h2 className="font-black text-xl tracking-tight">Pet Shop</h2>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white/80 dark:bg-neutral-800/60 backdrop-blur-xl border border-white/50 dark:border-white/10 rounded-[2.5rem] p-5 flex items-center gap-6 shadow-xl"
-        >
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-neutral-400 dark:text-neutral-500 mb-1">
-              G$ Balance
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-3xl font-mono font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
-                {balanceFormatted}
-              </span>
-              <span className="text-xs font-black text-neutral-400 dark:text-neutral-500">
-                G$
-              </span>
-            </div>
+        <div className="flex items-center gap-4 bg-white/50 dark:bg-black/20 backdrop-blur-sm self-start md:self-auto p-1.5 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+          <div className="px-3 text-right">
+            <p className="text-[10px] text-neutral-500 uppercase font-black tracking-widest">
+              Balance
+            </p>
+            <p className="font-mono text-indigo-600 dark:text-indigo-400 font-black text-sm">
+              {balanceFormatted} G$
+            </p>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
-            className="w-12 h-12 rounded-[1.25rem] bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30"
+        </div>
+      </div>
+
+      {/* Shop Tabs */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+        {["consumables", "boosts", "cosmetics"].map((cat) => (
+          <button
+            key={cat}
+            onClick={() => {
+              setShopCategory(cat as any);
+              playSound("click");
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+              shopCategory === cat
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 active:scale-95"
+                : "bg-white dark:bg-neutral-800 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 border border-neutral-100 dark:border-neutral-700"
+            }`}
           >
-            <TrendingUp size={22} />
-          </motion.button>
-        </motion.div>
+            {cat}
+          </button>
+        ))}
       </div>
 
       {/* Main Shop Items */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Enable Shopping (Visible if no allowance) */}
-        {allowance === BigInt(0) && (
-          <div className="col-span-1 md:col-span-2">
+      <div className="grid grid-cols-2 lg:grid-cols-2 gap-3 md:gap-4">
+        {shopItems[shopCategory].map((item) => {
+          const needsApproval =
+            allowance < BigInt(item.price) * BigInt(10 ** 18);
+
+          return (
             <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
+              key={item.id}
+              disabled={isPending || item.disabled}
+              whileHover={
+                !isPending && !item.disabled ? { scale: 1.02, y: -4 } : {}
+              }
+              whileTap={!isPending && !item.disabled ? { scale: 0.96 } : {}}
               onClick={() => {
-                onApprove(
-                  BigInt(
-                    "115792089237316195423570985008687907853269984665640564039457584007913129639935",
-                  ),
-                );
-                playSound("click");
+                if (needsApproval) {
+                  onApprove(BigInt(item.price) * BigInt(Math.pow(10, 18)));
+                } else {
+                  item.action();
+                  if (item.id.includes("apple")) playSound("buy");
+                }
               }}
-              className="w-full relative overflow-hidden group py-7 px-10 rounded-[3rem] bg-indigo-600 text-white flex flex-col items-center gap-2 shadow-2xl shadow-indigo-600/30 transition-all border border-indigo-500/50"
+              className={`group relative flex flex-col items-center justify-center gap-3 p-5 md:p-7 rounded-4xl transition-all border-2 ${
+                isPending || item.disabled
+                  ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-40 cursor-not-allowed grayscale"
+                  : "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/10"
+              }`}
             >
-              <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-              <div className="flex items-center gap-4 font-black text-xl">
-                Enable Premium Shopping
-                <ChevronRight className="group-hover:translate-x-2 transition-transform" />
+              {item.disabled && item.disabledReason && (
+                <div className="absolute top-2 right-2 bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase text-neutral-500 border border-neutral-300 dark:border-neutral-700 pointer-events-none">
+                  {item.disabledReason}
+                </div>
+              )}
+              <div className="text-4xl group-hover:scale-110 transition-transform duration-500 drop-shadow-sm">
+                <span>{item.emoji}</span>
               </div>
-              <span className="text-[11px] uppercase tracking-[0.3em] font-black opacity-70">
-                Unlock all mechanical upgrades
-              </span>
+              <div className="text-center w-full">
+                <p className="font-black text-sm mb-0.5 text-neutral-800 dark:text-neutral-100">
+                  {item.name}
+                </p>
+                <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
+                  {item.desc}
+                </p>
+                {shopCategory === "cosmetics" && inventory[item.id] ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div
+                      className={`flex items-center gap-2 px-3 py-1 rounded-full border-2 transition-all duration-300 ${
+                        activeCosmetic === item.id
+                          ? "bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]"
+                          : "bg-white dark:bg-neutral-800 border-neutral-100 dark:border-neutral-700 text-neutral-500"
+                      }`}
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-widest">
+                        {activeCosmetic === item.id ? "Active" : "Owned"}
+                      </span>
+                      {activeCosmetic === item.id && (
+                        <motion.div
+                          animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                        />
+                      )}
+                    </div>
+                    <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">
+                      {activeCosmetic === item.id
+                        ? "Click to Remove"
+                        : "Click to Wear"}
+                    </p>
+                  </div>
+                ) : needsApproval ? (
+                  <div className="flex flex-col items-center gap-1 group/sec">
+                    <p className="flex items-center gap-1 text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-3 py-1 rounded-full border border-indigo-200/50 group-hover/sec:border-indigo-400 transition-colors">
+                      <Lock size={10} className="text-indigo-400" />
+                      Enable G$
+                    </p>
+                    <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-[0.2em] opacity-0 group-hover/sec:opacity-100 transition-opacity">
+                      Secure One-time Setup
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full inline-block">
+                    {item.price} G$
+                  </p>
+                )}
+              </div>
+
+              {/* Sexy Active Overlay for Cosmetics */}
+              {shopCategory === "cosmetics" && activeCosmetic === item.id && (
+                <motion.div
+                  layoutId="cosmetic-active-ring"
+                  className="absolute inset-0 border-2 border-indigo-500/50 rounded-4xl pointer-events-none"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <div className="absolute inset-0 bg-indigo-500/5 rounded-4xl animate-pulse" />
+                </motion.div>
+              )}
             </motion.button>
-          </div>
-        )}
+          );
+        })}
 
-        {/* Item 1: Apple Treats */}
-        <motion.button
-          disabled={isPending || allowance === BigInt(0)}
-          whileHover={
-            !isPending && allowance !== BigInt(0) ? { scale: 1.03, y: -8 } : {}
-          }
-          whileTap={
-            !isPending && allowance !== BigInt(0) ? { scale: 0.97 } : {}
-          }
-          onClick={() => {
-            onBuyFood();
-            playSound("buy");
-          }}
-          className={`relative group p-8 rounded-[3rem] border-2 transition-all flex flex-col items-center gap-6 ${
-            isPending || allowance === BigInt(0)
-              ? "bg-neutral-200/20 dark:bg-neutral-900/40 border-transparent opacity-40 grayscale cursor-not-allowed"
-              : "bg-white/70 dark:bg-neutral-800/50 border-white/50 dark:border-white/5 hover:border-indigo-500/50 hover:bg-white dark:hover:bg-neutral-800 shadow-xl hover:shadow-[0_24px_48px_-12px_rgba(79,70,229,0.15)]"
-          }`}
-        >
-          <div className="relative w-32 h-32 flex items-center justify-center">
-            <div className="absolute inset-0 bg-red-500/30 blur-[40px] rounded-full scale-0 group-hover:scale-100 transition-transform duration-700" />
-            <motion.div
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="relative z-10"
-            >
-              <Image
-                src="/assets/shop/apple.png"
-                alt="Cyber Apple"
-                width={128}
-                height={128}
-                className="drop-shadow-[0_10px_20px_rgba(239,68,68,0.4)]"
-              />
-            </motion.div>
-            <div className="absolute -top-2 -right-2">
-              <Sparkles
-                className="text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity animate-pulse duration-500"
-                size={24}
-              />
+        {/* Revive Special Case Logic */}
+        {shopCategory === "consumables" && (
+          <motion.button
+            disabled={health > 0 || isPending}
+            whileHover={
+              health === 0 && !isPending ? { scale: 1.02, y: -4 } : {}
+            }
+            whileTap={health === 0 && !isPending ? { scale: 0.96 } : {}}
+            onClick={() => {
+              const price = BigInt(50 * 10 ** 18);
+              const reviveNeedsApproval = allowance < price;
+              if (reviveNeedsApproval) {
+                onApprove(price);
+              } else {
+                onRevive();
+                playSound("buy");
+              }
+            }}
+            className={`group relative flex flex-col items-center justify-center gap-3 p-5 md:p-7 rounded-4xl transition-all border-2 ${
+              health > 0 || isPending
+                ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-40 cursor-not-allowed grayscale"
+                : "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/10"
+            }`}
+          >
+            <div className="text-4xl group-hover:scale-110 transition-transform duration-500 drop-shadow-sm">
+              🧪
             </div>
-          </div>
-          <div className="text-center w-full">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <h3 className="font-black text-lg text-neutral-800 dark:text-white">
-                Cyber Apple
-              </h3>
-              <Info size={14} className="text-neutral-400" />
+            <div className="text-center w-full">
+              <p className="font-black text-sm mb-0.5 text-neutral-800 dark:text-neutral-100">
+                Eco Potion
+              </p>
+              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
+                Revives Dead Pet
+              </p>
+              {allowance < BigInt(50 * 10 ** 18) ? (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-3 py-1 rounded-full border border-indigo-200/50">
+                    Enable G$
+                  </p>
+                  <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-[0.2em]">
+                    One-time Setup
+                  </span>
+                </div>
+              ) : (
+                <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full inline-block">
+                  50 G$
+                </p>
+              )}
             </div>
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-indigo-50 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 text-xs font-black tracking-widest uppercase border border-indigo-100/50 dark:border-indigo-500/30 shadow-sm">
-              <span className="text-sm">10</span> G$
-            </div>
-          </div>
-        </motion.button>
-
-        {/* Item 2: Wake Up / Revive */}
-        <motion.button
-          disabled={health > 0 || isPending || allowance === BigInt(0)}
-          whileHover={
-            health === 0 && !isPending && allowance !== BigInt(0)
-              ? { scale: 1.03, y: -8 }
-              : {}
-          }
-          whileTap={
-            health === 0 && !isPending && allowance !== BigInt(0)
-              ? { scale: 0.97 }
-              : {}
-          }
-          onClick={() => {
-            onRevive();
-            playSound("buy");
-          }}
-          className={`relative group p-8 rounded-[3rem] border-2 transition-all flex flex-col items-center gap-6 ${
-            health > 0 || isPending || allowance === BigInt(0)
-              ? "bg-neutral-200/20 dark:bg-neutral-900/40 border-transparent opacity-40 grayscale cursor-not-allowed"
-              : "bg-white/70 dark:bg-neutral-800/50 border-white/50 dark:border-white/5 hover:border-indigo-500/50 hover:bg-white dark:hover:bg-neutral-800 shadow-xl hover:shadow-[0_24px_48px_-12px_rgba(79,70,229,0.15)]"
-          }`}
-        >
-          <div className="relative w-32 h-32 flex items-center justify-center">
-            <div className="absolute inset-0 bg-indigo-500/30 blur-[40px] rounded-full scale-0 group-hover:scale-100 transition-transform duration-700" />
-            <motion.div
-              animate={{ y: [0, -8, 0] }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0.5,
-              }}
-              className="relative z-10"
-            >
-              <Image
-                src="/assets/shop/potion.png"
-                alt="Electric Potion"
-                width={128}
-                height={128}
-                className="drop-shadow-[0_10px_20px_rgba(99,102,241,0.4)]"
-              />
-            </motion.div>
             {health > 0 && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/40 dark:bg-black/40 backdrop-blur-md rounded-full z-20 overflow-hidden transform rotate-[-15deg]">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-600 dark:text-neutral-300">
-                  FULLY CHARGED
+              <div className="absolute inset-0 bg-neutral-900/5 backdrop-blur-[1px] rounded-4xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="bg-white/90 dark:bg-neutral-800 px-3 py-1 rounded-xl text-[10px] font-black uppercase text-neutral-500 shadow-sm border border-neutral-100 dark:border-neutral-700">
+                  Pet's Alive
                 </span>
               </div>
             )}
-          </div>
-          <div className="text-center w-full">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <h3 className="font-black text-lg text-neutral-800 dark:text-white">
-                Eco Potion
-              </h3>
-              <div className="inline-flex items-center justify-center p-0.5 bg-neutral-200 dark:bg-neutral-700 rounded-full h-4 w-4">
-                <Info size={10} className="text-neutral-500" />
-              </div>
-            </div>
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-indigo-50 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 text-xs font-black tracking-widest uppercase border border-indigo-100/50 dark:border-indigo-500/30 shadow-sm">
-              <span className="text-sm">50</span> G$
-            </div>
-          </div>
-        </motion.button>
+          </motion.button>
+        )}
       </div>
 
-      {/* Transaction Notifications */}
+      {/* Mining State Indicator (Discreet) */}
       <AnimatePresence>
-        {(isPending || isSuccess || writeError || receiptError) && (
+        {isPending && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 30 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="mt-10 z-20 relative"
+            className="mt-4 flex items-center justify-center gap-3 p-4 rounded-2xl bg-indigo-600/10 text-indigo-600 border border-indigo-200/50 dark:border-indigo-800/20"
           >
-            {isPending && (
-              <div className="flex items-center gap-4 p-5 rounded-[2rem] bg-indigo-600 text-white shadow-2xl shadow-indigo-600/40">
-                <Loader2 className="animate-spin" size={24} />
-                <span className="text-sm font-black tracking-[0.1em] uppercase">
-                  Mining Transaction On-Chain...
-                </span>
-              </div>
-            )}
-
-            {(writeError || receiptError) && (
-              <div className="flex items-start gap-4 p-6 rounded-[2rem] bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 shadow-xl">
-                <AlertCircle className="shrink-0 mt-0.5" size={24} />
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-black uppercase tracking-[0.2em]">
-                    Transmission Error
-                  </span>
-                  <p className="text-sm font-medium leading-relaxed opacity-90">
-                    {writeError?.message?.includes("user rejected")
-                      ? "User rejected request"
-                      : "The celestial gates are busy. Check your network."}
-                  </p>
-                </div>
-              </div>
-            )}
+            <Loader2 className="animate-spin" size={16} />
+            <span className="text-[10px] font-black tracking-widest uppercase">
+              Mining On-Chain...
+            </span>
           </motion.div>
         )}
       </AnimatePresence>

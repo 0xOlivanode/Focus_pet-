@@ -19,7 +19,7 @@ export function Leaderboard() {
     <div className="w-full mt-8 bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-neutral-100 dark:border-neutral-800 shadow-sm">
       <div className="flex items-center gap-2 mb-6">
         <span className="text-xl md:text-2xl">🏆</span>
-        <h2 className="font-bold text-lg md:text-xl">
+        <h2 className="font-bold text-lg md:text-lg">
           Top Focusers (All-Time)
         </h2>
       </div>
@@ -71,7 +71,7 @@ export function Leaderboard() {
                         </span>
                         <SocialShare
                           text={`I'm ranked #${entry.rank} on the @FocusPet leaderboard! 🏆 Can you beat me? #FocusPet #Celo`}
-                          className="w-7 h-7 md:w-8 md:h-8"
+                          // className="w-7 h-7 md:w-8 md:h-8"
                         />
                       </div>
                     )}

@@ -25,10 +25,10 @@ export function SocialShare({
           e.stopPropagation();
           setIsOpen(true);
         }}
-        className={`flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all active:scale-90 ${className}`}
+        className={`flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all active:scale-90 ${className}`}
         title="Share Achievement"
       >
-        <Share2 size={16} />
+        <Share2 size={13} />
       </button>
 
       <ShareModal

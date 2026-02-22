@@ -9,10 +9,10 @@ import {
   getStageName,
 } from "@/utils/pet";
 import { Leaderboard } from "@/components/Leaderboard";
-import { PetShop } from "@/components/PetShop";
 import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
+import { PetShop } from "@/components/PetShop";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -35,7 +35,7 @@ import {
   X,
   Clock,
 } from "lucide-react";
-import { NotificationToast, ToastType } from "@/components/NotificationToast";
+import { toast } from "sonner";
 import { useAudio } from "@/hooks/useAudio";
 import { SoundMenu } from "@/components/SoundMenu";
 import { StreakFlame } from "@/components/StreakFlame";
@@ -84,29 +84,25 @@ function AppPageContent() {
     allowance,
     refetchAllowance,
     refetchGBalance,
+    buySuperFood,
+    buyEnergyDrink,
+    buyShield,
+    buyCosmetic,
+    boostEndTime,
+    shieldCount,
+    activeCosmetic,
+    toggleCosmetic,
+    inventory,
   } = useFocusPet();
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [tempUsername, setTempUsername] = useState("");
-  const [tempPetName, setTempPetName] = useState("");
+  const [tempUsername, setTempUsername] = useState(username || "");
+  const [tempPetName, setTempPetName] = useState(petName || "");
   const [showOnboarding, setShowOnboarding] = useState(false);
-
-  // Toast State
-  const [toast, setToast] = useState<{
-    isVisible: boolean;
-    title: string;
-    message: string;
-    type: ToastType;
-    showShare?: boolean;
-    shareText?: string;
-  }>({
-    isVisible: false,
-    title: "",
-    message: "",
-    type: "success",
-  });
+  const [focusNote, setFocusNote] = useState("");
+  const [lastSessionDuration, setLastSessionDuration] = useState(25);
 
   const [mood, setMood] = useState<PetMood>("happy");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -114,11 +110,28 @@ function AppPageContent() {
   const showToast = (
     title: string,
     message: string,
-    type: ToastType = "success",
+    type: "success" | "error" | "info" | "achievement" = "success",
     showShare = false,
     shareText = "",
   ) => {
-    setToast({ isVisible: true, title, message, type, showShare, shareText });
+    if (type === "success" || type === "achievement") {
+      toast.success(title, {
+        description: message,
+        action: showShare
+          ? {
+              label: "Share",
+              onClick: () => {
+                const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+                window.open(url, "_blank");
+              },
+            }
+          : undefined,
+      });
+    } else if (type === "error") {
+      toast.error(title, { description: message });
+    } else {
+      toast.info(title, { description: message });
+    }
   };
 
   const { playSound } = useAudio();
@@ -209,7 +222,7 @@ function AppPageContent() {
             "Your pet is growing stronger and your status is updated on-chain.",
             "achievement",
             true,
-            `I just focused for 25 minutes with FocusPet! 🦅 My pet is leveling up on Celo. #FocusPet #BuildWithCelo`,
+            `I just focused ${focusNote ? `on "${focusNote}" ` : ""}for ${lastSessionDuration < 1 ? Math.round(lastSessionDuration * 60) + " seconds" : lastSessionDuration + " minutes"} with FocusPet! 🦅 My pet is leveling up on Celo. #FocusPet #BuildWithCelo`,
           );
         } else if (lastAction === "shop") {
           showToast(
@@ -267,6 +280,7 @@ function AppPageContent() {
   }, [xp, isLoadingPet, pet, prevStage]);
 
   const handleSessionComplete = (minutes: number) => {
+    setLastSessionDuration(minutes);
     recordSession(minutes); // Record actual duration
     setMood("happy");
     playSound("click");
@@ -507,14 +521,14 @@ function AppPageContent() {
         </div>
       </header>
 
-      <main className="flex flex-col items-center pt-8 px-4 max-w-2xl mx-auto pb-20">
-        <div className="text-center mb-6">
+      <main className="flex flex-col items-center pt-8 px-4 max-w-3xl mx-auto pb-20 w-full">
+        <div className="text-center mb-10 w-full">
           <h2 className="text-3xl font-black tracking-tight mb-1 flex items-center justify-center gap-2">
             {petName || "Unnamed Pet"}
             <button
               onClick={() => {
                 setIsEditModalOpen(true);
-                playSound("click"); // Added sound
+                playSound("click");
               }}
               className="text-neutral-400 hover:text-indigo-500 transition-colors"
             >
@@ -522,7 +536,7 @@ function AppPageContent() {
             </button>
           </h2>
 
-          <div className="flex flex-col items-center gap-4 mt-2 mb-6">
+          <div className="flex flex-col items-center gap-4 mt-2">
             <p className="text-neutral-500 font-bold flex items-center justify-center gap-1.5 bg-neutral-50 dark:bg-neutral-900/40 px-4 py-1.5 rounded-2xl border border-neutral-100 dark:border-neutral-800">
               <span className="opacity-60 text-[10px] uppercase tracking-wider font-black">
                 By
@@ -544,18 +558,21 @@ function AppPageContent() {
 
         <PetView
           stage={stage}
-          xp={xp}
           health={health}
+          xp={xp}
           mood={mood}
           nextStageInfo={nextStageInfo}
           streak={streak}
           weather={weather}
+          activeCosmetic={activeCosmetic}
+          focusNote={focusNote}
         />
 
         <FocusTimer
           onComplete={handleSessionComplete}
-          onStart={() => {
+          onStart={(note) => {
             setMood("focused");
+            if (note) setFocusNote(note);
             if (weather === "rainy" || weather === "stormy") {
               showToast(
                 "Coming home? ✨",
@@ -565,38 +582,46 @@ function AppPageContent() {
             }
           }}
           onPause={() => setMood("sleeping")}
+          onNoteChange={setFocusNote}
         />
 
         {/* GoodDollar Daily Reward */}
         <ClaimReward />
 
+        {/* Pet Shop Section */}
         <PetShop
           gBalance={gBalance as bigint | undefined}
           allowance={allowance}
           health={health}
-          isPending={isPending || isConfirming}
+          isPending={isPending}
           isSuccess={isConfirmed}
           writeError={writeError}
           receiptError={receiptError}
           onApprove={approveG}
           onBuyFood={buyFood}
+          onBuySuperFood={buySuperFood}
+          onBuyEnergyDrink={buyEnergyDrink}
+          onBuyShield={buyShield}
+          onBuyCosmetic={buyCosmetic}
+          onToggleCosmetic={toggleCosmetic}
+          inventory={inventory}
           onRevive={revivePet}
           playSound={playSound}
+          showToast={showToast}
+          boostEndTime={boostEndTime}
+          shieldCount={shieldCount}
+          activeCosmetic={activeCosmetic}
         />
 
         {/* Social Leaderboard */}
         <Leaderboard />
-      </main>
 
-      <NotificationToast
-        isVisible={toast.isVisible}
-        onClose={() => setToast((prev) => ({ ...prev, isVisible: false }))}
-        title={toast.title}
-        message={toast.message}
-        type={toast.type}
-        showShare={toast.showShare}
-        shareText={toast.shareText}
-      />
+        {isPending && (
+          <p className="mt-4 text-xs text-indigo-500 animate-pulse text-center">
+            Transaction pending...
+          </p>
+        )}
+      </main>
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
 

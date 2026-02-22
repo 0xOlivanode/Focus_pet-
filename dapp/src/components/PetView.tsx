@@ -40,6 +40,8 @@ interface PetViewProps {
   nextStageInfo?: StageInfo;
   streak?: number;
   weather?: WeatherType;
+  activeCosmetic?: string;
+  focusNote?: string;
 }
 
 export function PetView({
@@ -50,6 +52,8 @@ export function PetView({
   nextStageInfo,
   streak = 0,
   weather = "clear",
+  activeCosmetic = "",
+  focusNote = "",
 }: PetViewProps) {
   const [thought, setThought] = React.useState<string | null>(null);
   const [isPoked, setIsPoked] = React.useState(false);
@@ -93,9 +97,11 @@ export function PetView({
   React.useEffect(() => {
     const getThought = () => {
       if (mood === "sleeping") return "Zzz... 😴";
-      if (mood === "focused") return "Directing focus... 🧠";
-      if (health < 30) return "So... hungry... 🍎";
       if (health <= 0) return "Wake me up! 💊";
+      if (mood === "focused") {
+        if (focusNote) return `Working on "${focusNote}"... 🧠`;
+        return "Directing focus... 🧠";
+      }
       if (mood === "happy") {
         // Weather-based thoughts have priority when happy
         if (weather === "rainy" || weather === "stormy") {
@@ -132,7 +138,7 @@ export function PetView({
       }, 8000);
       return () => clearInterval(interval);
     }
-  }, [mood, health, xp, isPoked]);
+  }, [mood, health, xp, isPoked, focusNote]);
 
   // Determine animation based on mood
   const variants: Variants = {
@@ -170,9 +176,9 @@ export function PetView({
   const getPetContent = () => {
     const assetPath = getPetAsset(stage, weather);
 
-    if (assetPath) {
-      return (
-        <div className="relative w-64 h-64 flex items-center justify-center">
+    return (
+      <div className="relative w-64 h-64 flex items-center justify-center">
+        {assetPath ? (
           <Image
             src={assetPath}
             alt={getStageName(stage)}
@@ -183,11 +189,61 @@ export function PetView({
             }`}
             priority
           />
-        </div>
-      );
-    }
+        ) : (
+          <span className="text-8xl">{getPetEmoji(stage)}</span>
+        )}
 
-    return <span className="text-8xl">{getPetEmoji(stage)}</span>;
+        {/* Cosmetic Overlay Layer */}
+        <AnimatePresence mode="wait">
+          {activeCosmetic && (
+            <motion.div
+              key={activeCosmetic}
+              initial={{ opacity: 0, scale: 0.5, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute inset-0 pointer-events-none flex items-center justify-center z-20"
+            >
+              {activeCosmetic === "sunglasses" && (
+                <div
+                  className={`relative transform transition-all duration-500 ${
+                    stage === "egg"
+                      ? "translate-y-[-10px] scale-[0.6]"
+                      : stage === "baby"
+                        ? "translate-y-[-45px] scale-[1.8]"
+                        : stage === "teen"
+                          ? "translate-y-[-20px] scale-[0.85]"
+                          : stage === "adult"
+                            ? "translate-y-[-25px] scale-100"
+                            : "translate-y-[-30px] scale-110"
+                  }`}
+                >
+                  <span className="text-6xl drop-shadow-lg">🕶️</span>
+                </div>
+              )}
+              {activeCosmetic === "crown" && (
+                <div
+                  className={`relative transform transition-all duration-500 ${
+                    stage === "egg"
+                      ? "translate-y-[-60px] scale-[0.8]"
+                      : stage === "baby"
+                        ? "translate-y-[-70px] scale-[0.9]"
+                        : stage === "teen"
+                          ? "translate-y-[-85px] scale-100"
+                          : stage === "adult"
+                            ? "translate-y-[-100px] scale-110"
+                            : "translate-y-[-110px] scale-120"
+                  }`}
+                >
+                  <span className="text-6xl drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">
+                    👑
+                  </span>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
   };
 
   // Health Color
@@ -384,8 +440,8 @@ export function PetView({
 
         {/* Background Ambient Glow (Parallax Layer 1) */}
         <motion.div
-          style={{ x: bgX, y: bgY, translateZ: -40, scale: 1.2 }}
-          className={`absolute inset-0 blur-3xl opacity-20 transition-colors duration-2000 ${
+          style={{ x: bgX, y: bgY, translateZ: -60, scale: 1.5 }}
+          className={`absolute inset-0 blur-[120px] opacity-40 transition-colors duration-3000 ${
             stage === "egg"
               ? "bg-indigo-300/40"
               : stage === "baby"

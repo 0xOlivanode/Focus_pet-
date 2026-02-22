@@ -22,10 +22,11 @@ export function StreakFlame({ count }: StreakFlameProps) {
       }`}
     >
       <div className="relative">
-        <Flame
+        {/* <Flame
           size={16}
-          className={`${count >= 3 ? "fill-orange-500/20 animate-pulse" : ""}`}
-        />
+          className={`${count === 1 ? "fill-orange-500/20 animate-pulse" : ""}`}
+        /> */}
+        🔥
         {count >= 5 && (
           <motion.div
             animate={{
