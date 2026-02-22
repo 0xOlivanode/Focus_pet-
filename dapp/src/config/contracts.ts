@@ -1,0 +1,9 @@
+export const CONTRACT_ADDRESS =
+  "0x989C4F81Fa06CeCC86674928D59c132B2FAf4cCe" as const;
+
+export const GOOD_DOLLAR_ADDRESSES = {
+  CELO_MAINNET: "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A",
+  CELO_SEPOLIA: "0x67C5870b4A41D4Ebef24d2456547A03F1f3e094B",
+} as const;
+
+export const DEPLOYMENT_BLOCK = BigInt("59850000"); // Very recent block for fresh contracts

@@ -11,6 +11,7 @@ import {
 import { Leaderboard } from "@/components/Leaderboard";
 import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -36,6 +37,8 @@ import {
 import { NotificationToast, ToastType } from "@/components/NotificationToast";
 import { useAudio } from "@/hooks/useAudio";
 import { SoundMenu } from "@/components/SoundMenu";
+import { StreakFlame } from "@/components/StreakFlame";
+import { NamingModal } from "@/components/NamingModal";
 
 import { Suspense } from "react";
 
@@ -71,6 +74,9 @@ function AppPageContent() {
     setNames,
     xp,
     health,
+    streak,
+    streakBonus,
+    weather,
     username,
     petName,
     lastAction,
@@ -78,6 +84,8 @@ function AppPageContent() {
     refetchAllowance,
     refetchGBalance,
   } = useFocusPet();
+
+  const { refetch: refetchLeaderboard } = useLeaderboard();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [tempUsername, setTempUsername] = useState("");
@@ -98,6 +106,9 @@ function AppPageContent() {
     message: "",
     type: "success",
   });
+
+  const [mood, setMood] = useState<PetMood>("happy");
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const showToast = (
     title: string,
@@ -126,10 +137,25 @@ function AppPageContent() {
   useEffect(() => {
     if (username) setTempUsername(username);
     if (petName) setTempPetName(petName);
-  }, [username, petName]);
 
-  // Local state for UI responsiveness while tx confirms
-  const [mood, setMood] = useState<PetMood>("happy");
+    // Auto-open naming modal for new adopters
+    if (hasPet && !username && !isLoadingPet && !isProcessing && !isSyncing) {
+      setIsEditModalOpen(true);
+    }
+
+    // Auto-close modal once name is successfully saved and synced
+    if (username && isEditModalOpen && !isProcessing && !isSyncing) {
+      setIsEditModalOpen(false);
+    }
+  }, [
+    username,
+    petName,
+    hasPet,
+    isLoadingPet,
+    isProcessing,
+    isSyncing,
+    isEditModalOpen,
+  ]);
 
   useEffect(() => {
     if (!isConnected && !isConnecting && !isReconnecting) {
@@ -157,51 +183,54 @@ function AppPageContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (isConfirming) {
-      // optimistically show loading or wait
-    }
-    if (isConfirmed) {
-      refetch();
-      refetchAllowance();
-      if (typeof refetchGBalance === "function") {
-        (refetchGBalance as () => void)();
-      }
-      router.refresh(); // Refresh Next.js server components/data if any
+    const syncData = async () => {
+      if (isConfirmed) {
+        setIsSyncing(true);
+        await refetch();
+        await refetchLeaderboard();
+        refetchAllowance();
+        if (typeof refetchGBalance === "function") {
+          (refetchGBalance as () => void)();
+        }
+        router.refresh();
 
-      // Celebration confetti for focus sessions or level ups!
-      if (lastAction === "focus") {
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ["#6366f1", "#8b5cf6", "#ec4899"],
-        });
-        playSound("success");
-        showToast(
-          "Focus Recorded! 🏆",
-          "Your pet is growing stronger and your status is updated on-chain.",
-          "achievement",
-          true,
-          `I just focused for 25 minutes with FocusPet! 🦅 My pet is leveling up on Celo. #FocusPet #BuildWithCelo`,
-        );
-      } else if (lastAction === "shop") {
-        showToast(
-          "Shop Success! 🛍️",
-          "Your items have been delivered and your pet is happy.",
-          "success",
-        );
-        playSound("pop");
-      } else if (lastAction === "profile") {
-        showToast(
-          "Profile Updated! 👤",
-          "Your on-chain identity has been saved successfully.",
-          "info",
-        );
+        // Celebration confetti for focus sessions or level ups!
+        if (lastAction === "focus") {
+          confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ["#6366f1", "#8B5CF6", "#EC4899"],
+          });
+          playSound("success");
+          showToast(
+            "Focus Recorded! 🏆",
+            "Your pet is growing stronger and your status is updated on-chain.",
+            "achievement",
+            true,
+            `I just focused for 25 minutes with FocusPet! 🦅 My pet is leveling up on Celo. #FocusPet #BuildWithCelo`,
+          );
+        } else if (lastAction === "shop") {
+          showToast(
+            "Shop Success! 🛍️",
+            "Your items have been delivered and your pet is happy.",
+            "success",
+          );
+          playSound("pop");
+        } else if (lastAction === "profile") {
+          showToast(
+            "Profile Updated! 👤",
+            "Your on-chain identity has been saved successfully.",
+            "info",
+          );
+        }
+        setIsSyncing(false);
       }
-    }
+    };
+
+    syncData();
   }, [
     isConfirmed,
-    isConfirming,
     lastAction,
     refetch,
     refetchAllowance,
@@ -386,7 +415,7 @@ function AppPageContent() {
 
         {/* Loading Overlay */}
         <AnimatePresence>
-          {isProcessing && (
+          {(isProcessing || isSyncing) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -458,6 +487,7 @@ function AppPageContent() {
           </button>
           <ThemeToggle />
           <SoundMenu />
+          <StreakFlame count={streak} />
           <button
             onClick={() => {
               setIsEditModalOpen(true);
@@ -517,11 +547,22 @@ function AppPageContent() {
           health={health}
           mood={mood}
           nextStageInfo={nextStageInfo}
+          streak={streak}
+          weather={weather}
         />
 
         <FocusTimer
           onComplete={handleSessionComplete}
-          onStart={() => setMood("focused")}
+          onStart={() => {
+            setMood("focused");
+            if (weather === "rainy" || weather === "stormy") {
+              showToast(
+                "Coming home? ✨",
+                "The clouds are beginning to clear...",
+                "success",
+              );
+            }
+          }}
           onPause={() => setMood("sleeping")}
         />
 
@@ -664,95 +705,20 @@ function AppPageContent() {
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
 
-      {/* Edit Profile Modal */}
-      {isEditModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-md z-100 flex items-center justify-center p-4 animate-in fade-in duration-300"
-          onClick={() => {
-            setIsEditModalOpen(false);
-            playSound("click"); // Added sound
-          }}
-        >
-          <div
-            className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-3xl p-8 shadow-2xl border border-neutral-100 dark:border-neutral-800 relative transform transition-all animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => {
-                setIsEditModalOpen(false);
-                playSound("click"); // Added sound
-              }}
-              className="absolute top-6 right-6 p-2 rounded-xl text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="mb-8">
-              <h3 className="text-2xl font-black mb-2 flex items-center gap-2">
-                <User className="text-indigo-500" />
-                Profile Settings
-              </h3>
-              <p className="text-neutral-500 text-sm">
-                Give your journey a name! Choose a handle for yourself and name
-                your pet.
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2 ml-1">
-                  Your Handle
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">
-                    @
-                  </span>
-                  <input
-                    type="text"
-                    value={tempUsername}
-                    onChange={(e) =>
-                      setTempUsername(
-                        e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
-                      )
-                    }
-                    placeholder="vitalik_fan"
-                    className="w-full bg-neutral-50 dark:bg-neutral-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl py-4 pl-8 pr-4 font-bold outline-none transition-all dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2 ml-1">
-                  Your Pet's Name
-                </label>
-                <input
-                  type="text"
-                  value={tempPetName}
-                  onChange={(e) => setTempPetName(e.target.value)}
-                  placeholder="Dino"
-                  className="w-full bg-neutral-50 dark:bg-neutral-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl py-4 px-4 font-bold outline-none transition-all dark:text-white"
-                />
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={() => {
-                    setNames(tempUsername, tempPetName);
-                    setIsEditModalOpen(false);
-                  }}
-                  disabled={!tempUsername || !tempPetName || isPending}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-500/20 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2"
-                >
-                  Save 🚀
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <NamingModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={(u, p) => {
+          setNames(u, p);
+          setIsEditModalOpen(false);
+        }}
+        initialUsername={tempUsername}
+        initialPetName={tempPetName}
+        isPending={isPending}
+      />
 
       {/* Full Screen Loading Overlay */}
-      {isProcessing && (
+      {(isProcessing || isSyncing) && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white p-4">
           <div className="text-6xl mb-4 animate-bounce">⏳</div>
           <h2 className="text-2xl font-bold mb-2">Processing...</h2>

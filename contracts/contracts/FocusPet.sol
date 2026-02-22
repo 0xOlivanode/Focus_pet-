@@ -13,6 +13,8 @@ contract FocusPet is Ownable {
         uint256 birthTime;
         string username;
         string petName;
+        uint256 streak;
+        uint256 lastDailySession;
     }
 
     mapping(address => Pet) public pets;
@@ -50,7 +52,9 @@ contract FocusPet is Ownable {
             lastInteraction: block.timestamp,
             birthTime: block.timestamp,
             username: "",
-            petName: "Unnamed Egg"
+            petName: "Unnamed Egg",
+            streak: 1,
+            lastDailySession: block.timestamp
         });
         emit PetBorn(owner);
     }
@@ -114,8 +118,24 @@ contract FocusPet is Ownable {
              pet.health -= healthLoss;
         }
 
-        // Reward logic
-        pet.xp += sessionDurationMinutes;
+        // Streak logic
+        uint256 lastSessionDay = pet.lastDailySession / 1 days;
+        uint256 currentDay = block.timestamp / 1 days;
+
+        if (currentDay > lastSessionDay) {
+            if (currentDay == lastSessionDay + 1) {
+                pet.streak += 1;
+            } else {
+                pet.streak = 1;
+            }
+            pet.lastDailySession = block.timestamp;
+        }
+
+        // Reward logic with streak bonus (5% per day, max 20%)
+        uint256 bonus = (pet.streak > 1) ? min(20, (pet.streak - 1) * 5) : 0;
+        uint256 xpGain = sessionDurationMinutes + (sessionDurationMinutes * bonus / 100);
+        
+        pet.xp += xpGain;
         pet.health = min(MAX_HEALTH, pet.health + 5);
         pet.lastInteraction = block.timestamp;
 

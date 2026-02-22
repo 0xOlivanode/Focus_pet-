@@ -9,8 +9,7 @@ import {
 import { FocusPetABI } from "@/config/abi";
 import { useEffect, useState } from "react";
 
-// Replace with deployed address
-const CONTRACT_ADDRESS = "0x9289F74f356271cEfe691c88963aC961C6efa422"; // Celo Mainnet
+import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
 
 export function useFocusPet() {
   const { address } = useAccount();
@@ -179,7 +178,8 @@ export function useFocusPet() {
         {
           onSuccess: () => {
             // Optimistic UI Update: Update local state immediately before chain syncs
-            setXp((prev) => prev + minutes);
+            const bonusValue = Math.floor((minutes * streakBonus) / 100);
+            setXp((prev) => prev + minutes + bonusValue);
             setHealth((prev) => Math.min(100, prev + 5));
           },
           onSettled: () => setIsSigning(false), // Stop signing state when wallet opens/fails
@@ -201,10 +201,77 @@ export function useFocusPet() {
   const hasPet = pet && Number(pet[3]) > 0; // birthTime is index 3
   const username = pet ? (pet[4] as string) : "";
   const petName = pet ? (pet[5] as string) : "Unnamed Pet";
+  const streak = pet && pet[6] ? Number(pet[6]) : 0;
+  const lastDailySession = pet && pet[7] ? Number(pet[7]) : 0;
 
   // --- Virtual Health Decay (Real-time calculation) ---
   const [health, setHealth] = useState(rawHealth);
   const [xp, setXp] = useState(rawXp);
+
+  // --- Streak Bonus Calculation ---
+  const [virtualStreak, setVirtualStreak] = useState(streak);
+
+  useEffect(() => {
+    if (lastDailySession > 0) {
+      const calculateVirtualStreak = () => {
+        const now = Math.floor(Date.now() / 1000);
+        const lastSessionDay = Math.floor(lastDailySession / (24 * 60 * 60));
+        const currentDay = Math.floor(now / (24 * 60 * 60));
+
+        if (currentDay > lastSessionDay + 1) {
+          // Missed more than a day
+          setVirtualStreak(0);
+        } else {
+          setVirtualStreak(streak);
+        }
+      };
+
+      calculateVirtualStreak();
+      const interval = setInterval(calculateVirtualStreak, 60000); // Check every minute
+      return () => clearInterval(interval);
+    } else {
+      setVirtualStreak(streak);
+    }
+  }, [streak, lastDailySession]);
+
+  const streakBonus = Math.min(
+    20,
+    (virtualStreak > 1 ? virtualStreak - 1 : 0) * 5,
+  ); // 5% per day, max 20%
+
+  // --- Dynamic Weather Calculation ---
+  const [weather, setWeather] = useState<
+    "sunny" | "clear" | "cloudy" | "rainy" | "stormy"
+  >("clear");
+
+  useEffect(() => {
+    const calculateWeather = () => {
+      if (!lastDailySession) return setWeather("clear");
+
+      const now = Math.floor(Date.now() / 1000);
+      const diffHrs = (now - lastDailySession) / 3600;
+      const recentInteractionHrs = (now - lastInteraction) / 3600;
+
+      if (diffHrs < 24 || recentInteractionHrs < 24) {
+        // If they just focused (last 1 hour), make it Sunny!
+        if (recentInteractionHrs < 1) {
+          setWeather("stormy");
+        } else {
+          setWeather(streak > 1 ? "sunny" : "clear");
+        }
+      } else if (diffHrs < 48) {
+        setWeather("cloudy");
+      } else if (diffHrs < 72) {
+        setWeather("rainy");
+      } else {
+        setWeather("stormy");
+      }
+    };
+
+    calculateWeather();
+    const interval = setInterval(calculateWeather, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [lastDailySession, streak]);
 
   useEffect(() => {
     setHealth(rawHealth);
@@ -260,5 +327,8 @@ export function useFocusPet() {
     lastAction,
     allowance: allowance ? (allowance as bigint) : BigInt(0),
     refetchAllowance,
+    streak: virtualStreak,
+    streakBonus,
+    weather,
   };
 }

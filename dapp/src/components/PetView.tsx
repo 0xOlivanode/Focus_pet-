@@ -9,7 +9,16 @@ import {
   useTransform,
   useSpring,
 } from "framer-motion";
-import { Heart, Zap, Sparkles } from "lucide-react";
+import {
+  Heart,
+  Zap,
+  Sparkles,
+  Sun,
+  Cloud,
+  CloudRain,
+  CloudLightning,
+  Info,
+} from "lucide-react";
 
 import {
   PetStage,
@@ -19,12 +28,16 @@ import {
   StageInfo,
 } from "@/utils/pet";
 
+import { WeatherLayer, WeatherType } from "./WeatherLayer";
+
 interface PetViewProps {
   stage: PetStage;
   health: number;
   xp: number;
   mood: PetMood;
   nextStageInfo?: StageInfo;
+  streak?: number;
+  weather?: WeatherType;
 }
 
 export function PetView({
@@ -33,6 +46,8 @@ export function PetView({
   xp,
   mood,
   nextStageInfo,
+  streak = 0,
+  weather = "clear",
 }: PetViewProps) {
   const [thought, setThought] = React.useState<string | null>(null);
   const [isPoked, setIsPoked] = React.useState(false);
@@ -80,6 +95,19 @@ export function PetView({
       if (health < 30) return "So... hungry... 🍎";
       if (health <= 0) return "Wake me up! 💊";
       if (mood === "happy") {
+        // Weather-based thoughts have priority when happy
+        if (weather === "rainy" || weather === "stormy") {
+          const gloomyThoughts = [
+            "It's so gloomy... 🌧️",
+            "A focus session would really cheer me up! 🥺",
+            "I miss the sun... maybe 10 mins of focus? ☔",
+            "Let's clear these clouds together! ✨",
+          ];
+          return gloomyThoughts[
+            Math.floor(Math.random() * gloomyThoughts.length)
+          ];
+        }
+
         const happyThoughts = [
           "You're doing great! 🌟",
           "Let's focus together! 🦖",
@@ -205,8 +233,100 @@ export function PetView({
           rotateY,
           transformStyle: "preserve-3d",
         }}
-        className="w-full h-80 md:h-96 bg-neutral-50 dark:bg-neutral-900/50 rounded-[2.5rem] border border-neutral-100 dark:border-neutral-800 flex items-center justify-center relative group transition-colors duration-500 shadow-xl shadow-indigo-500/5 cursor-pointer perspective-origin-center will-change-transform"
+        className="w-full h-80 md:h-96 bg-white dark:bg-[#0a0a0b] rounded-4xl border border-neutral-100 dark:border-neutral-800 flex items-center justify-center relative group transition-colors duration-500 shadow-xl shadow-indigo-500/5 cursor-pointer perspective-origin-center will-change-transform overflow-hidden"
       >
+        {/* Grid Pattern (Base Layer) */}
+        <div
+          className="absolute inset-0 opacity-15 dark:opacity-30 rounded-4xl overflow-hidden"
+          style={{
+            backgroundImage:
+              "radial-gradient(#6366f1 1.5px, transparent 1.5px)",
+            backgroundSize: "24px 24px",
+            transform: "translateZ(0px)",
+          }}
+        ></div>
+
+        {/* Weather Indicator Badge */}
+        <div className="absolute top-4 left-4 z-50">
+          <div className="group/weather relative">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-md border border-neutral-200 dark:border-white/10 shadow-sm transition-all duration-300 hover:shadow-md"
+            >
+              {weather === "sunny" && (
+                <Sun className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+              )}
+              {weather === "clear" && (
+                <Sun className="w-3.5 h-3.5 text-yellow-400" />
+              )}
+              {weather === "cloudy" && (
+                <Cloud className="w-3.5 h-3.5 text-slate-400 fill-slate-400/20" />
+              )}
+              {weather === "rainy" && (
+                <CloudRain className="w-3.5 h-3.5 text-indigo-400 fill-indigo-400/20" />
+              )}
+              {weather === "stormy" && (
+                <CloudLightning className="w-3.5 h-3.5 text-purple-400 fill-purple-400/20" />
+              )}
+              <span className="text-[10px] font-black uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
+                {weather}
+              </span>
+              <Info className="w-3 h-3 text-neutral-400" />
+            </motion.div>
+
+            {/* Tooltip */}
+            <div className="absolute top-full left-0 mt-2 w-48 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover/weather:opacity-100 group-hover/weather:translate-y-0 transition-all duration-300 z-100">
+              <div className="text-[11px] leading-relaxed font-medium text-neutral-600 dark:text-neutral-400">
+                {weather === "sunny" || weather === "clear" ? (
+                  <>
+                    <span className="font-bold text-amber-500 dark:text-amber-400 block mb-1">
+                      Perfect Vibe! ✨
+                    </span>
+                    Consistency pays off! Your consistent focus is keeping the
+                    skies clear and your pet happy.
+                  </>
+                ) : weather === "cloudy" ? (
+                  <>
+                    <span className="font-bold text-slate-500 block mb-1">
+                      Getting Hazy... ☁️
+                    </span>
+                    It's been a while since your last session. A quick focus
+                    round will bring the sun back!
+                  </>
+                ) : (
+                  <>
+                    <span className="font-bold text-indigo-500 block mb-1">
+                      Gloomy Days... 🌧️
+                    </span>
+                    Your pet misses you! Start a focus session now to clear the
+                    clouds and stop the rain.
+                  </>
+                )}
+              </div>
+              {/* Tooltip Arrow */}
+              <div className="absolute -top-1 left-4 w-2 h-2 bg-white dark:bg-neutral-900 border-t border-l border-neutral-100 dark:border-neutral-800 rotate-45" />
+            </div>
+          </div>
+        </div>
+
+        <WeatherLayer weather={weather} />
+        {/* Fire Aura (Streak Effect) */}
+        {streak >= 3 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: [0.4, 0.7, 0.4],
+              scale: [1, 1.02, 1],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="absolute inset-0 rounded-[2.5rem] border-4 border-orange-500/30 shadow-[0_0_40px_rgba(249,115,22,0.2)] pointer-events-none"
+          />
+        )}
         {/* Shine / Glare Effect */}
         <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden pointer-events-none z-50">
           <motion.div
@@ -244,16 +364,16 @@ export function PetView({
         {/* Background Ambient Glow (Parallax Layer 1) */}
         <motion.div
           style={{ x: bgX, y: bgY, translateZ: -40, scale: 1.2 }}
-          className={`absolute inset-0 blur-3xl opacity-30 transition-colors duration-1000 ${
+          className={`absolute inset-0 blur-3xl opacity-20 transition-colors duration-2000 ${
             stage === "egg"
-              ? "bg-pink-400"
+              ? "bg-indigo-300/40"
               : stage === "baby"
-                ? "bg-emerald-400"
+                ? "bg-sky-400/30"
                 : stage === "teen"
-                  ? "bg-blue-400"
+                  ? "bg-blue-400/30"
                   : stage === "adult"
-                    ? "bg-indigo-500"
-                    : "bg-purple-600"
+                    ? "bg-violet-500/20"
+                    : "bg-fuchsia-600/20"
           }`}
         />
 
@@ -302,15 +422,7 @@ export function PetView({
           )}
         </motion.div>
 
-        {/* Grid Pattern (Base Layer) */}
-        <div
-          className="absolute inset-0 opacity-[0.1] dark:opacity-[0.1] rounded-[2.5rem] overflow-hidden"
-          style={{
-            backgroundImage: "radial-gradient(#6366f1 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-            transform: "translateZ(0px)",
-          }}
-        ></div>
+        {/* Grid Pattern removed from here, moved to base line 215 */}
 
         {/* Thought Bubble (Floating closest) */}
         <AnimatePresence>
