@@ -6,7 +6,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 
 export function SoundMenu() {
-  const { isMuted, isMusicMuted, toggleMute, toggleMusic } = useAudio();
+  const {
+    isMuted,
+    isMusicMuted,
+    toggleMute,
+    toggleMusic,
+    playSound,
+    ambientTrack,
+    setAmbientTrack,
+  } = useAudio();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -93,6 +101,38 @@ export function SoundMenu() {
                 />
               </div>
             </button>
+
+            {/* Ambient Tracks Selector */}
+            <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-3 mb-2 block">
+                Focus Ambience
+              </span>
+              <div className="flex flex-col gap-1">
+                {[
+                  { id: null, label: "None", icon: "🔇" },
+                  { id: "rain", label: "Rainfall", icon: "🌧️" },
+                  { id: "lofi", label: "Lofi Beats", icon: "☕" },
+                ].map((track) => (
+                  <button
+                    key={track.label}
+                    onClick={() => {
+                      // @ts-ignore - fixing type later
+                      setAmbientTrack(track.id);
+                      playSound("click");
+                    }}
+                    className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-all ${
+                      // @ts-ignore
+                      ambientTrack === track.id
+                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                        : "hover:bg-black/5 dark:hover:bg-white/10 text-neutral-500 dark:text-neutral-400"
+                    }`}
+                  >
+                    <span className="text-sm">{track.icon}</span>
+                    <span className="text-sm font-bold">{track.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -241,21 +241,66 @@ export function PetView({
           </div>
         </motion.div>
 
-        {/* Background Ambient Glow (Parallax) */}
+        {/* Background Ambient Glow (Parallax Layer 1) */}
         <motion.div
-          style={{ x: bgX, y: bgY, translateZ: -20, scale: 1.1 }}
-          className={`absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] opacity-40 blur-3xl transition-colors duration-1000
-             ${
-               mood === "happy"
-                 ? "from-amber-200/50 to-transparent"
-                 : mood === "focused"
-                   ? "from-indigo-500/50 to-transparent"
-                   : mood === "sad"
-                     ? "from-blue-200/50 to-transparent"
-                     : "from-indigo-900/20 to-transparent"
-             }
-          `}
+          style={{ x: bgX, y: bgY, translateZ: -40, scale: 1.2 }}
+          className={`absolute inset-0 blur-3xl opacity-30 transition-colors duration-1000 ${
+            stage === "egg"
+              ? "bg-pink-400"
+              : stage === "baby"
+                ? "bg-emerald-400"
+                : stage === "teen"
+                  ? "bg-blue-400"
+                  : stage === "adult"
+                    ? "bg-indigo-500"
+                    : "bg-purple-600"
+          }`}
         />
+
+        {/* Environmental Elements (Parallax Layer 2) */}
+        <motion.div
+          style={{
+            x: useTransform(mouseX, [-0.5, 0.5], ["-10px", "10px"]),
+            y: useTransform(mouseY, [-0.5, 0.5], ["-10px", "10px"]),
+            translateZ: -20,
+          }}
+          className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none"
+        >
+          {stage === "egg" && (
+            <div className="w-64 h-64 border-8 border-pink-200/20 rounded-full blur-xl animate-pulse" />
+          )}
+          {stage === "baby" && (
+            <div className="grid grid-cols-3 gap-8">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="w-4 h-4 bg-emerald-300 rounded-full blur-sm"
+                />
+              ))}
+            </div>
+          )}
+          {stage === "teen" && (
+            <div className="w-full h-1/2 mt-auto bg-linear-to-t from-blue-300/20 to-transparent blur-lg" />
+          )}
+          {stage === "adult" && (
+            <div className="w-full h-full border-x-4 border-indigo-300/10 blur-md" />
+          )}
+          {stage === "elder" && (
+            <div className="absolute inset-0">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className="absolute w-1 h-1 bg-white rounded-full animate-ping"
+                  style={{
+                    top: `${Math.random() * 100}%`,
+                    left: `${Math.random() * 100}%`,
+                    animationDelay: `${i * 0.5}s`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
 
         {/* Grid Pattern (Base Layer) */}
         <div

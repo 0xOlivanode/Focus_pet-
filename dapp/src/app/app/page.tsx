@@ -69,6 +69,8 @@ function AppPageContent() {
     isProcessing,
     isLoadingPet,
     setNames,
+    xp,
+    health,
     username,
     petName,
     lastAction,
@@ -210,8 +212,6 @@ function AppPageContent() {
   // Parse BigInt data from contract
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pet = petData as any;
-  const health = pet ? Number(pet[1]) : 100;
-  const xp = pet ? Number(pet[0]) : 0;
   const stage = getPetStage(xp);
   const nextStageInfo = getNextStageInfo(xp);
 

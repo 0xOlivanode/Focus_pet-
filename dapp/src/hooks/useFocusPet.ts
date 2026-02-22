@@ -52,6 +52,7 @@ export function useFocusPet() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address,
+      refetchInterval: 60000, // Background refetch every 60s
     },
   });
 
@@ -176,6 +177,11 @@ export function useFocusPet() {
           ],
         },
         {
+          onSuccess: () => {
+            // Optimistic UI Update: Update local state immediately before chain syncs
+            setXp((prev) => prev + minutes);
+            setHealth((prev) => Math.min(100, prev + 5));
+          },
           onSettled: () => setIsSigning(false), // Stop signing state when wallet opens/fails
         },
       );
@@ -189,11 +195,40 @@ export function useFocusPet() {
   // Helper to determine if user has a pet (birthTime > 0)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pet = petData as any;
-  const xp = pet ? Number(pet[0]) : 0;
-  const health = pet ? Number(pet[1]) : 100;
+  const rawXp = pet ? Number(pet[0]) : 0;
+  const rawHealth = pet ? Number(pet[1]) : 100;
+  const lastInteraction = pet ? Number(pet[2]) : 0;
   const hasPet = pet && Number(pet[3]) > 0; // birthTime is index 3
   const username = pet ? (pet[4] as string) : "";
   const petName = pet ? (pet[5] as string) : "Unnamed Pet";
+
+  // --- Virtual Health Decay (Real-time calculation) ---
+  const [health, setHealth] = useState(rawHealth);
+  const [xp, setXp] = useState(rawXp);
+
+  useEffect(() => {
+    setHealth(rawHealth);
+    setXp(rawXp);
+
+    if (hasPet && lastInteraction > 0 && rawHealth > 0) {
+      const calculateVirtualHealth = () => {
+        const now = Math.floor(Date.now() / 1000);
+        const timeDiff = now - lastInteraction;
+        const daysPassed = timeDiff / (24 * 60 * 60);
+        const healthLoss = Math.floor(daysPassed * 10); // DECAY_RATE_PER_DAY = 10
+
+        if (healthLoss > 0) {
+          const virtualHealth = Math.max(0, rawHealth - healthLoss);
+          setHealth(virtualHealth);
+        }
+      };
+
+      calculateVirtualHealth();
+      // Tick every minute to update decay if needed
+      const interval = setInterval(calculateVirtualHealth, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [rawHealth, rawXp, lastInteraction, hasPet]);
 
   return {
     petData,

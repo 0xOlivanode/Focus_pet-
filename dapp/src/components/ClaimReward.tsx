@@ -84,6 +84,16 @@ export function ClaimReward() {
       });
 
       await claimSDK.claim();
+
+      // Launch Confetti Celebration!
+      const confetti = (await import("canvas-confetti")).default;
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["#6366f1", "#a855f7", "#ec4899", "#f59e0b"],
+      });
+
       await checkEntitlement();
     } catch (error: any) {
       console.error("Claim failed:", error);
