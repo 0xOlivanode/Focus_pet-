@@ -233,18 +233,20 @@ export function useFocusPet() {
           address: CONTRACT_ADDRESS,
           abi: FocusPetABI,
           functionName: "focusSession",
-          args: [BigInt(Math.max(1, Math.round(minutes)))],
+          args: [BigInt(Math.max(1, Math.round(minutes * 60)))],
           gas: BigInt(500000), // Manual gas limit to bypass estimation errors
         },
         {
           onSuccess: () => {
+            const seconds = Math.round(minutes * 60);
             // Optimistic UI Update: Update local state immediately before chain syncs
-            const bonusValue = Math.floor((minutes * streakBonus) / 100);
-            setXp((prev) => prev + (minutes || 0) + bonusValue);
+            // Now XP is per second
+            const bonusValue = Math.floor((seconds * streakBonus) / 100);
+            setXp((prev) => prev + (seconds || 0) + bonusValue);
             setHealth((prev) => Math.min(100, prev + 5));
 
             toast.success("Session Recorded! 🏆", {
-              description: `Your pet gained ${minutes} XP.`,
+              description: `Your pet gained ${seconds} XP (measured in seconds).`,
             });
           },
           onSettled: () => setIsSigning(false), // Stop signing state when wallet opens/fails

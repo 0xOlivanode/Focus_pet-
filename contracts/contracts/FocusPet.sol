@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract FocusPet is Ownable {
+contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     struct Pet {
         uint256 xp;
         uint256 health;
@@ -22,7 +24,7 @@ contract FocusPet is Ownable {
 
     mapping(address => Pet) public pets;
     
-    IERC20 public immutable goodDollar;
+    IERC20 public goodDollar;
 
     // Constants
     uint256 public constant MAX_HEALTH = 100;
@@ -46,10 +48,20 @@ contract FocusPet is Ownable {
     event ShieldAdded(address indexed owner, uint256 newCount);
     event DonationSent(address indexed to, uint256 amount);
 
-    constructor(address _goodDollar, address _ubiPool) Ownable(msg.sender) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address _goodDollar, address _ubiPool) public initializer {
+        __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
+        
         goodDollar = IERC20(_goodDollar);
         ubiPool = _ubiPool;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function setUbiPool(address _newPool) public onlyOwner {
         ubiPool = _newPool;
@@ -187,7 +199,7 @@ contract FocusPet is Ownable {
     }
 
     function focusSession(
-        uint256 sessionDurationMinutes
+        uint256 sessionDurationSeconds
     ) public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
@@ -220,7 +232,7 @@ contract FocusPet is Ownable {
 
         // Reward logic with streak bonus & XP BOOST
         uint256 bonus = (pet.streak > 1) ? min(20, (pet.streak - 1) * 5) : 0;
-        uint256 baseXP = sessionDurationMinutes + (sessionDurationMinutes * bonus / 100);
+        uint256 baseXP = sessionDurationSeconds + (sessionDurationSeconds * bonus / 100);
         
         if (block.timestamp < pet.boostEndTime) {
             pet.xp += (baseXP * 2); // 2x XP Boost Active!

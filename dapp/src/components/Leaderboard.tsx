@@ -120,7 +120,10 @@ export function Leaderboard() {
                     )}
                 </div>
                 <span className="text-[9px] md:text-[10px] text-neutral-500 font-medium">
-                  {entry.xp} mins focus record
+                  {entry.xp >= 3600
+                    ? `${(entry.xp / 3600).toFixed(1)} hrs`
+                    : `${(entry.xp / 60).toFixed(1)} mins`}{" "}
+                  focus record
                 </span>
               </div>
             </div>

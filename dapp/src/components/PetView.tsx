@@ -735,8 +735,11 @@ export function PetView({
 
               {/* Tooltip */}
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-neutral-900 dark:bg-neutral-800 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl z-50 border border-white/10">
-                {nextStageInfo.remaining}m more until{" "}
-                {getStageName(nextStageInfo.nextStage as PetStage)} evolution
+                {nextStageInfo.remaining >= 60
+                  ? `${Math.ceil(nextStageInfo.remaining / 60)}m`
+                  : `${nextStageInfo.remaining}s`}{" "}
+                more until {getStageName(nextStageInfo.nextStage as PetStage)}{" "}
+                evolution
                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
               </div>
             </div>

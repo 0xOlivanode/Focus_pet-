@@ -1,10 +1,12 @@
 export const FocusPetABI = [
   {
-    type: "constructor",
+    type: "function",
+    name: "initialize",
     inputs: [
       { name: "_goodDollar", type: "address", internalType: "address" },
       { name: "_ubiPool", type: "address", internalType: "address" },
     ],
+    outputs: [],
     stateMutability: "nonpayable",
   },
   {
@@ -116,7 +118,7 @@ export const FocusPetABI = [
     name: "focusSession",
     inputs: [
       {
-        name: "sessionDurationMinutes",
+        name: "sessionDurationSeconds",
         type: "uint256",
         internalType: "uint256",
       },

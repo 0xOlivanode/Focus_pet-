@@ -51,7 +51,7 @@ export function ImpactDashboard({
   }, [isStreaming, flowRate]);
 
   const donatedAmount = parseFloat(formatEther(totalDonated)).toFixed(2);
-  const hoursContributed = (xp / 60).toFixed(1);
+  const hoursContributed = (xp / 3600).toFixed(1);
 
   // Rank logic based on donation
   const getRank = (amount: number) => {

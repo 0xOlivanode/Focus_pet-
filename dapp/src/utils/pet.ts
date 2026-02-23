@@ -6,9 +6,9 @@ export type PetMood = "happy" | "sad" | "sleeping" | "focused";
 export const STAGE_THRESHOLD = {
   EGG: 0,
   BABY: 0, // Hatch instantly (interactive reveal)
-  TEEN: 500,
-  ADULT: 2000,
-  ELDER: 5000,
+  TEEN: 500 * 60, // 500 minutes -> 30,000 seconds
+  ADULT: 2000 * 60, // 2000 minutes -> 120,000 seconds
+  ELDER: 5000 * 60, // 5000 minutes -> 300,000 seconds
 } as const;
 
 export const getPetStage = (xp: number): PetStage => {

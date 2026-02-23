@@ -576,7 +576,11 @@ function AppPageContent() {
               <span className="w-1 h-1 bg-neutral-300 dark:bg-neutral-700 rounded-full mx-1" />
               <Clock size={14} className="text-indigo-500" />
               <span className="text-neutral-700 dark:text-neutral-300 font-black text-sm">
-                {xp >= 60 ? `${Math.floor(xp / 60)}h ${xp % 60}m` : `${xp}m`}
+                {xp >= 3600
+                  ? `${Math.floor(xp / 3600)}h ${Math.floor((xp % 3600) / 60)}m`
+                  : xp >= 60
+                    ? `${Math.floor(xp / 60)}m ${xp % 60}s`
+                    : `${xp}s`}
               </span>
               <span className="opacity-60 text-[10px] uppercase tracking-wider font-black">
                 Total
