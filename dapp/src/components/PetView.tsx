@@ -25,7 +25,9 @@ import {
   ZapOff,
 } from "lucide-react";
 import { useStreaming } from "@/hooks/useStreaming";
-import { parseEther } from "viem";
+import { parseEther, formatEther } from "viem";
+import { SuperchargeModal } from "./SuperchargeModal";
+import { calculateMonthlyAmount } from "@/lib/superfluid";
 
 import {
   PetStage,
@@ -72,6 +74,7 @@ export function PetView({
 
   const { isStreaming, startSupercharge, stopSupercharge, flowRate } =
     useStreaming();
+  const [superchargeModalOpen, setSuperchargeModalOpen] = React.useState(false);
 
   // Handle XP Popups
   React.useEffect(() => {
@@ -417,26 +420,81 @@ export function PetView({
         )}
 
         {/* Superfluid Aura (Streaming Effect) */}
-        {isStreaming && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: [0.5, 0.8, 0.5],
-              scale: [1.02, 1.05, 1.02],
-              borderColor: [
-                "rgba(6, 182, 212, 0.3)",
-                "rgba(99, 102, 241, 0.4)",
-                "rgba(6, 182, 212, 0.3)",
-              ],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="absolute inset-0 rounded-[2.5rem] border-[6px] shadow-[0_0_50px_rgba(6,182,212,0.3)] pointer-events-none z-10"
-          />
-        )}
+        {isStreaming &&
+          (() => {
+            const monthlyAmount = Number(
+              formatEther(calculateMonthlyAmount(flowRate)),
+            );
+            const isMax = monthlyAmount > 75;
+            const isPower = monthlyAmount > 25 && monthlyAmount <= 75;
+
+            return (
+              <>
+                {/* Primary Aura */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{
+                    opacity: isMax
+                      ? [0.6, 0.9, 0.6]
+                      : isPower
+                        ? [0.5, 0.8, 0.5]
+                        : [0.3, 0.5, 0.3],
+                    scale: isMax
+                      ? [1.03, 1.08, 1.03]
+                      : isPower
+                        ? [1.02, 1.05, 1.02]
+                        : [1.01, 1.03, 1.01],
+                    borderColor: isMax
+                      ? [
+                          "rgba(99, 102, 241, 0.5)",
+                          "rgba(168, 85, 247, 0.6)",
+                          "rgba(99, 102, 241, 0.5)",
+                        ]
+                      : isPower
+                        ? [
+                            "rgba(6, 182, 212, 0.4)",
+                            "rgba(99, 102, 241, 0.5)",
+                            "rgba(6, 182, 212, 0.4)",
+                          ]
+                        : [
+                            "rgba(16, 185, 129, 0.3)",
+                            "rgba(6, 182, 212, 0.4)",
+                            "rgba(16, 185, 129, 0.3)",
+                          ],
+                  }}
+                  transition={{
+                    duration: isMax ? 1.5 : isPower ? 2 : 3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className={`absolute inset-0 rounded-[2.5rem] border-[6px] pointer-events-none z-10 ${
+                    isMax
+                      ? "shadow-[0_0_60px_rgba(99,102,241,0.4)]"
+                      : isPower
+                        ? "shadow-[0_0_40px_rgba(6,182,212,0.3)]"
+                        : "shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                  }`}
+                />
+
+                {/* Secondary Outer Ring (Max Only) */}
+                {isMax && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 1 }}
+                    animate={{
+                      opacity: [0, 0.4, 0],
+                      scale: [1, 1.15],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "easeOut",
+                    }}
+                    className="absolute inset-0 rounded-[2.5rem] border-2 border-indigo-500/30 pointer-events-none z-0"
+                  />
+                )}
+              </>
+            );
+          })()}
         {/* Shine / Glare Effect */}
         <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden pointer-events-none z-50">
           <motion.div
@@ -516,51 +574,43 @@ export function PetView({
 
           {/* Supercharge Toggle */}
           <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
-          <Tooltip
-            content={
-              <div className="flex flex-col gap-0.5">
-                <span className="text-cyan-500 uppercase tracking-wider">
-                  Superfluid Streaming 🌊
-                </span>
-                <span className="text-neutral-500">
-                  {isStreaming
-                    ? "Active flow maintaining 100% happiness!"
-                    : "Stream 10 G$/Mo to lock in 100% happiness & unlock the Super Aura!"}
-                </span>
-              </div>
-            }
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSuperchargeModalOpen(true);
+            }}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all active:scale-95 ${
+              isStreaming
+                ? "bg-cyan-500/10 text-cyan-500 border border-cyan-500/20"
+                : "text-neutral-400 hover:text-cyan-500"
+            }`}
           >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                isStreaming
-                  ? stopSupercharge()
-                  : startSupercharge(parseEther("10"));
-              }}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all active:scale-95 ${
-                isStreaming
-                  ? "bg-cyan-500/10 text-cyan-500 border border-cyan-500/20"
-                  : "text-neutral-400 hover:text-cyan-500"
-              }`}
-            >
-              {isStreaming ? (
-                <>
-                  <Waves size={14} className="animate-pulse" />
-                  <span className="text-[10px] font-black uppercase">
-                    Supercharged
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Zap size={14} />
-                  <span className="text-[10px] font-black uppercase">
-                    Supercharge
-                  </span>
-                </>
-              )}
-            </button>
-          </Tooltip>
+            {isStreaming ? (
+              <>
+                <Waves size={14} className="animate-pulse" />
+                <span className="text-[10px] font-black uppercase">
+                  Supercharged
+                </span>
+              </>
+            ) : (
+              <>
+                <Zap size={14} />
+                <span className="text-[10px] font-black uppercase">
+                  Supercharge
+                </span>
+              </>
+            )}
+          </button>
         </motion.div>
+
+        {/* Supercharge Modal */}
+        <SuperchargeModal
+          isOpen={superchargeModalOpen}
+          onClose={() => setSuperchargeModalOpen(false)}
+          isStreaming={isStreaming}
+          onStart={startSupercharge}
+          onStop={stopSupercharge}
+        />
 
         {/* Background Ambient Glow (Parallax Layer 1) */}
         <motion.div

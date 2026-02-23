@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Square, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Square,
+  CheckCircle2,
+  AlertCircle,
+  Coins,
+} from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -18,6 +25,8 @@ interface FocusTimerProps {
   onStart?: (note: string) => void;
   onPause?: () => void;
   onNoteChange?: (note: string) => void;
+  isSupercharged?: boolean;
+  streak?: number;
 }
 
 export function FocusTimer({
@@ -26,6 +35,8 @@ export function FocusTimer({
   onStart,
   onPause,
   onNoteChange,
+  isSupercharged = false,
+  streak = 0,
 }: FocusTimerProps) {
   const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
   const [status, setStatus] = useState<TimerState>("idle");

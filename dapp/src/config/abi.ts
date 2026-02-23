@@ -2,7 +2,6 @@ export const FocusPetABI = [
   {
     type: "constructor",
     inputs: [
-      { name: "_engagementRewards", type: "address", internalType: "address" },
       { name: "_goodDollar", type: "address", internalType: "address" },
       { name: "_ubiPool", type: "address", internalType: "address" },
     ],
@@ -114,19 +113,6 @@ export const FocusPetABI = [
   },
   {
     type: "function",
-    name: "engagementRewards",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "contract IEngagementRewards",
-      },
-    ],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
     name: "focusSession",
     inputs: [
       {
@@ -134,9 +120,6 @@ export const FocusPetABI = [
         type: "uint256",
         internalType: "uint256",
       },
-      { name: "inviter", type: "address", internalType: "address" },
-      { name: "validUntilBlock", type: "uint256", internalType: "uint256" },
-      { name: "signature", type: "bytes", internalType: "bytes" },
     ],
     outputs: [],
     stateMutability: "nonpayable",

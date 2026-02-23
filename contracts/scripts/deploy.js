@@ -15,11 +15,7 @@ async function main() {
   const UBI_POOL_ALFAJORES = "0xBC5847eFDCD57A1a2c68a4B829871fc3D201A4F4";
 
   console.log("🚀 Deploying FocusPet to Celo MAINNET...");
-  const focusPet = await FocusPet.deploy(
-    REWARDS_MAINNET,
-    G_DOLLAR_MAINNET,
-    UBI_POOL_MAINNET,
-  );
+  const focusPet = await FocusPet.deploy(G_DOLLAR_MAINNET, UBI_POOL_MAINNET);
 
   await focusPet.waitForDeployment();
 

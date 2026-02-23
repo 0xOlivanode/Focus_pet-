@@ -8,6 +8,7 @@ import {
 } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
 
@@ -224,48 +225,33 @@ export function useFocusPet() {
     setLastAction("focus");
     try {
       setIsSigning(true);
-      // 1. Get Signature from Backend
-      const response = await fetch("/api/sign-reward", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userAddress: address,
-          minutes,
-        }),
-      });
+      // Engagement rewards removed for simplicity/gas efficiency
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to sign");
-
-      const { signature, validUntilBlock, inviter } = data;
-
-      // 2. Send Transaction
+      // Send Transaction
       writeContract(
         {
           address: CONTRACT_ADDRESS,
           abi: FocusPetABI,
           functionName: "focusSession",
-          args: [
-            BigInt(Math.max(1, Math.round(minutes))),
-            inviter,
-            BigInt(validUntilBlock),
-            signature,
-          ],
+          args: [BigInt(Math.max(1, Math.round(minutes)))],
           gas: BigInt(500000), // Manual gas limit to bypass estimation errors
         },
         {
           onSuccess: () => {
             // Optimistic UI Update: Update local state immediately before chain syncs
             const bonusValue = Math.floor((minutes * streakBonus) / 100);
-            setXp((prev) => prev + minutes + bonusValue);
+            setXp((prev) => prev + (minutes || 0) + bonusValue);
             setHealth((prev) => Math.min(100, prev + 5));
+
+            toast.success("Session Recorded! 🏆", {
+              description: `Your pet gained ${minutes} XP.`,
+            });
           },
           onSettled: () => setIsSigning(false), // Stop signing state when wallet opens/fails
         },
       );
     } catch (e) {
       console.error("Session Record Error:", e);
-      alert("Failed to secure reward signature!");
       setIsSigning(false);
     }
   };

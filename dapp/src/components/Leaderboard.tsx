@@ -3,6 +3,9 @@ import { useAccount } from "wagmi";
 import { SocialShare } from "./SocialShare";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import { VerifiedBadge } from "./VerifiedBadge";
+import { calculateMonthlyAmount } from "@/lib/superfluid";
+import { formatEther } from "viem";
+import { Tooltip } from "./Tooltip";
 
 export function Leaderboard() {
   const { address } = useAccount();
@@ -14,6 +17,29 @@ export function Leaderboard() {
 
   const formatAddress = (addr: string) => {
     return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+  };
+
+  const getFlowBadge = (flowRate?: bigint) => {
+    if (!flowRate || flowRate === 0n) return null;
+    const monthlyAmount = Number(formatEther(calculateMonthlyAmount(flowRate)));
+
+    if (monthlyAmount > 75)
+      return {
+        icon: "🔥",
+        label: "Max Overdrive",
+        class: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
+      };
+    if (monthlyAmount > 25)
+      return {
+        icon: "⚡️",
+        label: "Power Surge",
+        class: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
+      };
+    return {
+      icon: "🌱",
+      label: "Gentle Flow",
+      class: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+    };
   };
 
   return (
@@ -54,8 +80,14 @@ export function Leaderboard() {
               >
                 #{entry.rank}
               </span>
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center text-base md:text-lg shrink-0">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center text-base md:text-lg shrink-0 relative">
                 {getAvatar(entry.xp)}
+                {/* Mini Flow Icon */}
+                {getFlowBadge(entry.flowRate) && (
+                  <div className="absolute -bottom-1 -right-1 text-[10px] bg-white dark:bg-neutral-900 rounded-full w-4 h-4 flex items-center justify-center shadow-xs border border-neutral-100 dark:border-neutral-800">
+                    {getFlowBadge(entry.flowRate)?.icon}
+                  </div>
+                )}
               </div>
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1.5 md:gap-2">
@@ -65,6 +97,15 @@ export function Leaderboard() {
                       : formatAddress(entry.address)}
                   </span>
                   {entry.isVerified && <VerifiedBadge size={12} />}
+                  {getFlowBadge(entry.flowRate) && (
+                    <Tooltip content={getFlowBadge(entry.flowRate)?.label}>
+                      <span
+                        className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border ${getFlowBadge(entry.flowRate)?.class}`}
+                      >
+                        Supercharged
+                      </span>
+                    </Tooltip>
+                  )}
                   {address &&
                     entry.address.toLowerCase() === address.toLowerCase() && (
                       <div className="flex items-center gap-1.5 shrink-0 ml-1">

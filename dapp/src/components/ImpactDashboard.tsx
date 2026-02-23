@@ -1,16 +1,55 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
-import { Globe, Heart, TrendingUp, Award, Info } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Globe,
+  Heart,
+  TrendingUp,
+  Award,
+  Info,
+  Waves,
+  Sparkles,
+} from "lucide-react";
 import { formatEther } from "viem";
 
 interface ImpactDashboardProps {
   totalDonated: bigint;
   xp: number;
+  isStreaming?: boolean;
+  flowRate?: bigint;
 }
 
-export function ImpactDashboard({ totalDonated, xp }: ImpactDashboardProps) {
+export function ImpactDashboard({
+  totalDonated,
+  xp,
+  isStreaming,
+  flowRate,
+}: ImpactDashboardProps) {
+  const [streamedDonation, setStreamedDonation] = React.useState(0);
+  const [streamedEssence, setStreamedEssence] = React.useState(0);
+
+  // Real-time ticking effect
+  React.useEffect(() => {
+    if (!isStreaming || !flowRate) {
+      setStreamedDonation(0);
+      setStreamedEssence(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      // 70/30 Social-to-Soul split
+      const totalPerSec = parseFloat(formatEther(flowRate));
+      const socialPerSec = totalPerSec * 0.7;
+      const essencePerSec = totalPerSec * 0.3;
+
+      setStreamedDonation((prev) => prev + socialPerSec);
+      setStreamedEssence((prev) => prev + essencePerSec);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isStreaming, flowRate]);
+
   const donatedAmount = parseFloat(formatEther(totalDonated)).toFixed(2);
   const hoursContributed = (xp / 60).toFixed(1);
 
@@ -59,13 +98,13 @@ export function ImpactDashboard({ totalDonated, xp }: ImpactDashboardProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Stat 1: Total Contributed */}
-          <div className="p-6 rounded-3xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 hover:scale-[1.02] transition-transform">
+          <div className="p-6 rounded-3xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 hover:scale-[1.02] transition-transform relative overflow-hidden group">
             <div className="flex items-center gap-2 mb-4 text-emerald-500">
               <Heart size={16} fill="currentColor" />
               <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                G$ Donated
+                G$ Contributed
               </span>
             </div>
             <div className="flex items-baseline gap-1">
@@ -74,9 +113,68 @@ export function ImpactDashboard({ totalDonated, xp }: ImpactDashboardProps) {
               </span>
               <span className="text-xs font-bold text-emerald-500">G$</span>
             </div>
+            {/* Real-time Drip Indicator */}
+            {isStreaming && (
+              <div className="mt-2 flex items-center gap-1.5 text-emerald-500/80">
+                <Waves size={10} className="animate-pulse" />
+                <span className="text-[10px] font-bold">
+                  +{streamedDonation.toFixed(4)} live
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Stat 2: Focus Hours Impact */}
+          {/* Stat 2: Supercharge Live Impact (Only visible when streaming) */}
+          <AnimatePresence>
+            {isStreaming && (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="p-6 rounded-3xl bg-cyan-500/5 dark:bg-cyan-500/10 border border-cyan-500/20 shadow-lg shadow-cyan-500/5 hover:scale-[1.02] transition-transform"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-cyan-500">
+                    <Sparkles size={16} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      Live Stream
+                    </span>
+                  </div>
+                  <div className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-500 text-[8px] font-black uppercase tracking-widest animate-pulse">
+                    Active
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase">
+                      Social (70%)
+                    </span>
+                    <span className="text-sm font-black text-emerald-500">
+                      +{streamedDonation.toFixed(4)} G$
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase">
+                      Soul (30%)
+                    </span>
+                    <span className="text-sm font-black text-indigo-500">
+                      +{streamedEssence.toFixed(4)} G$
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-cyan-500/10">
+                  <p className="text-[9px] text-neutral-500 font-medium leading-tight">
+                    Streaming rewards are split between UBI and Pet Essence for
+                    multipliers.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Stat 3: Focus Hours Impact */}
           <div className="p-6 rounded-3xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 hover:scale-[1.02] transition-transform">
             <div className="flex items-center gap-2 mb-4 text-indigo-500">
               <TrendingUp size={16} />
@@ -90,27 +188,6 @@ export function ImpactDashboard({ totalDonated, xp }: ImpactDashboardProps) {
               </span>
               <span className="text-xs font-bold text-indigo-500">Hrs</span>
             </div>
-          </div>
-
-          {/* Stat 3: Community Rank */}
-          <div className="p-6 rounded-3xl bg-linear-to-br from-indigo-500 to-indigo-700 text-white border border-transparent shadow-lg shadow-indigo-500/20 hover:scale-[1.02] transition-transform">
-            <div className="flex items-center gap-2 mb-4 opacity-80">
-              <Award size={16} />
-              <span className="text-[10px] font-black uppercase tracking-widest">
-                Contribution Level
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-black tracking-tight leading-tight">
-                Top 5%
-              </span>
-              <div className="p-1 bg-white/20 rounded-full">
-                <Info size={12} />
-              </div>
-            </div>
-            <p className="text-[9px] mt-2 opacity-60 font-medium">
-              Calculated based on G$ ecosystem impact.
-            </p>
           </div>
         </div>
 

@@ -42,6 +42,7 @@ import { useAudio } from "@/hooks/useAudio";
 import { SoundMenu } from "@/components/SoundMenu";
 import { StreakFlame } from "@/components/StreakFlame";
 import { NamingModal } from "@/components/NamingModal";
+import { useStreaming } from "@/hooks/useStreaming";
 
 import { Suspense } from "react";
 
@@ -99,7 +100,8 @@ function AppPageContent() {
   } = useFocusPet();
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
-  const { isVerified } = useIdentity();
+  const { isVerifying, setIsVerifying, isVerified } = useIdentity();
+  const { isStreaming, flowRate } = useStreaming();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [tempUsername, setTempUsername] = useState(username || "");
@@ -290,7 +292,7 @@ function AppPageContent() {
 
   const handleSessionComplete = (minutes: number) => {
     setLastSessionDuration(minutes);
-    recordSession(minutes); // Record actual duration
+    recordSession(minutes);
     setMood("happy");
     playSound("click");
   };
@@ -614,6 +616,8 @@ function AppPageContent() {
             }}
             onPause={() => setMood("sleeping")}
             onNoteChange={setFocusNote}
+            isSupercharged={isStreaming}
+            streak={streak}
           />
         </div>
 
@@ -621,7 +625,12 @@ function AppPageContent() {
         <ClaimReward />
 
         {/* Social Impact Dashboard */}
-        <ImpactDashboard totalDonated={totalDonated} xp={xp} />
+        <ImpactDashboard
+          totalDonated={totalDonated}
+          xp={xp}
+          // isStreaming={isStreaming}
+          flowRate={flowRate}
+        />
 
         {/* Pet Shop Section */}
         <PetShop

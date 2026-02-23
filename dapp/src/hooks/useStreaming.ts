@@ -17,9 +17,9 @@ import { toast } from "sonner";
 
 import { getAddress } from "viem";
 
-const TRUST_FUND_ADDRESS = getAddress(
-  "0xDe1e469605F9a44181A55f86c966A824240bace0",
-);
+import { CONTRACT_ADDRESS } from "@/config/contracts";
+
+const TRUST_FUND_ADDRESS = CONTRACT_ADDRESS;
 
 export function useStreaming() {
   const { address } = useAccount();

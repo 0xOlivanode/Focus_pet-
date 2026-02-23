@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./IEngagementRewards.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract FocusPet is Ownable {
@@ -23,7 +22,6 @@ contract FocusPet is Ownable {
 
     mapping(address => Pet) public pets;
     
-    IEngagementRewards public immutable engagementRewards;
     IERC20 public immutable goodDollar;
 
     // Constants
@@ -48,8 +46,7 @@ contract FocusPet is Ownable {
     event ShieldAdded(address indexed owner, uint256 newCount);
     event DonationSent(address indexed to, uint256 amount);
 
-    constructor(address _engagementRewards, address _goodDollar, address _ubiPool) Ownable(msg.sender) {
-        engagementRewards = IEngagementRewards(_engagementRewards);
+    constructor(address _goodDollar, address _ubiPool) Ownable(msg.sender) {
         goodDollar = IERC20(_goodDollar);
         ubiPool = _ubiPool;
     }
@@ -190,10 +187,7 @@ contract FocusPet is Ownable {
     }
 
     function focusSession(
-        uint256 sessionDurationMinutes, 
-        address inviter, 
-        uint256 validUntilBlock, 
-        bytes memory signature
+        uint256 sessionDurationMinutes
     ) public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
@@ -236,11 +230,6 @@ contract FocusPet is Ownable {
 
         pet.health = min(MAX_HEALTH, pet.health + 5);
         pet.lastInteraction = block.timestamp;
-
-        // Claim GoodDollar Reward
-        if (address(engagementRewards).code.length > 0) {
-            try engagementRewards.appClaim(msg.sender, inviter, validUntilBlock, signature) {} catch {}
-        }
 
         emit PetFed(msg.sender, pet.health, pet.xp);
     }

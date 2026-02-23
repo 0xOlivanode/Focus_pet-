@@ -4,6 +4,11 @@ import { FocusPetABI } from "@/config/abi";
 import { parseAbiItem } from "viem";
 
 import { CONTRACT_ADDRESS, DEPLOYMENT_BLOCK } from "@/config/contracts";
+import {
+  G_DOLLAR_CELO,
+  SUPERFLUID_FORWARDER_CELO,
+  CFAv1ForwarderAbi,
+} from "@/lib/superfluid";
 
 export type LeaderboardEntry = {
   rank: number;
@@ -12,6 +17,7 @@ export type LeaderboardEntry = {
   health: number;
   username?: string;
   isVerified?: boolean;
+  flowRate?: bigint;
 };
 
 export function useLeaderboard() {
@@ -119,6 +125,34 @@ export function useLeaderboard() {
       );
 
       setLeaderboard(verifiedResults);
+
+      // Final Step: Fetch Flow Rates for Top 10
+      const leaderboardWithFlows = await Promise.all(
+        verifiedResults.map(async (entry) => {
+          try {
+            const flowData = (await publicClient.readContract({
+              address: SUPERFLUID_FORWARDER_CELO,
+              abi: CFAv1ForwarderAbi,
+              functionName: "getFlowInfo",
+              args: [
+                G_DOLLAR_CELO,
+                entry.address as `0x${string}`,
+                CONTRACT_ADDRESS as `0x${string}`,
+              ],
+            })) as [bigint, bigint, bigint, bigint];
+
+            return {
+              ...entry,
+              flowRate: flowData[1],
+            };
+          } catch (e) {
+            console.error("Error fetching flow info for", entry.address, e);
+            return entry;
+          }
+        }),
+      );
+
+      setLeaderboard(leaderboardWithFlows);
     } catch (error) {
       console.error("Failed to fetch leaderboard logs:", error);
     } finally {
