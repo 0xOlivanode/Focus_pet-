@@ -11,8 +11,11 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
 import { formatEther } from "viem";
+import { useIdentity } from "@/hooks/useIdentity";
+import { IdentityModal } from "./IdentityModal";
 
 export function ClaimReward() {
   const { address } = useAccount();
@@ -28,33 +31,47 @@ export function ClaimReward() {
   >("loading");
   const [isMounted, setIsMounted] = useState(false);
 
+  // Use the global identity hook for verification state
+  const {
+    isVerified,
+    fvLink,
+    status: identityStatus,
+    refresh: refreshIdentity,
+    generateLink: generateIdentityLink,
+    isVerifying,
+    setIsVerifying,
+  } = useIdentity();
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   const checkEntitlement = async () => {
-    if (
-      !address ||
-      !publicClient ||
-      !walletClient ||
-      !identitySDK ||
-      !isMounted
-    )
+    if (!address || !publicClient || !identitySDK || !isMounted) {
+      console.log("⏭️ Claim check skipped: Missing", {
+        address: !!address,
+        publicClient: !!publicClient,
+        identitySDK: !!identitySDK,
+        isMounted,
+      });
       return;
+    }
 
     try {
       setIsLoading(true);
       const claimSDK = new ClaimSDK({
         account: address,
         publicClient: publicClient as any,
-        walletClient: walletClient as any,
+        walletClient: (walletClient as any) || undefined,
         identitySDK: identitySDK as any,
         env: "production",
       });
 
+      console.log("⏳ Checking G$ entitlement for:", address);
       const walletStatus = await claimSDK.getWalletClaimStatus();
+      console.log("✅ G$ Status fetched:", walletStatus);
       setEntitlement(walletStatus.entitlement);
-      setStatus(walletStatus.status);
+      setStatus(walletStatus.status as any);
     } catch (error) {
       console.error("Entitlement check failed:", error);
     } finally {
@@ -67,10 +84,15 @@ export function ClaimReward() {
     // Refresh every 5 minutes
     const interval = setInterval(checkEntitlement, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [address, !!publicClient, !!walletClient, !!identitySDK]);
+  }, [address, !!publicClient, !!identitySDK, isMounted]);
 
   const handleClaim = async () => {
     if (!address || !publicClient || !walletClient || !identitySDK) return;
+
+    if (status === "not_whitelisted") {
+      setIsVerifying(true);
+      return;
+    }
 
     try {
       setIsClaiming(true);
@@ -149,11 +171,14 @@ export function ClaimReward() {
                 key="verify"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                onClick={handleClaim} // Claim triggers redirect for FV
-                className="flex items-center gap-2 bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 px-6 py-3 rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/10 border border-indigo-100 dark:border-indigo-900/50 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all active:scale-95"
+                onClick={() => setIsVerifying(true)}
+                className="flex items-center gap-2 bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 px-6 py-3 rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/10 border border-indigo-100 dark:border-indigo-900/50 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all active:scale-95 group/verify"
               >
-                Face Verify Required
-                <ExternalLink size={14} />
+                Face Verify In-App
+                <ShieldCheck
+                  size={14}
+                  className="group-hover/verify:scale-110 transition-transform"
+                />
               </motion.button>
             ) : status === "already_claimed" ? (
               <motion.div
@@ -199,6 +224,18 @@ export function ClaimReward() {
           human = one reward.
         </div>
       )}
+
+      {/* Embedded Verification Modal */}
+      <IdentityModal
+        isOpen={isVerifying}
+        onClose={() => setIsVerifying(false)}
+        fvLink={fvLink}
+        status={isVerified ? "verified" : (identityStatus as any)}
+        onRefresh={() => {
+          refreshIdentity();
+          if (!fvLink) generateIdentityLink();
+        }}
+      />
     </div>
   );
 }

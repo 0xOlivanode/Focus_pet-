@@ -17,6 +17,10 @@ export function useFocusPet() {
   const [lastAction, setLastAction] = useState<
     "focus" | "shop" | "profile" | null
   >(null);
+  const [pendingItem, setPendingItem] = useState<{
+    id: string;
+    price?: number;
+  } | null>(null);
 
   const {
     writeContract,
@@ -117,8 +121,11 @@ export function useFocusPet() {
     query: { enabled: !!address },
   });
 
-  const approveG = (amount: bigint) => {
+  const approveG = (amount: bigint, itemId?: string, price?: number) => {
     setLastAction("shop");
+    if (itemId) {
+      setPendingItem({ id: itemId, price });
+    }
     writeContract({
       address: G_DOLLAR_ADDRESS,
       abi: ERC20ABI,
@@ -135,7 +142,6 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "buyFood",
       args: [],
-      gas: BigInt(400000),
     });
   };
 
@@ -146,7 +152,6 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "buySuperFood",
       args: [],
-      gas: BigInt(400000),
     });
   };
 
@@ -157,7 +162,6 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "buyEnergyDrink",
       args: [],
-      gas: BigInt(400000),
     });
   };
 
@@ -168,7 +172,6 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "buyShield",
       args: [],
-      gas: BigInt(400000),
     });
   };
 
@@ -179,7 +182,6 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "buyCosmetic",
       args: [id, BigInt(price)],
-      gas: BigInt(500000),
     });
   };
 
@@ -190,7 +192,6 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "toggleCosmetic",
       args: [id],
-      gas: BigInt(300000),
     });
   };
 
@@ -201,7 +202,6 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "revivePet",
       args: [],
-      gas: BigInt(500000),
     });
   };
 
@@ -270,6 +270,31 @@ export function useFocusPet() {
     }
   };
 
+  // --- Automated Buy Logic (Sequential Transactions) ---
+  useEffect(() => {
+    if (isConfirmed && pendingItem && lastAction === "shop") {
+      const executeBuy = async () => {
+        const item = pendingItem;
+        setPendingItem(null); // Clear first to prevent loops
+
+        // Allow some time for the RPC to catch up with the allowance change
+        await refetchAllowance();
+        await new Promise((resolve) => setTimeout(resolve, 2000)); // 2s safety buffer for RPC sync
+
+        console.log("🚀 Auto-triggering buy for:", item.id);
+
+        if (item.id === "apple") buyFood();
+        else if (item.id === "golden_apple") buySuperFood();
+        else if (item.id === "energy_drink") buyEnergyDrink();
+        else if (item.id === "shield") buyShield();
+        else if (item.id === "revive") revivePet();
+        else if (item.price) buyCosmetic(item.id, item.price);
+      };
+
+      executeBuy();
+    }
+  }, [isConfirmed, pendingItem, lastAction]);
+
   // Helper to determine if user has a pet (birthTime > 0)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pet = petData as any;
@@ -284,6 +309,7 @@ export function useFocusPet() {
   const boostEndTime = pet && pet[8] ? Number(pet[8]) : 0;
   const shieldCount = pet && pet[9] ? Number(pet[9]) : 0;
   const activeCosmetic = pet && pet[10] ? (pet[10] as string) : "";
+  const totalDonated = pet && pet[11] ? BigInt(pet[11]) : BigInt(0);
 
   // Ownership Tracking
   const { data: isSunglassesOwned } = useReadContract({
@@ -445,5 +471,6 @@ export function useFocusPet() {
       sunglasses: !!isSunglassesOwned,
       crown: !!isCrownOwned,
     },
+    totalDonated,
   };
 }

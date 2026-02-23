@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { VerifiedBadge } from "./VerifiedBadge";
+import { Tooltip } from "./Tooltip";
 import Image from "next/image";
 import {
   motion,
@@ -19,7 +21,11 @@ import {
   CloudRain,
   CloudLightning,
   Info,
+  Waves,
+  ZapOff,
 } from "lucide-react";
+import { useStreaming } from "@/hooks/useStreaming";
+import { parseEther } from "viem";
 
 import {
   PetStage,
@@ -42,6 +48,7 @@ interface PetViewProps {
   weather?: WeatherType;
   activeCosmetic?: string;
   focusNote?: string;
+  isVerified?: boolean;
 }
 
 export function PetView({
@@ -54,6 +61,7 @@ export function PetView({
   weather = "clear",
   activeCosmetic = "",
   focusNote = "",
+  isVerified = false,
 }: PetViewProps) {
   const [thought, setThought] = React.useState<string | null>(null);
   const [isPoked, setIsPoked] = React.useState(false);
@@ -61,6 +69,9 @@ export function PetView({
     [],
   );
   const lastXpRef = React.useRef(xp);
+
+  const { isStreaming, startSupercharge, stopSupercharge, flowRate } =
+    useStreaming();
 
   // Handle XP Popups
   React.useEffect(() => {
@@ -177,7 +188,7 @@ export function PetView({
     const assetPath = getPetAsset(stage, weather);
 
     return (
-      <div className="relative w-64 h-64 flex items-center justify-center">
+      <div className="relative w-50 h-50 flex items-center justify-center">
         {assetPath ? (
           <Image
             src={assetPath}
@@ -209,7 +220,7 @@ export function PetView({
                     stage === "egg"
                       ? "translate-y-[-10px] scale-[0.6]"
                       : stage === "baby"
-                        ? "translate-y-[-45px] scale-[1.8]"
+                        ? "translate-y-[-35px] scale-[1.5]"
                         : stage === "teen"
                           ? "translate-y-[-20px] scale-[0.85]"
                           : stage === "adult"
@@ -310,7 +321,7 @@ export function PetView({
           rotateY,
           transformStyle: "preserve-3d",
         }}
-        className="w-full h-80 md:h-96 bg-white dark:bg-[#0a0a0b] rounded-4xl border border-neutral-100 dark:border-neutral-800 flex items-center justify-center relative group transition-colors duration-500 shadow-xl shadow-indigo-500/5 cursor-pointer perspective-origin-center will-change-transform overflow-hidden"
+        className="w-[90%] mx-auto h-80 md:h-100 bg-white dark:bg-[#0a0a0b] rounded-4xl border border-neutral-100 dark:border-neutral-800 flex items-center justify-center relative group transition-colors duration-500 shadow-xl shadow-indigo-500/5 cursor-pointer perspective-origin-center will-change-transform"
       >
         {/* Grid Pattern (Base Layer) */}
         <div
@@ -404,6 +415,28 @@ export function PetView({
             className="absolute inset-0 rounded-[2.5rem] border-4 border-orange-500/30 shadow-[0_0_40px_rgba(249,115,22,0.2)] pointer-events-none"
           />
         )}
+
+        {/* Superfluid Aura (Streaming Effect) */}
+        {isStreaming && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: [0.5, 0.8, 0.5],
+              scale: [1.02, 1.05, 1.02],
+              borderColor: [
+                "rgba(6, 182, 212, 0.3)",
+                "rgba(99, 102, 241, 0.4)",
+                "rgba(6, 182, 212, 0.3)",
+              ],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="absolute inset-0 rounded-[2.5rem] border-[6px] shadow-[0_0_50px_rgba(6,182,212,0.3)] pointer-events-none z-10"
+          />
+        )}
         {/* Shine / Glare Effect */}
         <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden pointer-events-none z-50">
           <motion.div
@@ -417,25 +450,116 @@ export function PetView({
 
         {/* Floating Status Bar */}
         <motion.div
-          style={{ translateZ: 40 }}
+          style={{ translateZ: 40, transformStyle: "preserve-3d" }}
           className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-black/60 backdrop-blur-md border border-white/20 dark:border-white/10 px-4 py-2 rounded-full shadow-lg flex items-center gap-4 text-xs font-bold text-neutral-500 z-10 w-max"
         >
-          <div className="flex items-center gap-1.5" title="Health">
-            <Heart size={14} className={healthColor} fill="currentColor" />
-            <span className="text-neutral-700 dark:text-neutral-300">
-              {health}%
-            </span>
-          </div>
-          <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
-          <div
-            className="flex items-center gap-1.5 text-amber-500"
-            title="Experience"
+          <Tooltip
+            content={
+              <div className="flex flex-col gap-0.5">
+                <span className="text-pink-500 uppercase tracking-wider">
+                  Health Status
+                </span>
+                <span className="text-neutral-500">
+                  Keep it above 0 to stay alive!
+                </span>
+              </div>
+            }
           >
-            <Zap size={14} fill="currentColor" />
-            <span className="text-neutral-700 dark:text-neutral-300">
-              {xp} XP
-            </span>
-          </div>
+            <div className="flex items-center gap-1.5 cursor-help">
+              <Heart size={14} className={healthColor} fill="currentColor" />
+              <span className="text-neutral-700 dark:text-neutral-300">
+                {health}%
+              </span>
+            </div>
+          </Tooltip>
+          {isVerified && (
+            <>
+              <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
+              <Tooltip
+                content={
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-indigo-500 uppercase tracking-wider">
+                      Verified Human
+                    </span>
+                    <span className="text-neutral-500">
+                      Identity confirmed via GoodDollar.
+                    </span>
+                  </div>
+                }
+              >
+                <div className="cursor-help flex items-center">
+                  <VerifiedBadge size={14} />
+                </div>
+              </Tooltip>
+            </>
+          )}
+          <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
+          <Tooltip
+            content={
+              <div className="flex flex-col gap-0.5">
+                <span className="text-amber-500 uppercase tracking-wider">
+                  Experience
+                </span>
+                <span className="text-neutral-500">
+                  Focus to earn XP and evolve!
+                </span>
+              </div>
+            }
+          >
+            <div className="flex items-center gap-1.5 text-amber-500 cursor-help">
+              <Zap size={14} fill="currentColor" />
+              <span className="text-neutral-700 dark:text-neutral-300">
+                {xp} XP
+              </span>
+            </div>
+          </Tooltip>
+
+          {/* Supercharge Toggle */}
+          <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
+          <Tooltip
+            content={
+              <div className="flex flex-col gap-0.5">
+                <span className="text-cyan-500 uppercase tracking-wider">
+                  Superfluid Streaming 🌊
+                </span>
+                <span className="text-neutral-500">
+                  {isStreaming
+                    ? "Active flow maintaining 100% happiness!"
+                    : "Stream 10 G$/Mo to lock in 100% happiness & unlock the Super Aura!"}
+                </span>
+              </div>
+            }
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                isStreaming
+                  ? stopSupercharge()
+                  : startSupercharge(parseEther("10"));
+              }}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all active:scale-95 ${
+                isStreaming
+                  ? "bg-cyan-500/10 text-cyan-500 border border-cyan-500/20"
+                  : "text-neutral-400 hover:text-cyan-500"
+              }`}
+            >
+              {isStreaming ? (
+                <>
+                  <Waves size={14} className="animate-pulse" />
+                  <span className="text-[10px] font-black uppercase">
+                    Supercharged
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Zap size={14} />
+                  <span className="text-[10px] font-black uppercase">
+                    Supercharge
+                  </span>
+                </>
+              )}
+            </button>
+          </Tooltip>
         </motion.div>
 
         {/* Background Ambient Glow (Parallax Layer 1) */}
@@ -510,9 +634,9 @@ export function PetView({
               exit={{ opacity: 0, scale: 0.8, y: -10, z: 80 }}
               key={thought}
               style={{ translateZ: 80 }}
-              className="absolute top-16 bg-white dark:bg-neutral-800 px-4 py-2 rounded-2xl rounded-bl-sm shadow-xl border border-neutral-100 dark:border-neutral-700 z-20"
+              className="absolute top-20 bg-white dark:bg-neutral-800 px-4 py-2 rounded-2xl rounded-bl-sm shadow-xl border border-neutral-100 dark:border-neutral-700 z-20"
             >
-              <p className="text-xs font-bold text-neutral-600 dark:text-neutral-200 whitespace-nowrap">
+              <p className="text-xs/[100%] font-bold text-neutral-600 dark:text-neutral-200 whitespace-nowrap">
                 {thought}
               </p>
               {/* Pointer */}

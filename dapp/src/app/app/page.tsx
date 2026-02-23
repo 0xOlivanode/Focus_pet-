@@ -1,6 +1,7 @@
 "use client";
 import { FocusTimer } from "@/components/FocusTimer";
 import { PetView } from "@/components/PetView";
+import { ImpactDashboard } from "@/components/ImpactDashboard";
 import {
   PetStage,
   PetMood,
@@ -13,6 +14,7 @@ import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
+import { useIdentity } from "@/hooks/useIdentity";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -93,9 +95,11 @@ function AppPageContent() {
     activeCosmetic,
     toggleCosmetic,
     inventory,
+    totalDonated,
   } = useFocusPet();
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
+  const { isVerified } = useIdentity();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [tempUsername, setTempUsername] = useState(username || "");
@@ -106,6 +110,11 @@ function AppPageContent() {
 
   const [mood, setMood] = useState<PetMood>("happy");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const showToast = (
     title: string,
@@ -286,11 +295,35 @@ function AppPageContent() {
     playSound("click");
   };
 
-  if (!isConnected) {
-    return null; // Redirecting...
+  // Rendering logic moved to bottom to comply with Rules of Hooks
+
+  // Account-Based: If they don't have a pet yet (birthTime == 0),
+  // we can show a welcome screen, but technically they can just start "Focusing" to get one.
+  // For better UX, let's keep the "Adopt" screen but make it a simple "Start Journey" button
+  // that maybe triggers a 0-minute session or just explains they can start focusing.
+  // OR, since the contract initializes on first action, we can just show the empty egg state.
+
+  // --- Conditional Rendering Blocks ---
+  if (!hasMounted) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-[#050505] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      </div>
+    );
   }
 
-  // Initial Loading State
+  if (!isConnected) {
+    if (isConnecting || isReconnecting) {
+      return (
+        <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-500">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
+          <p className="animate-pulse">Connecting to Celo...</p>
+        </div>
+      );
+    }
+    return null;
+  }
+
   if (isLoadingPet) {
     return (
       <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-500">
@@ -299,12 +332,6 @@ function AppPageContent() {
       </div>
     );
   }
-
-  // Account-Based: If they don't have a pet yet (birthTime == 0),
-  // we can show a welcome screen, but technically they can just start "Focusing" to get one.
-  // For better UX, let's keep the "Adopt" screen but make it a simple "Start Journey" button
-  // that maybe triggers a 0-minute session or just explains they can start focusing.
-  // OR, since the contract initializes on first action, we can just show the empty egg state.
 
   if (!hasPet) {
     return (
@@ -556,37 +583,45 @@ function AppPageContent() {
           </div>
         </div>
 
-        <PetView
-          stage={stage}
-          health={health}
-          xp={xp}
-          mood={mood}
-          nextStageInfo={nextStageInfo}
-          streak={streak}
-          weather={weather}
-          activeCosmetic={activeCosmetic}
-          focusNote={focusNote}
-        />
+        <div className="w-full relative z-10">
+          <PetView
+            stage={stage}
+            health={health}
+            xp={xp}
+            mood={mood}
+            nextStageInfo={nextStageInfo}
+            streak={streak}
+            weather={weather}
+            activeCosmetic={activeCosmetic}
+            focusNote={focusNote}
+            isVerified={isVerified}
+          />
+        </div>
 
-        <FocusTimer
-          onComplete={handleSessionComplete}
-          onStart={(note) => {
-            setMood("focused");
-            if (note) setFocusNote(note);
-            if (weather === "rainy" || weather === "stormy") {
-              showToast(
-                "Coming home? ✨",
-                "The clouds are beginning to clear...",
-                "success",
-              );
-            }
-          }}
-          onPause={() => setMood("sleeping")}
-          onNoteChange={setFocusNote}
-        />
+        <div className="w-full relative z-20">
+          <FocusTimer
+            onComplete={handleSessionComplete}
+            onStart={(note) => {
+              setMood("focused");
+              if (note) setFocusNote(note);
+              if (weather === "rainy" || weather === "stormy") {
+                showToast(
+                  "Coming home? ✨",
+                  "The clouds are beginning to clear...",
+                  "success",
+                );
+              }
+            }}
+            onPause={() => setMood("sleeping")}
+            onNoteChange={setFocusNote}
+          />
+        </div>
 
         {/* GoodDollar Daily Reward */}
         <ClaimReward />
+
+        {/* Social Impact Dashboard */}
+        <ImpactDashboard totalDonated={totalDonated} xp={xp} />
 
         {/* Pet Shop Section */}
         <PetShop

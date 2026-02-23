@@ -11,6 +11,7 @@ export type LeaderboardEntry = {
   xp: number;
   health: number;
   username?: string;
+  isVerified?: boolean;
 };
 
 export function useLeaderboard() {
@@ -86,12 +87,38 @@ export function useLeaderboard() {
           username: data.username,
         }))
         .sort((a, b) => b.xp - a.xp) // Descending
+        .slice(0, 10) // Only top 10 for performance
         .map((entry, index) => ({
           ...entry,
           rank: index + 1,
         }));
 
-      setLeaderboard(sortedLeaderboard);
+      // Bonus: Check verification for top 10
+      const { ClaimSDK } = await import("@goodsdks/citizen-sdk");
+
+      const verifiedResults = await Promise.all(
+        sortedLeaderboard.map(async (entry) => {
+          try {
+            // Simplified check: we use the modular SDK logic to check for 'whitelisted' status
+            const sdk = new ClaimSDK({
+              account: entry.address as `0x${string}`,
+              env: "production",
+              publicClient: publicClient as any,
+              walletClient: {} as any, // Dummy for read-only
+              identitySDK: {} as any, // Dummy for read-only
+            });
+            const claimStatus = await sdk.getWalletClaimStatus();
+            return {
+              ...entry,
+              isVerified: claimStatus.status !== "not_whitelisted",
+            };
+          } catch {
+            return { ...entry, isVerified: false };
+          }
+        }),
+      );
+
+      setLeaderboard(verifiedResults);
     } catch (error) {
       console.error("Failed to fetch leaderboard logs:", error);
     } finally {

@@ -2,6 +2,7 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { useAccount } from "wagmi";
 import { SocialShare } from "./SocialShare";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
+import { VerifiedBadge } from "./VerifiedBadge";
 
 export function Leaderboard() {
   const { address } = useAccount();
@@ -63,6 +64,7 @@ export function Leaderboard() {
                       ? `@${entry.username}`
                       : formatAddress(entry.address)}
                   </span>
+                  {entry.isVerified && <VerifiedBadge size={12} />}
                   {address &&
                     entry.address.toLowerCase() === address.toLowerCase() && (
                       <div className="flex items-center gap-1.5 shrink-0 ml-1">

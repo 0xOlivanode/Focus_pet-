@@ -4,6 +4,7 @@ export const FocusPetABI = [
     inputs: [
       { name: "_engagementRewards", type: "address", internalType: "address" },
       { name: "_goodDollar", type: "address", internalType: "address" },
+      { name: "_ubiPool", type: "address", internalType: "address" },
     ],
     stateMutability: "nonpayable",
   },
@@ -165,6 +166,7 @@ export const FocusPetABI = [
           { name: "boostEndTime", type: "uint256", internalType: "uint256" },
           { name: "shieldCount", type: "uint256", internalType: "uint256" },
           { name: "activeCosmetic", type: "string", internalType: "string" },
+          { name: "totalDonated", type: "uint256", internalType: "uint256" },
         ],
       },
     ],
@@ -200,6 +202,7 @@ export const FocusPetABI = [
       { name: "boostEndTime", type: "uint256", internalType: "uint256" },
       { name: "shieldCount", type: "uint256", internalType: "uint256" },
       { name: "activeCosmetic", type: "string", internalType: "string" },
+      { name: "totalDonated", type: "uint256", internalType: "uint256" },
     ],
     stateMutability: "view",
   },
@@ -323,6 +326,20 @@ export const FocusPetABI = [
       },
       {
         name: "newXp",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "DonationSent",
+    inputs: [
+      { name: "to", type: "address", indexed: true, internalType: "address" },
+      {
+        name: "amount",
         type: "uint256",
         indexed: false,
         internalType: "uint256",

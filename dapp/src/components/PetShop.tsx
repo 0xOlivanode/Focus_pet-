@@ -35,7 +35,7 @@ interface PetShopProps {
   isSuccess: boolean;
   writeError: any;
   receiptError: any;
-  onApprove: (amount: bigint) => void;
+  onApprove: (amount: bigint, itemId?: string, price?: number) => void;
   onBuyFood: () => void;
   onBuySuperFood: () => void;
   onBuyEnergyDrink: () => void;
@@ -261,7 +261,11 @@ export function PetShop({
               whileTap={!isPending && !item.disabled ? { scale: 0.96 } : {}}
               onClick={() => {
                 if (needsApproval) {
-                  onApprove(BigInt(item.price) * BigInt(Math.pow(10, 18)));
+                  onApprove(
+                    BigInt(item.price) * BigInt(Math.pow(10, 18)),
+                    item.id,
+                    item.price,
+                  );
                 } else {
                   item.action();
                   if (item.id.includes("apple")) playSound("buy");
@@ -359,7 +363,7 @@ export function PetShop({
               const price = BigInt(50 * 10 ** 18);
               const reviveNeedsApproval = allowance < price;
               if (reviveNeedsApproval) {
-                onApprove(price);
+                onApprove(price, "revive");
               } else {
                 onRevive();
                 playSound("buy");

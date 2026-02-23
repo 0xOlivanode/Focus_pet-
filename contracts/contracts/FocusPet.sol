@@ -18,6 +18,7 @@ contract FocusPet is Ownable {
         uint256 boostEndTime;   // 2x XP Boost expiration
         uint256 shieldCount;    // Streak protection shields
         string activeCosmetic; // Currently equipped cosmetic
+        uint256 totalDonated;  // Total G$ contributed to UBI pool
     }
 
     mapping(address => Pet) public pets;
@@ -29,6 +30,9 @@ contract FocusPet is Ownable {
     uint256 public constant MAX_HEALTH = 100;
     uint256 public constant DECAY_RATE_PER_DAY = 10;
     
+    address public ubiPool;
+    uint256 public constant FEE_PERCENTAGE = 10; // 10% redirected to UBI pool
+
     // G$ Prices
     uint256 public constant PRICE_FOOD = 10 ether;
     uint256 public constant PRICE_SUPER_FOOD = 30 ether;
@@ -42,10 +46,16 @@ contract FocusPet is Ownable {
     event NamesUpdated(address indexed owner, string username, string petName);
     event BoostActivated(address indexed owner, uint256 endTime);
     event ShieldAdded(address indexed owner, uint256 newCount);
+    event DonationSent(address indexed to, uint256 amount);
 
-    constructor(address _engagementRewards, address _goodDollar) Ownable(msg.sender) {
+    constructor(address _engagementRewards, address _goodDollar, address _ubiPool) Ownable(msg.sender) {
         engagementRewards = IEngagementRewards(_engagementRewards);
         goodDollar = IERC20(_goodDollar);
+        ubiPool = _ubiPool;
+    }
+
+    function setUbiPool(address _newPool) public onlyOwner {
+        ubiPool = _newPool;
     }
 
     modifier hasPet() {
@@ -65,9 +75,22 @@ contract FocusPet is Ownable {
             lastDailySession: block.timestamp,
             boostEndTime: 0,
             shieldCount: 0,
-            activeCosmetic: ""
+            activeCosmetic: "",
+            totalDonated: 0
         });
         emit PetBorn(owner);
+    }
+
+    // Helper for splitting payments
+    function _splitPayment(uint256 amount) internal {
+        uint256 ubiFee = (amount * FEE_PERCENTAGE) / 100;
+        uint256 treasuryAmount = amount - ubiFee;
+
+        require(goodDollar.transferFrom(msg.sender, address(this), treasuryAmount), "Treasury transfer failed");
+        require(goodDollar.transferFrom(msg.sender, ubiPool, ubiFee), "UBI Pool transfer failed");
+        
+        pets[msg.sender].totalDonated += ubiFee;
+        emit DonationSent(ubiPool, ubiFee);
     }
 
     // Buy Food: +20 Health, Costs 10 G$
@@ -76,7 +99,7 @@ contract FocusPet is Ownable {
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
 
-        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_FOOD), "Transfer failed");
+        _splitPayment(PRICE_FOOD);
 
         pet.health = min(MAX_HEALTH, pet.health + 20);
         emit PetFed(msg.sender, pet.health, pet.xp);
@@ -89,7 +112,7 @@ contract FocusPet is Ownable {
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
 
-        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_SUPER_FOOD), "Transfer failed");
+        _splitPayment(PRICE_SUPER_FOOD);
 
         pet.health = MAX_HEALTH;
         emit PetFed(msg.sender, pet.health, pet.xp);
@@ -101,7 +124,7 @@ contract FocusPet is Ownable {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         
-        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_ENERGY_DRINK), "Transfer failed");
+        _splitPayment(PRICE_ENERGY_DRINK);
 
         if (pet.boostEndTime < block.timestamp) {
             pet.boostEndTime = block.timestamp + 24 hours;
@@ -118,7 +141,7 @@ contract FocusPet is Ownable {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         
-        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_SHIELD), "Transfer failed");
+        _splitPayment(PRICE_SHIELD);
 
         pet.shieldCount += 1;
         emit ShieldAdded(msg.sender, pet.shieldCount);
@@ -132,7 +155,7 @@ contract FocusPet is Ownable {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
 
-        require(goodDollar.transferFrom(msg.sender, address(this), price * 1 ether), "Transfer failed");
+        _splitPayment(price * 1 ether);
 
         ownedCosmetics[msg.sender][cosmeticId] = true;
         pet.activeCosmetic = cosmeticId;
@@ -158,7 +181,7 @@ contract FocusPet is Ownable {
         Pet storage pet = pets[msg.sender];
         require(pet.health == 0, "Pet is alive");
 
-        require(goodDollar.transferFrom(msg.sender, address(this), PRICE_REVIVE), "Transfer failed");
+        _splitPayment(PRICE_REVIVE);
 
         pet.health = 50;
         pet.lastInteraction = block.timestamp;
