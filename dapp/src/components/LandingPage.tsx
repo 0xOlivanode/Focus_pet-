@@ -104,8 +104,8 @@ export function LandingPage() {
             className="text-lg md:text-xl text-neutral-600 dark:text-neutral-400 mb-10 max-w-2xl mx-auto leading-relaxed"
           >
             A gamified productivity companion that rewards your deep work
-            sessions with **XP & GoodDollar (G$)**. Stay focused, hatch your
-            pet, and climb the global leaderboard.
+            sessions with <strong>XP & GoodDollar (G$)</strong>. Stay focused,
+            hatch your pet, and climb the global leaderboard.
           </motion.p>
 
           <motion.div
