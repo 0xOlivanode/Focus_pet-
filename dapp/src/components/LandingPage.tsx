@@ -5,8 +5,10 @@ import { ArrowRight, Clock, Trophy, Heart } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "./ThemeToggle";
+import { useAccount } from "wagmi";
 
 export function LandingPage() {
+  const { isConnected } = useAccount();
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -30,7 +32,7 @@ export function LandingPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30 overflow-x-hidden">
       {/* Header */}
       <header className="fixed top-0 w-full z-50 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-900">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="px-[100px] mx-auto h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img
               src="/focus-pet-logo.jpeg"
@@ -39,14 +41,18 @@ export function LandingPage() {
             />
             <h1 className="font-bold text-xl tracking-tight">FocusPet</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="relative group">
+              {/* <div className="absolute -inset-1 bg-linear-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div> */}
+              <div className="relative bg-white dark:bg-black rounded-xl p-1">
+                <ConnectButton
+                  label="Start Your Journey"
+                  showBalance={false}
+                  accountStatus="address"
+                />
+              </div>
+            </div>
             <ThemeToggle />
-            <Link
-              href="/app"
-              className="text-sm font-medium hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors hidden sm:block"
-            >
-              Launch App
-            </Link>
           </div>
         </div>
       </header>
@@ -106,27 +112,18 @@ export function LandingPage() {
             variants={itemVariants}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-linear-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-              <div className="relative bg-white dark:bg-black rounded-xl p-1">
-                <ConnectButton
-                  label="Start Your Journey"
-                  showBalance={false}
-                  accountStatus="address"
+            {isConnected && (
+              <Link
+                href="/app"
+                className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-all active:scale-95"
+              >
+                Enter App
+                <ArrowRight
+                  size={18}
+                  className="group-hover:translate-x-1 transition-transform"
                 />
-              </div>
-            </div>
-
-            <Link
-              href="/app"
-              className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-all active:scale-95"
-            >
-              Enter App
-              <ArrowRight
-                size={18}
-                className="group-hover:translate-x-1 transition-transform"
-              />
-            </Link>
+              </Link>
+            )}
           </motion.div>
         </motion.div>
 
