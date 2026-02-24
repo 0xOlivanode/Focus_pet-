@@ -25,7 +25,7 @@ export const FocusPetABI = [
   },
   {
     type: "function",
-    name: "PRICE_FOOD",
+    name: "totalCommunityImpact",
     inputs: [],
     outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
     stateMutability: "view",
@@ -152,6 +152,7 @@ export const FocusPetABI = [
           { name: "shieldCount", type: "uint256", internalType: "uint256" },
           { name: "activeCosmetic", type: "string", internalType: "string" },
           { name: "totalDonated", type: "uint256", internalType: "uint256" },
+          { name: "totalFocusTime", type: "uint256", internalType: "uint256" },
         ],
       },
     ],
@@ -188,12 +189,13 @@ export const FocusPetABI = [
       { name: "shieldCount", type: "uint256", internalType: "uint256" },
       { name: "activeCosmetic", type: "string", internalType: "string" },
       { name: "totalDonated", type: "uint256", internalType: "uint256" },
+      { name: "totalFocusTime", type: "uint256", internalType: "uint256" },
     ],
     stateMutability: "view",
   },
   {
     type: "function",
-    name: "renounceOwnership",
+    name: "syncImpact",
     inputs: [],
     outputs: [],
     stateMutability: "nonpayable",
@@ -331,5 +333,32 @@ export const FocusPetABI = [
       },
     ],
     anonymous: false,
+  },
+] as const;
+
+export const ERC20ABI = [
+  {
+    type: "function",
+    name: "balanceOf",
+    inputs: [{ name: "account", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "transfer",
+    inputs: [
+      { name: "recipient", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "decimals",
+    inputs: [],
+    outputs: [{ name: "", type: "uint8", internalType: "uint8" }],
+    stateMutability: "view",
   },
 ] as const;

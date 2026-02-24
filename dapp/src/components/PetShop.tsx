@@ -139,13 +139,14 @@ export function PetShop({
       },
       {
         id: "shield",
-        name: "Shield Potion",
+        name: "Streak Shield",
         image: "/assets/shop/potion.png",
         emoji: "🛡️",
         price: 100,
-        desc: "Streak Shield",
+        desc: "One time protection",
         action: onBuyShield,
-        disabled: false,
+        disabled: shieldCount > 0,
+        disabledReason: shieldCount > 0 ? "Shield Active" : undefined,
       },
     ],
     cosmetics: [
@@ -258,11 +259,28 @@ export function PetShop({
           return (
             <motion.button
               key={item.id}
-              disabled={isPending || item.disabled}
-              whileHover={
-                !isPending && !item.disabled ? { scale: 1.02, y: -4 } : {}
+              disabled={
+                isPending ||
+                item.disabled ||
+                (gBalance !== undefined &&
+                  gBalance < BigInt(item.price) * BigInt(10 ** 18))
               }
-              whileTap={!isPending && !item.disabled ? { scale: 0.96 } : {}}
+              whileHover={
+                !isPending &&
+                !item.disabled &&
+                gBalance !== undefined &&
+                gBalance >= BigInt(item.price) * BigInt(10 ** 18)
+                  ? { scale: 1.02, y: -4 }
+                  : {}
+              }
+              whileTap={
+                !isPending &&
+                !item.disabled &&
+                gBalance !== undefined &&
+                gBalance >= BigInt(item.price) * BigInt(10 ** 18)
+                  ? { scale: 0.96 }
+                  : {}
+              }
               onClick={() => {
                 if (needsApproval) {
                   onApprove(
@@ -276,7 +294,10 @@ export function PetShop({
                 }
               }}
               className={`group relative flex flex-col items-center justify-center gap-3 p-5 md:p-7 rounded-4xl transition-all border-2 ${
-                isPending || item.disabled
+                isPending ||
+                item.disabled ||
+                (gBalance !== undefined &&
+                  gBalance < BigInt(item.price) * BigInt(10 ** 18))
                   ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-40 cursor-not-allowed grayscale"
                   : "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/10"
               }`}
@@ -286,6 +307,13 @@ export function PetShop({
                   {item.disabledReason}
                 </div>
               )}
+              {gBalance !== undefined &&
+                gBalance < BigInt(item.price) * BigInt(10 ** 18) &&
+                !item.disabled && (
+                  <div className="absolute top-2 right-2 bg-red-500/10 dark:bg-red-500/20 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase text-red-500 border border-red-500/20 pointer-events-none">
+                    Too Expensive
+                  </div>
+                )}
               <div className="text-4xl group-hover:scale-110 transition-transform duration-500 drop-shadow-sm">
                 <span>{item.emoji}</span>
               </div>

@@ -23,23 +23,25 @@ export function Leaderboard() {
     if (!flowRate || flowRate === 0n) return null;
     const monthlyAmount = Number(formatEther(calculateMonthlyAmount(flowRate)));
 
-    if (monthlyAmount > 75)
+    if (monthlyAmount >= 90)
       return {
         icon: "🔥",
-        label: "Max Overdrive",
+        label: "Overdrive (1.7x XP Boost)",
         class: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
       };
-    if (monthlyAmount > 25)
+    if (monthlyAmount >= 45)
       return {
         icon: "⚡️",
-        label: "Power Surge",
+        label: "Surge (1.4x XP Boost)",
         class: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
       };
-    return {
-      icon: "🌱",
-      label: "Gentle Flow",
-      class: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-    };
+    if (monthlyAmount >= 9)
+      return {
+        icon: "🌱",
+        label: "Seed (1.2x XP Boost)",
+        class: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+      };
+    return null;
   };
 
   return (
@@ -120,9 +122,9 @@ export function Leaderboard() {
                     )}
                 </div>
                 <span className="text-[9px] md:text-[10px] text-neutral-500 font-medium">
-                  {entry.xp >= 3600
-                    ? `${(entry.xp / 3600).toFixed(1)} hrs`
-                    : `${(entry.xp / 60).toFixed(1)} mins`}{" "}
+                  {entry.totalFocusTime && entry.totalFocusTime >= 3600
+                    ? `${(entry.totalFocusTime / 3600).toFixed(1)} hrs`
+                    : `${((entry.totalFocusTime || 0) / 60).toFixed(1)} mins`}{" "}
                   focus record
                 </span>
               </div>

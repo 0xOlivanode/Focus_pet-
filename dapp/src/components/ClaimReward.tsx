@@ -129,9 +129,9 @@ export function ClaimReward() {
   return (
     <div className="w-full mt-6 overflow-hidden bg-linear-to-br from-indigo-500/10 via-purple-500/5 to-transparent dark:from-indigo-500/20 dark:via-purple-500/10 dark:to-transparent rounded-3xl border border-indigo-100 dark:border-indigo-900/50 p-6 relative group">
       {/* Background Sparkles */}
-      <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+      {/* <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
         <Sparkles className="w-12 h-12 text-indigo-400 animate-pulse" />
-      </div>
+      </div> */}
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
         <div>

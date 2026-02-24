@@ -77,6 +77,7 @@ function AppPageContent() {
     isLoadingPet,
     setNames,
     xp,
+    totalTime,
     health,
     streak,
     streakBonus,
@@ -97,11 +98,20 @@ function AppPageContent() {
     toggleCosmetic,
     inventory,
     totalDonated,
+    handleSyncImpact,
+    isSyncImpactLoading,
   } = useFocusPet();
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
   const { isVerifying, setIsVerifying, isVerified } = useIdentity();
-  const { isStreaming, flowRate } = useStreaming();
+  const {
+    isStreaming,
+    flowRate,
+    lastUpdated,
+    globalUbiBalance,
+    startSupercharge,
+    stopSupercharge,
+  } = useStreaming();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [tempUsername, setTempUsername] = useState(username || "");
@@ -112,6 +122,7 @@ function AppPageContent() {
 
   const [mood, setMood] = useState<PetMood>("happy");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncedHash, setSyncedHash] = useState<string | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -209,8 +220,9 @@ function AppPageContent() {
 
   useEffect(() => {
     const syncData = async () => {
-      if (isConfirmed) {
+      if (isConfirmed && hash && hash !== syncedHash) {
         setIsSyncing(true);
+        setSyncedHash(hash);
         await refetch();
         await refetchLeaderboard();
         refetchAllowance();
@@ -240,6 +252,8 @@ function AppPageContent() {
             "Shop Success! 🛍️",
             "Your items have been delivered and your pet is happy.",
             "success",
+            true,
+            `I just bought a new item for my @FocusPet! 🛍️ My productivity is paying off. #FocusPet #Celo`,
           );
           playSound("pop");
         } else if (lastAction === "profile") {
@@ -256,6 +270,8 @@ function AppPageContent() {
     syncData();
   }, [
     isConfirmed,
+    hash,
+    syncedHash,
     lastAction,
     refetch,
     refetchAllowance,
@@ -292,7 +308,22 @@ function AppPageContent() {
 
   const handleSessionComplete = (minutes: number) => {
     setLastSessionDuration(minutes);
-    recordSession(minutes);
+
+    // Calculate Supercharge Multiplier for XP Toast
+    const monthlyAmount =
+      isStreaming && flowRate
+        ? Number(formatEther(flowRate * BigInt(30 * 24 * 60 * 60)))
+        : 0;
+    const superchargeMultiplier =
+      monthlyAmount >= 90
+        ? 1.7
+        : monthlyAmount >= 45
+          ? 1.4
+          : monthlyAmount >= 9
+            ? 1.2
+            : 1.0;
+
+    recordSession(minutes, superchargeMultiplier);
     setMood("happy");
     playSound("click");
   };
@@ -329,8 +360,10 @@ function AppPageContent() {
   if (isLoadingPet) {
     return (
       <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-500">
-        <div className="animate-spin text-4xl mb-4">🦅</div>
-        <p className="animate-pulse">Finding your pet...</p>
+        <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
+        <p className="animate-pulse font-bold text-sm uppercase tracking-widest text-neutral-400">
+          Syncing with Celo...
+        </p>
       </div>
     );
   }
@@ -550,7 +583,7 @@ function AppPageContent() {
         </div>
       </header>
 
-      <main className="flex flex-col items-center pt-8 px-4 max-w-3xl mx-auto pb-20 w-full">
+      <main className="flex flex-col items-center pt-8 px-4 max-w-[800px] mx-auto pb-20 w-full">
         <div className="text-center mb-10 w-full">
           <h2 className="text-3xl font-black tracking-tight mb-1 flex items-center justify-center gap-2">
             {petName || "Unnamed Pet"}
@@ -576,11 +609,11 @@ function AppPageContent() {
               <span className="w-1 h-1 bg-neutral-300 dark:bg-neutral-700 rounded-full mx-1" />
               <Clock size={14} className="text-indigo-500" />
               <span className="text-neutral-700 dark:text-neutral-300 font-black text-sm">
-                {xp >= 3600
-                  ? `${Math.floor(xp / 3600)}h ${Math.floor((xp % 3600) / 60)}m`
-                  : xp >= 60
-                    ? `${Math.floor(xp / 60)}m ${xp % 60}s`
-                    : `${xp}s`}
+                {totalTime >= 3600
+                  ? `${Math.floor(totalTime / 3600)}h ${Math.floor((totalTime % 3600) / 60)}m`
+                  : totalTime >= 60
+                    ? `${Math.floor(totalTime / 60)}m ${totalTime % 60}s`
+                    : `${totalTime}s`}
               </span>
               <span className="opacity-60 text-[10px] uppercase tracking-wider font-black">
                 Total
@@ -632,8 +665,12 @@ function AppPageContent() {
         <ImpactDashboard
           totalDonated={totalDonated}
           xp={xp}
-          // isStreaming={isStreaming}
+          isStreaming={isStreaming}
           flowRate={flowRate}
+          lastUpdated={lastUpdated}
+          globalUbiBalance={globalUbiBalance}
+          onSync={handleSyncImpact}
+          isSyncing={isSyncImpactLoading}
         />
 
         {/* Pet Shop Section */}

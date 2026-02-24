@@ -6,6 +6,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+interface ICFAv1Forwarder {
+    function getFlowInfo(address token, address sender, address receiver) external view returns (uint256 lastUpdated, int96 flowrate, uint256 deposit, uint256 owedDeposit);
+}
+
 contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     struct Pet {
         uint256 xp;
@@ -20,17 +24,18 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 shieldCount;    // Streak protection shields
         string activeCosmetic; // Currently equipped cosmetic
         uint256 totalDonated;  // Total G$ contributed to UBI pool
+        uint256 totalFocusTime; // Total raw seconds focused (no multipliers)
     }
 
     mapping(address => Pet) public pets;
     
     IERC20 public goodDollar;
+    address public ubiPool;
 
     // Constants
     uint256 public constant MAX_HEALTH = 100;
     uint256 public constant DECAY_RATE_PER_DAY = 10;
     
-    address public ubiPool;
     uint256 public constant FEE_PERCENTAGE = 10; // 10% redirected to UBI pool
 
     // G$ Prices
@@ -53,18 +58,23 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(address _goodDollar, address _ubiPool) public initializer {
+    function initialize(address _goodDollar, address _ubiPool, address _cfaForwarder) public initializer {
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         
         goodDollar = IERC20(_goodDollar);
         ubiPool = _ubiPool;
+        cfaForwarder = _cfaForwarder;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function setUbiPool(address _newPool) public onlyOwner {
         ubiPool = _newPool;
+    }
+
+    function setCfaForwarder(address _newForwarder) public onlyOwner {
+        cfaForwarder = _newForwarder;
     }
 
     modifier hasPet() {
@@ -85,21 +95,83 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             boostEndTime: 0,
             shieldCount: 0,
             activeCosmetic: "",
-            totalDonated: 0
+            totalDonated: 0,
+            totalFocusTime: 0
         });
         emit PetBorn(owner);
     }
 
-    // Helper for splitting payments
-    function _splitPayment(uint256 amount) internal {
-        uint256 ubiFee = (amount * FEE_PERCENTAGE) / 100;
-        uint256 treasuryAmount = amount - ubiFee;
+    // --- Decoupled Helpers (Resolves Stack Too Deep) ---
 
-        require(goodDollar.transferFrom(msg.sender, address(this), treasuryAmount), "Treasury transfer failed");
-        require(goodDollar.transferFrom(msg.sender, ubiPool, ubiFee), "UBI Pool transfer failed");
+    function _getFlowRate(address user) internal view returns (uint256) {
+        if (cfaForwarder == address(0)) return 0;
+        (, int96 flowRate, , ) = ICFAv1Forwarder(cfaForwarder).getFlowInfo(address(goodDollar), user, ubiPool);
+        return uint256(int256(flowRate));
+    }
+
+    function _handleStreamedImpact(Pet storage pet, uint256 flowRateAmount, uint256 timeDiff) internal {
+        pet.health = MAX_HEALTH; 
+        uint256 amountStreamed = flowRateAmount * timeDiff;
+        pet.totalDonated += amountStreamed;
+        totalCommunityImpact += amountStreamed;
+    }
+
+    function _handleHealthDecay(Pet storage pet, uint256 timeDiff) internal {
+        uint256 healthLoss = (timeDiff / 1 days) * DECAY_RATE_PER_DAY;
+        pet.health = (healthLoss > pet.health) ? 0 : pet.health - healthLoss;
+    }
+
+    function _settlePet(Pet storage pet, uint256 flowRateAmount) internal {
+        uint256 timeDiff = block.timestamp - pet.lastInteraction;
+        if (flowRateAmount > 0) {
+            _handleStreamedImpact(pet, flowRateAmount, timeDiff);
+        } else {
+            _handleHealthDecay(pet, timeDiff);
+        }
+        pet.lastInteraction = block.timestamp;
+    }
+
+    function _updateStreak(Pet storage pet) internal {
+        uint256 lastSessionDay = pet.lastDailySession / 1 days;
+        uint256 currentDay = block.timestamp / 1 days;
+        if (currentDay > lastSessionDay) {
+            if (currentDay == lastSessionDay + 1) {
+                pet.streak += 1;
+            } else if (pet.shieldCount > 0) {
+                pet.shieldCount -= 1;
+                emit ShieldAdded(msg.sender, pet.shieldCount);
+            } else {
+                pet.streak = 1;
+            }
+            pet.lastDailySession = block.timestamp;
+        }
+    }
+
+    function _getStreamMultiplier(uint256 flowRateAmount) internal pure returns (uint256) {
+        if (flowRateAmount >= 38000 * 1e9) return 170; // 100 G$/mo
+        if (flowRateAmount >= 19000 * 1e9) return 140; // 50 G$/mo
+        if (flowRateAmount >= 3800 * 1e9) return 120;  // 10 G$/mo
+        return 100;
+    }
+
+    function _awardRewards(Pet storage pet, uint256 duration, uint256 flowRateAmount) internal {
+        uint256 bonus = (pet.streak > 1) ? min(20, (pet.streak - 1) * 5) : 0;
+        uint256 baseXP = duration + (duration * bonus / 100);
+        uint256 finalXP = (baseXP * _getStreamMultiplier(flowRateAmount)) / 100;
         
-        pets[msg.sender].totalDonated += ubiFee;
-        emit DonationSent(ubiPool, ubiFee);
+        if (block.timestamp < pet.boostEndTime) {
+            pet.xp += (finalXP * 2);
+        } else {
+            pet.xp += finalXP;
+        }
+
+        pet.health = min(MAX_HEALTH, pet.health + 5);
+        pet.totalFocusTime += duration;
+    }
+
+    function _settleStream(address user) internal {
+        if (pets[user].birthTime == 0) return;
+        _settlePet(pets[user], _getFlowRate(user));
     }
 
     // Buy Food: +20 Health, Costs 10 G$
@@ -159,20 +231,23 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     mapping(address => mapping(string => bool)) public ownedCosmetics;
 
+    address public cfaForwarder;
+    uint256 public totalCommunityImpact; // Total G$ sent to UBI by the FocusPet community
+
     // Buy Cosmetic & Add to Inventory
     function buyCosmetic(string memory cosmeticId, uint256 price) public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
-        Pet storage pet = pets[msg.sender];
-
+        
         _splitPayment(price * 1 ether);
 
         ownedCosmetics[msg.sender][cosmeticId] = true;
-        pet.activeCosmetic = cosmeticId;
+        pets[msg.sender].activeCosmetic = cosmeticId;
         emit ItemPurchased(msg.sender, cosmeticId);
     }
 
     // Toggle Owned Cosmetic (Aesthetic Wardrobe)
     function toggleCosmetic(string memory cosmeticId) public hasPet {
+        _settleStream(msg.sender);
         require(ownedCosmetics[msg.sender][cosmeticId], "Item not owned");
         Pet storage pet = pets[msg.sender];
         
@@ -198,55 +273,33 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit ItemPurchased(msg.sender, "REVIVE");
     }
 
-    function focusSession(
-        uint256 sessionDurationSeconds
-    ) public {
-        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+    function focusSession(uint256 sessionDurationSeconds) public {
         Pet storage pet = pets[msg.sender];
+        if (pet.birthTime == 0) _initPet(msg.sender);
         
-        // Calculate Decay
-        uint256 timeDiff = block.timestamp - pet.lastInteraction;
-        uint256 healthLoss = (timeDiff / 1 days) * DECAY_RATE_PER_DAY;
-
-        if (healthLoss > pet.health) {
-             pet.health = 0;
-        } else {
-             pet.health -= healthLoss;
-        }
-
-        // Streak logic with SHIELD
-        uint256 lastSessionDay = pet.lastDailySession / 1 days;
-        uint256 currentDay = block.timestamp / 1 days;
-
-        if (currentDay > lastSessionDay) {
-            if (currentDay == lastSessionDay + 1) {
-                pet.streak += 1;
-            } else if (pet.shieldCount > 0) {
-                pet.shieldCount -= 1; // Shield used! Streak preserved.
-                emit ShieldAdded(msg.sender, pet.shieldCount);
-            } else {
-                pet.streak = 1;
-            }
-            pet.lastDailySession = block.timestamp;
-        }
-
-        // Reward logic with streak bonus & XP BOOST
-        uint256 bonus = (pet.streak > 1) ? min(20, (pet.streak - 1) * 5) : 0;
-        uint256 baseXP = sessionDurationSeconds + (sessionDurationSeconds * bonus / 100);
-        
-        if (block.timestamp < pet.boostEndTime) {
-            pet.xp += (baseXP * 2); // 2x XP Boost Active!
-        } else {
-            pet.xp += baseXP;
-        }
-
-        pet.health = min(MAX_HEALTH, pet.health + 5);
-        pet.lastInteraction = block.timestamp;
+        uint256 flowRate = _getFlowRate(msg.sender);
+        _settlePet(pet, flowRate);
+        _updateStreak(pet);
+        _awardRewards(pet, sessionDurationSeconds, flowRate);
 
         emit PetFed(msg.sender, pet.health, pet.xp);
     }
 
+    function _splitPayment(uint256 amount) internal {
+        _settleStream(msg.sender); // Settle stream before new transaction
+        uint256 ubiFee = (amount * FEE_PERCENTAGE) / 100;
+        uint256 treasuryAmount = amount - ubiFee;
+
+        require(goodDollar.transferFrom(msg.sender, address(this), treasuryAmount), "Treasury transfer failed");
+        require(goodDollar.transferFrom(msg.sender, ubiPool, ubiFee), "UBI Pool transfer failed");
+        
+        pets[msg.sender].totalDonated += ubiFee;
+        totalCommunityImpact += ubiFee;
+        emit DonationSent(ubiPool, ubiFee);
+    }
+
     function setNames(string memory _username, string memory _petName) public hasPet {
+        _settleStream(msg.sender);
         Pet storage pet = pets[msg.sender];
         pet.username = _username;
         pet.petName = _petName;

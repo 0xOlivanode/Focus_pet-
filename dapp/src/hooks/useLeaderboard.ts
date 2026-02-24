@@ -3,7 +3,11 @@ import { usePublicClient } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
 import { parseAbiItem } from "viem";
 
-import { CONTRACT_ADDRESS, DEPLOYMENT_BLOCK } from "@/config/contracts";
+import {
+  CONTRACT_ADDRESS,
+  DEPLOYMENT_BLOCK,
+  UBI_POOL_ADDRESS_CELO,
+} from "@/config/contracts";
 import {
   G_DOLLAR_CELO,
   SUPERFLUID_FORWARDER_CELO,
@@ -18,6 +22,7 @@ export type LeaderboardEntry = {
   username?: string;
   isVerified?: boolean;
   flowRate?: bigint;
+  totalFocusTime?: number;
 };
 
 export function useLeaderboard() {
@@ -137,7 +142,7 @@ export function useLeaderboard() {
               args: [
                 G_DOLLAR_CELO,
                 entry.address as `0x${string}`,
-                CONTRACT_ADDRESS as `0x${string}`,
+                UBI_POOL_ADDRESS_CELO as `0x${string}`,
               ],
             })) as [bigint, bigint, bigint, bigint];
 
@@ -153,6 +158,35 @@ export function useLeaderboard() {
       );
 
       setLeaderboard(leaderboardWithFlows);
+
+      // NEW: Fetch totalFocusTime for Top 10 to clear XP inflation
+      const finalLeaderboard = await Promise.all(
+        leaderboardWithFlows.map(async (entry) => {
+          try {
+            const petData = (await publicClient.readContract({
+              address: CONTRACT_ADDRESS,
+              abi: FocusPetABI,
+              functionName: "pets",
+              args: [entry.address as `0x${string}`],
+            })) as unknown as any[];
+
+            // index 12 is totalFocusTime in the Pet struct
+            return {
+              ...entry,
+              totalFocusTime: Number(petData[12]),
+            };
+          } catch (e) {
+            console.error(
+              "Error fetching totalFocusTime for",
+              entry.address,
+              e,
+            );
+            return entry;
+          }
+        }),
+      );
+
+      setLeaderboard(finalLeaderboard);
     } catch (error) {
       console.error("Failed to fetch leaderboard logs:", error);
     } finally {

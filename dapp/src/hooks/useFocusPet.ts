@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
+import { formatEther } from "viem";
 
 export function useFocusPet() {
   const { address } = useAccount();
@@ -123,6 +124,15 @@ export function useFocusPet() {
   });
 
   const approveG = (amount: bigint, itemId?: string, price?: number) => {
+    // Check balance first
+    const balance = gBalance ? (gBalance as bigint) : BigInt(0);
+    if (balance < amount) {
+      toast.error("Insufficient G$ Balance", {
+        description: `You need ${formatEther(amount)} G$ but only have ${formatEther(balance)} G$.`,
+      });
+      return;
+    }
+
     setLastAction("shop");
     if (itemId) {
       setPendingItem({ id: itemId, price });
@@ -177,6 +187,13 @@ export function useFocusPet() {
   };
 
   const buyCosmetic = (id: string, price: number) => {
+    const amount = BigInt(price) * BigInt(10 ** 18);
+    const balance = gBalance ? (gBalance as bigint) : BigInt(0);
+    if (balance < amount) {
+      toast.error("Insufficient G$ Balance");
+      return;
+    }
+
     setLastAction("shop");
     writeContract({
       address: CONTRACT_ADDRESS,
@@ -221,7 +238,10 @@ export function useFocusPet() {
     });
   };
 
-  const recordSession = async (minutes: number) => {
+  const recordSession = async (
+    minutes: number,
+    superchargeMultiplier: number = 1,
+  ) => {
     setLastAction("focus");
     try {
       setIsSigning(true);
@@ -239,14 +259,20 @@ export function useFocusPet() {
         {
           onSuccess: () => {
             const seconds = Math.round(minutes * 60);
-            // Optimistic UI Update: Update local state immediately before chain syncs
-            // Now XP is per second
-            const bonusValue = Math.floor((seconds * streakBonus) / 100);
-            setXp((prev) => prev + (seconds || 0) + bonusValue);
+            // Dynamic Multiplier Calculation
+            const isBoostActive = boostEndTime > Math.floor(Date.now() / 1000);
+            const totalMultiplier =
+              superchargeMultiplier * (isBoostActive ? 2 : 1);
+
+            const baseXP = seconds + Math.floor((seconds * streakBonus) / 100);
+            const finalXP = Math.floor(baseXP * totalMultiplier);
+
+            setXp((prev) => prev + finalXP);
+            setTotalTime((prev) => prev + seconds);
             setHealth((prev) => Math.min(100, prev + 5));
 
             toast.success("Session Recorded! 🏆", {
-              description: `Your pet gained ${seconds} XP (measured in seconds).`,
+              description: `Your pet gained ${finalXP.toLocaleString()} XP! (Multipliers applied: ${totalMultiplier.toFixed(1)}x) ⚡️`,
             });
           },
           onSettled: () => setIsSigning(false), // Stop signing state when wallet opens/fails
@@ -298,6 +324,7 @@ export function useFocusPet() {
   const shieldCount = pet && pet[9] ? Number(pet[9]) : 0;
   const activeCosmetic = pet && pet[10] ? (pet[10] as string) : "";
   const totalDonated = pet && pet[11] ? BigInt(pet[11]) : BigInt(0);
+  const rawTotalTime = pet && pet[12] ? Number(pet[12]) : 0;
 
   // Ownership Tracking
   const { data: isSunglassesOwned } = useReadContract({
@@ -319,6 +346,7 @@ export function useFocusPet() {
   // --- Virtual Health Decay (Real-time calculation) ---
   const [health, setHealth] = useState(rawHealth);
   const [xp, setXp] = useState(rawXp);
+  const [totalTime, setTotalTime] = useState(rawTotalTime);
 
   // --- Streak Bonus Calculation ---
   const [virtualStreak, setVirtualStreak] = useState(streak);
@@ -389,9 +417,33 @@ export function useFocusPet() {
     return () => clearInterval(interval);
   }, [lastDailySession, streak]);
 
+  // --- Initialization Diagnostics ---
+  const { data: goodDollarOnChain } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: FocusPetABI,
+    functionName: "goodDollar",
+  });
+
+  useEffect(() => {
+    if (
+      goodDollarOnChain &&
+      (goodDollarOnChain as string) ===
+        "0x0000000000000000000000000000000000000000"
+    ) {
+      console.error(
+        "🚨 FocusPet Contract is UNINITIALIZED! Please call initialize() on Remix.",
+      );
+      toast.error("Contract Error", {
+        description:
+          "FocusPet contract is not initialized. Please contact admin.",
+      });
+    }
+  }, [goodDollarOnChain]);
+
   useEffect(() => {
     setHealth(rawHealth);
     setXp(rawXp);
+    setTotalTime(rawTotalTime);
 
     if (hasPet && lastInteraction > 0 && rawHealth > 0) {
       const calculateVirtualHealth = () => {
@@ -412,6 +464,28 @@ export function useFocusPet() {
       return () => clearInterval(interval);
     }
   }, [rawHealth, rawXp, lastInteraction, hasPet]);
+
+  // Write: Sync Impact
+  const { writeContract: writeSyncImpact, isPending: isSyncImpactLoading } =
+    useWriteContract();
+
+  const handleSyncImpact = async () => {
+    try {
+      writeSyncImpact({
+        address: CONTRACT_ADDRESS,
+        abi: FocusPetABI,
+        functionName: "syncImpact",
+      });
+      toast.success("Social Impact Synced!", {
+        description: "Your streamed G$ has been committed to the chain. 🌍✨",
+      });
+    } catch (error) {
+      console.error("Sync impact failed:", error);
+      toast.error("Sync failed", {
+        description: "Please try again later.",
+      });
+    }
+  };
 
   return {
     petData,
@@ -441,6 +515,7 @@ export function useFocusPet() {
     isProcessing: isSigning || isPending || isConfirming,
     isLoadingPet,
     xp,
+    totalTime,
     health,
     username,
     petName,
@@ -459,6 +534,9 @@ export function useFocusPet() {
       sunglasses: !!isSunglassesOwned,
       crown: !!isCrownOwned,
     },
+    writeSyncImpact,
+    handleSyncImpact,
+    isSyncImpactLoading,
     totalDonated,
   };
 }

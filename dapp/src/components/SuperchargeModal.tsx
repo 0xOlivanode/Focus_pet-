@@ -19,7 +19,7 @@ export const STREAM_TIERS: StreamTier[] = [
   {
     label: "Gentle Flow",
     description:
-      "Social: 7 G$/mo (UBI) • Soul: 3 G$/mo (Aura). A soft emerald glow.",
+      "1.2x XP Boost & Emerald Aura. No health decay. Funds the UBI pool.",
     amountPerMonth: 10,
     icon: <Leaf className="w-5 h-5" />,
     color: "text-emerald-500",
@@ -28,7 +28,8 @@ export const STREAM_TIERS: StreamTier[] = [
   },
   {
     label: "Power Surge",
-    description: "Social: 35 G$/mo • Soul: 15 G$/mo. A deep cyan energy aura.",
+    description:
+      "1.4x XP Boost & Cyan Energy Aura. No health decay. Higher UBI impact.",
     amountPerMonth: 50,
     icon: <Zap className="w-5 h-5" />,
     color: "text-cyan-500",
@@ -38,7 +39,7 @@ export const STREAM_TIERS: StreamTier[] = [
   {
     label: "Max Overdrive",
     description:
-      "Social: 70 G$/mo • Soul: 30 G$/mo. Multi-layered indigo explosion.",
+      "1.7x XP Boost & Indigo Explosion. No health decay. Maximum UBI impact.",
     amountPerMonth: 100,
     icon: <Flame className="w-5 h-5" />,
     color: "text-indigo-500",
@@ -80,7 +81,7 @@ export function SuperchargeModal({
   const modal = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-99999 flex items-end sm:items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -116,7 +117,7 @@ export function SuperchargeModal({
                   Supercharge Your Pet
                 </h2>
                 <p className="text-neutral-400 text-xs">
-                  Stream G$ second-by-second to your Trust Fund
+                  Boost your progress & protect your pet’s health.
                 </p>
               </div>
             </div>
@@ -131,8 +132,8 @@ export function SuperchargeModal({
                   </p>
                 </div>
                 <p className="text-neutral-400 text-xs text-center">
-                  G$ is flowing from your wallet to your Trust Fund every
-                  second.
+                  G$ is flowing from your wallet to the UBI Pool. Your pet is
+                  currently at maximum health and boosted! ⚡️
                 </p>
                 <button
                   onClick={handleStop}
@@ -170,9 +171,9 @@ export function SuperchargeModal({
                   </motion.button>
                 ))}
                 <p className="text-neutral-400 text-[10px] text-center mt-1 leading-relaxed">
-                  Streams to your pet's Trust Fund via Superfluid on Celo.
+                  Streams flow to the official GoodDollar UBI Pool on Celo.
                   <br />
-                  You can stop at any time.
+                  Boosts stack with Energy Drinks! Stop at any time.
                 </p>
               </div>
             )}

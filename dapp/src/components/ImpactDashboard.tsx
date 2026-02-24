@@ -10,6 +10,7 @@ import {
   Info,
   Waves,
   Sparkles,
+  RotateCcw,
 } from "lucide-react";
 import { formatEther } from "viem";
 
@@ -18,6 +19,10 @@ interface ImpactDashboardProps {
   xp: number;
   isStreaming?: boolean;
   flowRate?: bigint;
+  lastUpdated?: bigint;
+  globalUbiBalance?: bigint;
+  onSync?: () => void;
+  isSyncing?: boolean;
 }
 
 export function ImpactDashboard({
@@ -25,33 +30,56 @@ export function ImpactDashboard({
   xp,
   isStreaming,
   flowRate,
+  lastUpdated,
+  globalUbiBalance,
+  onSync,
+  isSyncing,
 }: ImpactDashboardProps) {
   const [streamedDonation, setStreamedDonation] = React.useState(0);
-  const [streamedEssence, setStreamedEssence] = React.useState(0);
 
-  // Real-time ticking effect
+  // Initialize and Tick streamedDonation
   React.useEffect(() => {
-    if (!isStreaming || !flowRate) {
+    if (!isStreaming || !flowRate || !lastUpdated) {
       setStreamedDonation(0);
-      setStreamedEssence(0);
       return;
     }
 
-    const interval = setInterval(() => {
-      // 70/30 Social-to-Soul split
-      const totalPerSec = parseFloat(formatEther(flowRate));
-      const socialPerSec = totalPerSec * 0.7;
-      const essencePerSec = totalPerSec * 0.3;
+    // Calculate initial value based on time passed since lastUpdated
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const secondsPassed = now > lastUpdated ? now - lastUpdated : BigInt(0);
+    const flowPerSec = parseFloat(formatEther(flowRate));
 
-      setStreamedDonation((prev) => prev + socialPerSec);
-      setStreamedEssence((prev) => prev + essencePerSec);
+    setStreamedDonation(flowPerSec * Number(secondsPassed));
+
+    const interval = setInterval(() => {
+      setStreamedDonation((prev) => prev + flowPerSec);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isStreaming, flowRate]);
+  }, [isStreaming, flowRate, lastUpdated]);
 
   const donatedAmount = parseFloat(formatEther(totalDonated)).toFixed(2);
+  const globalAmount = globalUbiBalance
+    ? parseFloat(formatEther(globalUbiBalance)).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    : "0.00";
   const hoursContributed = (xp / 3600).toFixed(1);
+
+  // Calculate XP Boost multiplier for display
+  const monthlyAmount =
+    isStreaming && flowRate
+      ? Number(formatEther(flowRate * BigInt(30 * 24 * 60 * 60)))
+      : 0;
+  const xpMultiplier =
+    monthlyAmount >= 90
+      ? "1.7x"
+      : monthlyAmount >= 45
+        ? "1.4x"
+        : monthlyAmount >= 9
+          ? "1.2x"
+          : "1.0x";
 
   // Rank logic based on donation
   const getRank = (amount: number) => {
@@ -83,8 +111,8 @@ export function ImpactDashboard({
               </h3>
             </div>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium max-w-sm leading-relaxed">
-              Every item you buy redirects 10% of the cost to the global UBI
-              pool. Your productivity is helping others live better.
+              Every focus session and item purchase powers the global GoodDollar
+              UBI pool. Your productivity is helping others live better.
             </p>
           </div>
 
@@ -98,14 +126,37 @@ export function ImpactDashboard({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {/* Stat 1: Total Contributed */}
           <div className="p-6 rounded-3xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 hover:scale-[1.02] transition-transform relative overflow-hidden group">
-            <div className="flex items-center gap-2 mb-4 text-emerald-500">
-              <Heart size={16} fill="currentColor" />
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                G$ Contributed
-              </span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-emerald-500">
+                <Heart size={16} fill="currentColor" />
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                  Historic Contribution
+                </span>
+              </div>
+
+              {isStreaming && onSync && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSync();
+                  }}
+                  disabled={isSyncing}
+                  className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                  title="Sync live contribution to blockchain"
+                >
+                  <RotateCcw
+                    size={12}
+                    className={
+                      isSyncing
+                        ? "animate-spin"
+                        : "hover:rotate-180 transition-transform duration-500"
+                    }
+                  />
+                </button>
+              )}
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-black text-neutral-900 dark:text-white tracking-tighter">
@@ -118,7 +169,7 @@ export function ImpactDashboard({
               <div className="mt-2 flex items-center gap-1.5 text-emerald-500/80">
                 <Waves size={10} className="animate-pulse" />
                 <span className="text-[10px] font-bold">
-                  +{streamedDonation.toFixed(4)} live
+                  +{streamedDonation.toFixed(4)} G$ Live
                 </span>
               </div>
             )}
@@ -131,11 +182,11 @@ export function ImpactDashboard({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="p-6 rounded-3xl bg-cyan-500/5 dark:bg-cyan-500/10 border border-cyan-500/20 shadow-lg shadow-cyan-500/5 hover:scale-[1.02] transition-transform"
+                className="p-4 rounded-3xl bg-cyan-500/5 dark:bg-cyan-500/10 border border-cyan-500/20 shadow-lg shadow-cyan-500/5 hover:scale-[1.02] transition-transform"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2 text-cyan-500">
-                    <Sparkles size={16} />
+                    🔴
                     <span className="text-[10px] font-black uppercase tracking-widest">
                       Live Stream
                     </span>
@@ -146,59 +197,62 @@ export function ImpactDashboard({
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase">
-                      Social (70%)
+                  <div className="flex gap-x-2 items-center">
+                    <span className="text-[10px] w-fit font-bold text-neutral-400 uppercase">
+                      Current Stream
                     </span>
-                    <span className="text-sm font-black text-emerald-500">
-                      +{streamedDonation.toFixed(4)} G$
+                    <span className="text-xs font-semibold text-emerald-500">
+                      To UBI Pool
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex gap-x-2 items-center">
                     <span className="text-[10px] font-bold text-neutral-400 uppercase">
-                      Soul (30%)
+                      Live Boost
                     </span>
-                    <span className="text-sm font-black text-indigo-500">
-                      +{streamedEssence.toFixed(4)} G$
+                    <span className="text-xs font-semibold text-indigo-500">
+                      XP Multiplier
                     </span>
                   </div>
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-cyan-500/10">
                   <p className="text-[9px] text-neutral-500 font-medium leading-tight">
-                    Streaming rewards are split between UBI and Pet Essence for
-                    multipliers.
+                    While active, your pet is at full health and earns XP
+                    faster. 🌍✨
                   </p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Stat 3: Focus Hours Impact */}
-          <div className="p-6 rounded-3xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 hover:scale-[1.02] transition-transform">
-            <div className="flex items-center gap-2 mb-4 text-indigo-500">
-              <TrendingUp size={16} />
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                Efficiency
+          {/* Stat 3: FocusPet Community Total */}
+          <div className="p-6 rounded-3xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 hover:scale-[1.02] transition-transform relative overflow-hidden group">
+            <div className="flex items-center gap-2 mb-4 text-emerald-500">
+              <Globe size={16} className="animate-spin-slow" />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                FocusPet Community Total
               </span>
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-black text-neutral-900 dark:text-white tracking-tighter">
-                {hoursContributed}
+                {globalAmount}
               </span>
-              <span className="text-xs font-bold text-indigo-500">Hrs</span>
+              <span className="text-xs font-bold text-emerald-500">G$</span>
             </div>
+            <p className="mt-2 text-[9px] text-neutral-500 font-medium leading-tight">
+              Collective impact generated exclusively by FocusPet users.
+            </p>
           </div>
         </div>
 
         {/* Impact Message */}
-        <div className="flex items-center gap-3 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+        {/* <div className="flex items-center gap-3 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold italic">
             "Your FocusPet is currently powering UBI for the GoodDollar
             community." 🌍✨
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

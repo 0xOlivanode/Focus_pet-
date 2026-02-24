@@ -7,19 +7,20 @@ import {
   usePublicClient,
 } from "wagmi";
 import {
+  CFAv1ForwarderAbi,
   G_DOLLAR_CELO,
   SUPERFLUID_FORWARDER_CELO,
-  CFAv1ForwarderAbi,
   calculateFlowRate,
 } from "@/lib/superfluid";
+import { ERC20ABI, FocusPetABI } from "@/config/abi";
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 
 import { getAddress } from "viem";
 
-import { CONTRACT_ADDRESS } from "@/config/contracts";
+import { CONTRACT_ADDRESS, UBI_POOL_ADDRESS_CELO } from "@/config/contracts";
 
-const TRUST_FUND_ADDRESS = CONTRACT_ADDRESS;
+const TRUST_FUND_ADDRESS = UBI_POOL_ADDRESS_CELO;
 
 export function useStreaming() {
   const { address } = useAccount();
@@ -38,10 +39,24 @@ export function useStreaming() {
     },
   });
 
+  // Fetch Total Community Impact from FocusPet Contract
+  const { data: communityImpact } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: FocusPetABI,
+    functionName: "totalCommunityImpact",
+    query: {
+      refetchInterval: 30000,
+    },
+  });
+
   const flowRate = useMemo(() => {
     if (!flowData) return BigInt(0);
-    // flowData returns [lastUpdated, flowrate, deposit, owedDeposit]
     return flowData[1];
+  }, [flowData]);
+
+  const lastUpdated = useMemo(() => {
+    if (!flowData) return BigInt(0);
+    return flowData[0];
   }, [flowData]);
 
   const isStreaming = flowRate > BigInt(0);
@@ -113,6 +128,8 @@ export function useStreaming() {
   return {
     isStreaming,
     flowRate,
+    lastUpdated,
+    globalUbiBalance: communityImpact as bigint | undefined,
     startSupercharge,
     stopSupercharge,
     refetchFlow,

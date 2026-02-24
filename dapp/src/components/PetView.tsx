@@ -240,7 +240,7 @@ export function PetView({
                     stage === "egg"
                       ? "translate-y-[-60px] scale-[0.8]"
                       : stage === "baby"
-                        ? "translate-y-[-70px] scale-[0.9]"
+                        ? "translate-y-[-90px] scale-[0.9]"
                         : stage === "teen"
                           ? "translate-y-[-85px] scale-100"
                           : stage === "adult"
@@ -717,8 +717,8 @@ export function PetView({
             {stage !== "egg" && stage !== "baby" && (
               <Sparkles size={12} className="text-amber-400 animate-pulse" />
             )}
-            Lvl {Math.floor(xp / 100) + 1} <span className="opacity-30">•</span>{" "}
-            {getStageName(stage)}
+            Lvl {Math.floor(xp / 3600) + 1}{" "}
+            <span className="opacity-30">•</span> {getStageName(stage)}
           </div>
 
           {/* XP / Evolution Bar */}

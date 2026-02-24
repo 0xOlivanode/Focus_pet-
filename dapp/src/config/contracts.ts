@@ -7,3 +7,6 @@ export const GOOD_DOLLAR_ADDRESSES = {
 } as const;
 
 export const DEPLOYMENT_BLOCK = BigInt("59965000"); // Latest production deployment block (New Contract)
+
+export const UBI_POOL_ADDRESS_CELO =
+  "0x43d72Ff17701B2DA814620735C39C620Ce0ea4A1" as const;
