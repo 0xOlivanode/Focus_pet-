@@ -7,15 +7,17 @@ export type WeatherType = "sunny" | "clear" | "cloudy" | "rainy" | "stormy";
 
 interface WeatherLayerProps {
   weather: WeatherType;
+  isNight?: boolean;
 }
 
-export function WeatherLayer({ weather }: WeatherLayerProps) {
+export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
   // Generate random positions for rain/clouds once to avoid re-renders
   const rainDrops = useMemo(
     () => Array.from({ length: 40 }).map((_, i) => i),
     [],
   );
   const clouds = useMemo(() => Array.from({ length: 8 }).map((_, i) => i), []);
+  const stars = useMemo(() => Array.from({ length: 30 }).map((_, i) => i), []);
   const [strikePulse, setStrikePulse] = React.useState(0);
 
   // Re-randomize lightning paths on every pulse
@@ -39,11 +41,13 @@ export function WeatherLayer({ weather }: WeatherLayerProps) {
           exit={{ opacity: 0 }}
           transition={{ duration: 2 }}
           className={`absolute inset-0 transition-colors duration-2000 ${
-            weather === "sunny"
-              ? "bg-linear-to-b from-amber-400/15 via-transparent to-transparent dark:from-amber-600/10"
-              : weather === "rainy" || weather === "stormy"
-                ? "bg-linear-to-b from-indigo-500/10 via-transparent to-transparent dark:from-slate-900/40"
-                : "bg-transparent"
+            isNight
+              ? "bg-linear-to-b from-slate-950/90 via-indigo-950/40 to-black/90"
+              : weather === "sunny"
+                ? "bg-linear-to-b from-amber-400/15 via-transparent to-transparent dark:from-amber-600/10"
+                : weather === "rainy" || weather === "stormy"
+                  ? "bg-linear-to-b from-indigo-500/10 via-transparent to-transparent dark:from-slate-900/40"
+                  : "bg-transparent"
           }`}
         />
 
@@ -133,6 +137,40 @@ export function WeatherLayer({ weather }: WeatherLayerProps) {
                 />
               </div>
             )}
+          </motion.div>
+        )}
+
+        {/* NIGHT MODE STARS */}
+        {isNight && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0"
+          >
+            {stars.map((i) => (
+              <motion.div
+                key={`star-${i}`}
+                initial={{
+                  x: `${Math.random() * 100}%`,
+                  y: `${Math.random() * 60}%`,
+                  opacity: Math.random() * 0.5 + 0.3,
+                  scale: Math.random() * 0.5 + 0.5,
+                }}
+                animate={{
+                  opacity: [0.3, 1, 0.3],
+                  scale: [1, 1.2, 1],
+                }}
+                transition={{
+                  duration: 3 + Math.random() * 5,
+                  repeat: Infinity,
+                  delay: Math.random() * 10,
+                }}
+                className="absolute w-1 h-1 bg-white rounded-full blur-[0.5px] shadow-[0_0_8px_white]"
+              />
+            ))}
+            {/* Moon Glow */}
+            <div className="absolute top-10 right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-[80px]" />
           </motion.div>
         )}
 

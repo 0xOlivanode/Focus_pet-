@@ -5,10 +5,10 @@ export type PetMood = "happy" | "sad" | "sleeping" | "focused";
 
 export const STAGE_THRESHOLD = {
   EGG: 0,
-  BABY: 0, // Hatch instantly (interactive reveal)
-  TEEN: 500 * 60, // 500 minutes -> 30,000 seconds
-  ADULT: 2000 * 60, // 2000 minutes -> 120,000 seconds
-  ELDER: 5000 * 60, // 5000 minutes -> 300,000 seconds
+  BABY: 3600, // 1 hour of focus to hatch
+  TEEN: 111600, // 30 hours of babyhood (108,000s) + 1 hour egg = 31 hours total
+  ADULT: 360000, // 100 hours total
+  ELDER: 900000, // 250 hours total
 } as const;
 
 export const getPetStage = (xp: number): PetStage => {

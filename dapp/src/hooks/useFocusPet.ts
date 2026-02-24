@@ -261,8 +261,11 @@ export function useFocusPet() {
             const seconds = Math.round(minutes * 60);
             // Dynamic Multiplier Calculation
             const isBoostActive = boostEndTime > Math.floor(Date.now() / 1000);
+            const isNight =
+              new Date().getHours() >= 20 || new Date().getHours() < 6;
+            const nightMultiplier = isNight ? 1.1 : 1.0;
             const totalMultiplier =
-              superchargeMultiplier * (isBoostActive ? 2 : 1);
+              superchargeMultiplier * (isBoostActive ? 2 : 1) * nightMultiplier;
 
             const baseXP = seconds + Math.floor((seconds * streakBonus) / 100);
             const finalXP = Math.floor(baseXP * totalMultiplier);
@@ -272,7 +275,7 @@ export function useFocusPet() {
             setHealth((prev) => Math.min(100, prev + 5));
 
             toast.success("Session Recorded! 🏆", {
-              description: `Your pet gained ${finalXP.toLocaleString()} XP! (Multipliers applied: ${totalMultiplier.toFixed(1)}x) ⚡️`,
+              description: `Your pet gained ${finalXP.toLocaleString()} XP! ${isNight ? "🦉 Night Owl Bonus applied! " : ""}(Multipliers applied: ${totalMultiplier.toFixed(1)}x) ⚡️`,
             });
           },
           onSettled: () => setIsSigning(false), // Stop signing state when wallet opens/fails
@@ -343,6 +346,22 @@ export function useFocusPet() {
     query: { enabled: !!address },
   });
 
+  const { data: isSunglassesEquipped } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: FocusPetABI,
+    functionName: "isCosmeticEquipped",
+    args: address ? [address, "sunglasses"] : undefined,
+    query: { enabled: !!address },
+  });
+
+  const { data: isCrownEquipped } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: FocusPetABI,
+    functionName: "isCosmeticEquipped",
+    args: address ? [address, "crown"] : undefined,
+    query: { enabled: !!address },
+  });
+
   // --- Virtual Health Decay (Real-time calculation) ---
   const [health, setHealth] = useState(rawHealth);
   const [xp, setXp] = useState(rawXp);
@@ -387,6 +406,7 @@ export function useFocusPet() {
   const [weather, setWeather] = useState<
     "sunny" | "clear" | "cloudy" | "rainy" | "stormy"
   >("clear");
+  const [isNight, setIsNight] = useState<boolean>(false);
 
   useEffect(() => {
     const calculateWeather = () => {
@@ -413,7 +433,16 @@ export function useFocusPet() {
     };
 
     calculateWeather();
-    const interval = setInterval(calculateWeather, 60000); // Check every minute
+    const checkTime = () => {
+      const hours = new Date().getHours();
+      setIsNight(hours >= 20 || hours < 6);
+    };
+    checkTime();
+
+    const interval = setInterval(() => {
+      calculateWeather();
+      checkTime();
+    }, 60000); // Check every minute
     return () => clearInterval(interval);
   }, [lastDailySession, streak]);
 
@@ -528,7 +557,11 @@ export function useFocusPet() {
     // Boosts & Cosmetics
     boostEndTime,
     shieldCount,
-    activeCosmetic,
+    activeCosmetic, // Keep for compatibility if needed
+    equippedCosmetics: {
+      sunglasses: !!isSunglassesEquipped,
+      crown: !!isCrownEquipped,
+    },
     toggleCosmetic,
     inventory: {
       sunglasses: !!isSunglassesOwned,
@@ -538,5 +571,6 @@ export function useFocusPet() {
     handleSyncImpact,
     isSyncImpactLoading,
     totalDonated,
+    isNight,
   };
 }

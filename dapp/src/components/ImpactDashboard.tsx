@@ -246,13 +246,21 @@ export function ImpactDashboard({
         </div>
 
         {/* Impact Message */}
-        {/* <div className="flex items-center gap-3 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold italic">
-            "Your FocusPet is currently powering UBI for the GoodDollar
-            community." 🌍✨
+        <div className="flex flex-col gap-3 p-6 bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 rounded-3xl">
+          <div className="flex items-center gap-2">
+            <Info size={16} className="text-emerald-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+              What is this?
+            </span>
+          </div>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed font-medium">
+            FocusPet is built on **GoodDollar**, a protocol that provides
+            Universal Basic Income (UBI) to thousands of people globally. When
+            you focus or buy items, a portion of the value is streamed directly
+            to this UBI pool, making your productivity a force for global good.
+            🌍✨
           </p>
-        </div> */}
+        </div>
       </div>
     </div>
   );

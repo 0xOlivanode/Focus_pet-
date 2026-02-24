@@ -2,7 +2,18 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowRight, Zap, Target, Sparkles, Trophy } from "lucide-react";
+import {
+  X,
+  ArrowRight,
+  Zap,
+  Target,
+  Sparkles,
+  Trophy,
+  Globe,
+  ShieldCheck,
+  Heart,
+  ShoppingBag,
+} from "lucide-react";
 
 interface OnboardingModalProps {
   onClose: () => void;
@@ -16,25 +27,46 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
       id: 1,
       title: "Focus to Start",
       description:
-        "Set your timer and start a focus session. Your pet stays an egg until you complete your first session!",
+        "Set your timer and engage in deep work. Your pet stays an egg until you complete your first session! 🧗",
       icon: <Target className="w-8 h-8 text-indigo-500" />,
       image: "🥚",
+      impact: "Hatch your pet & earn base XP",
     },
     {
       id: 2,
-      title: "Earn XP & G$",
+      title: "Supercharge",
       description:
-        "Every minute of focus rewards your pet with XP and earns you GoodDollar (G$) tokens automatically.",
+        "Stream G$ to the UBI pool to reach 'God Mode'. You'll get 100% Health stability and up to 2.0x XP multipliers! 🚀",
       icon: <Zap className="w-8 h-8 text-amber-500" />,
-      image: "💎",
+      image: "⚡️",
+      impact: "Boost XP & auto-heal pet",
     },
     {
       id: 3,
-      title: "Grow Your Pet",
+      title: "The Shop",
       description:
-        "Use your G$ to buy treats. Happy, well-fed pets level up faster and climb the global leaderboard!",
-      icon: <Sparkles className="w-8 h-8 text-purple-500" />,
-      image: "🦖",
+        "Spend earned G$ on Food to heal, Shields to prevent decay, and Cosmetics to give your pet a unique style. 🕶️",
+      icon: <ShoppingBag className="w-8 h-8 text-pink-500" />,
+      image: "🛍️",
+      impact: "Level up faster & look cool",
+    },
+    {
+      id: 4,
+      title: "Global Impact",
+      description:
+        "Every second you focus, you're contributing to the Global UBI pool. Your productivity literally feeds the world. ❤️",
+      icon: <Globe className="w-8 h-8 text-green-500" />,
+      image: "🌍",
+      impact: "Help provide basic income",
+    },
+    {
+      id: 5,
+      title: "Verified Identity",
+      description:
+        "Complete Face Verification to earn a 'Verified Focuser' badge. Secure your place on the leaderboard! 🏅",
+      icon: <ShieldCheck className="w-8 h-8 text-blue-500" />,
+      image: "🛡️",
+      impact: "Badge & Leaderboard prestige",
     },
   ];
 
@@ -78,16 +110,25 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
                 {currentStep.image}
               </div>
 
-              <div className="mb-4 inline-flex items-center gap-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
+              {/* <div className="mb-4 inline-flex items-center gap-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
                 {currentStep.icon}
-              </div>
+              </div> */}
 
               <h2 className="text-2xl font-black mb-3 tracking-tight">
                 {currentStep.title}
               </h2>
-              <p className="text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-[280px] text-sm font-medium">
+              <p className="text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-[280px] text-sm font-medium mb-6">
                 {currentStep.description}
               </p>
+
+              {currentStep.impact && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                    Impact: {currentStep.impact}
+                  </span>
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
 
@@ -106,7 +147,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
           </div>
 
           <div className="w-full mt-10">
-            {step < 3 ? (
+            {step < 5 ? (
               <button
                 onClick={() => setStep(step + 1)}
                 className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 group shadow-xl shadow-indigo-500/20 active:scale-95"

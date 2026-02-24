@@ -233,6 +233,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     address public cfaForwarder;
     uint256 public totalCommunityImpact; // Total G$ sent to UBI by the FocusPet community
+    mapping(address => mapping(string => bool)) public isCosmeticEquipped;
 
     // Buy Cosmetic & Add to Inventory
     function buyCosmetic(string memory cosmeticId, uint256 price) public {
@@ -241,7 +242,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         _splitPayment(price * 1 ether);
 
         ownedCosmetics[msg.sender][cosmeticId] = true;
-        pets[msg.sender].activeCosmetic = cosmeticId;
+        isCosmeticEquipped[msg.sender][cosmeticId] = true;
         emit ItemPurchased(msg.sender, cosmeticId);
     }
 
@@ -249,14 +250,10 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function toggleCosmetic(string memory cosmeticId) public hasPet {
         _settleStream(msg.sender);
         require(ownedCosmetics[msg.sender][cosmeticId], "Item not owned");
-        Pet storage pet = pets[msg.sender];
         
-        if (keccak256(bytes(pet.activeCosmetic)) == keccak256(bytes(cosmeticId))) {
-            pet.activeCosmetic = ""; // Toggle off
-        } else {
-            pet.activeCosmetic = cosmeticId; // Toggle on
-        }
-        emit ItemPurchased(msg.sender, pet.activeCosmetic);
+        isCosmeticEquipped[msg.sender][cosmeticId] = !isCosmeticEquipped[msg.sender][cosmeticId];
+        
+        emit ItemPurchased(msg.sender, cosmeticId);
     }
 
     // Revive Pet: Sets Health to 50, Costs 50 G$

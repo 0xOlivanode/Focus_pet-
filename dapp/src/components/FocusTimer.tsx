@@ -9,7 +9,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Coins,
+  XCircle,
+  Moon,
 } from "lucide-react";
+import { useFocusPet } from "@/hooks/useFocusPet";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -17,26 +20,30 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-type TimerState = "idle" | "running" | "paused" | "completed";
+type TimerState = "idle" | "running" | "paused" | "completed" | "failed";
 
 interface FocusTimerProps {
   initialMinutes?: number;
   onComplete?: (durationMinutes: number) => void;
+  onFail?: () => void;
   onStart?: (note: string) => void;
   onPause?: () => void;
   onNoteChange?: (note: string) => void;
   isSupercharged?: boolean;
   streak?: number;
+  isNight?: boolean;
 }
 
 export function FocusTimer({
   initialMinutes = 25,
   onComplete,
+  onFail,
   onStart,
   onPause,
   onNoteChange,
   isSupercharged = false,
   streak = 0,
+  isNight = false,
 }: FocusTimerProps) {
   const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
   const [status, setStatus] = useState<TimerState>("idle");
@@ -46,6 +53,7 @@ export function FocusTimer({
   // Anti-cheat state
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [checkInMissed, setCheckInMissed] = useState(false);
+  const visibilityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -107,6 +115,32 @@ export function FocusTimer({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [status, showCheckIn]);
+
+  // Tab Visibility Tracking (Focus Accountability)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && status === "running") {
+        // Start 5-second grace period
+        visibilityTimeoutRef.current = setTimeout(() => {
+          setStatus("failed");
+          onFail?.();
+        }, 5000); // 5s Grace Period
+      } else {
+        // Returned within grace period - clear timer
+        if (visibilityTimeoutRef.current) {
+          clearTimeout(visibilityTimeoutRef.current);
+          visibilityTimeoutRef.current = null;
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (visibilityTimeoutRef.current)
+        clearTimeout(visibilityTimeoutRef.current);
+    };
+  }, [status, onFail]);
 
   // Handle completion
   useEffect(() => {
@@ -217,6 +251,19 @@ export function FocusTimer({
           >
             {formatTime(timeLeft)}
           </motion.div>
+
+          {isNight && status === "idle" && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20"
+            >
+              <Moon className="w-3 h-3 text-indigo-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
+                Night Owl Bonus 1.1x
+              </span>
+            </motion.div>
+          )}
           <p className="text-neutral-500 mt-2 font-medium bg-neutral-100 dark:bg-neutral-800 px-3 py-1 rounded-full text-xs uppercase tracking-widest">
             {status === "idle"
               ? "Ready to Focus"
@@ -224,13 +271,18 @@ export function FocusTimer({
                 ? "Paused"
                 : status === "completed"
                   ? "Session Complete"
-                  : "Focusing..."}
+                  : status === "failed"
+                    ? "Focus Abandoned"
+                    : "Focusing..."}
           </p>
         </div>
       </div>
       {/* Controls */}
       <div className="flex gap-4 mt-8">
-        {status === "idle" || status === "paused" || status === "completed" ? (
+        {status === "idle" ||
+        status === "paused" ||
+        status === "completed" ||
+        status === "failed" ? (
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -239,11 +291,15 @@ export function FocusTimer({
               "w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all",
               status === "completed"
                 ? "bg-green-500 shadow-green-500/30"
-                : "bg-indigo-600 shadow-indigo-500/30",
+                : status === "failed"
+                  ? "bg-red-500 shadow-red-500/30"
+                  : "bg-indigo-600 shadow-indigo-500/30",
             )}
           >
             {status === "completed" ? (
               <CheckCircle2 className="w-6 h-6 text-white" />
+            ) : status === "failed" ? (
+              <XCircle className="w-6 h-6 text-white" />
             ) : (
               <Play className="w-6 h-6 ml-1 text-white" />
             )}
@@ -320,6 +376,32 @@ export function FocusTimer({
                 className="w-full bg-indigo-600 text-white font-bold py-2 rounded-xl"
               >
                 Resume
+              </button>
+            </motion.div>
+          </div>
+        )}
+        {status === "failed" && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center rounded-3xl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white dark:bg-neutral-900 p-8 rounded-2xl max-w-xs text-center mx-4 shadow-2xl border border-red-500/20"
+            >
+              <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-4">
+                <XCircle size={32} />
+              </div>
+              <h2 className="text-2xl font-black mb-2 text-neutral-900 dark:text-white">
+                Focus Abandoned!
+              </h2>
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm mb-6 leading-relaxed">
+                You left the session and broke your focus and now your pet is
+                disappointed. 🥺
+              </p>
+              <button
+                onClick={resetTimer}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl transition-colors shadow-lg shadow-red-600/20"
+              >
+                Try Again
               </button>
             </motion.div>
           </div>

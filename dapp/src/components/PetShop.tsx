@@ -52,7 +52,8 @@ interface PetShopProps {
   ) => void;
   boostEndTime: number;
   shieldCount: number;
-  activeCosmetic: string;
+  activeCosmetic?: string;
+  equippedCosmetics?: Record<string, boolean>;
 }
 
 export function PetShop({
@@ -77,6 +78,7 @@ export function PetShop({
   boostEndTime,
   shieldCount,
   activeCosmetic,
+  equippedCosmetics = {},
 }: PetShopProps) {
   const [shopCategory, setShopCategory] = useState<
     "consumables" | "boosts" | "cosmetics"
@@ -254,6 +256,7 @@ export function PetShop({
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-3 md:gap-4">
         {shopItems[shopCategory].map((item) => {
           const needsApproval =
+            !inventory[item.id] &&
             allowance < BigInt(item.price) * BigInt(10 ** 18);
 
           return (
@@ -263,21 +266,24 @@ export function PetShop({
                 isPending ||
                 item.disabled ||
                 (gBalance !== undefined &&
-                  gBalance < BigInt(item.price) * BigInt(10 ** 18))
+                  gBalance < BigInt(item.price) * BigInt(10 ** 18) &&
+                  !inventory[item.id])
               }
               whileHover={
                 !isPending &&
                 !item.disabled &&
-                gBalance !== undefined &&
-                gBalance >= BigInt(item.price) * BigInt(10 ** 18)
+                (inventory[item.id] ||
+                  (gBalance !== undefined &&
+                    gBalance >= BigInt(item.price) * BigInt(10 ** 18)))
                   ? { scale: 1.02, y: -4 }
                   : {}
               }
               whileTap={
                 !isPending &&
                 !item.disabled &&
-                gBalance !== undefined &&
-                gBalance >= BigInt(item.price) * BigInt(10 ** 18)
+                (inventory[item.id] ||
+                  (gBalance !== undefined &&
+                    gBalance >= BigInt(item.price) * BigInt(10 ** 18)))
                   ? { scale: 0.96 }
                   : {}
               }
@@ -297,7 +303,8 @@ export function PetShop({
                 isPending ||
                 item.disabled ||
                 (gBalance !== undefined &&
-                  gBalance < BigInt(item.price) * BigInt(10 ** 18))
+                  gBalance < BigInt(item.price) * BigInt(10 ** 18) &&
+                  !inventory[item.id])
                   ? "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-800 opacity-40 cursor-not-allowed grayscale"
                   : "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/10"
               }`}
@@ -309,7 +316,8 @@ export function PetShop({
               )}
               {gBalance !== undefined &&
                 gBalance < BigInt(item.price) * BigInt(10 ** 18) &&
-                !item.disabled && (
+                !item.disabled &&
+                !inventory[item.id] && (
                   <div className="absolute top-2 right-2 bg-red-500/10 dark:bg-red-500/20 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase text-red-500 border border-red-500/20 pointer-events-none">
                     Too Expensive
                   </div>
@@ -328,15 +336,15 @@ export function PetShop({
                   <div className="flex flex-col items-center gap-2">
                     <div
                       className={`flex items-center gap-2 px-3 py-1 rounded-full border-2 transition-all duration-300 ${
-                        activeCosmetic === item.id
+                        equippedCosmetics[item.id]
                           ? "bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]"
                           : "bg-white dark:bg-neutral-800 border-neutral-100 dark:border-neutral-700 text-neutral-500"
                       }`}
                     >
                       <span className="text-[10px] font-black uppercase tracking-widest">
-                        {activeCosmetic === item.id ? "Active" : "Owned"}
+                        {equippedCosmetics[item.id] ? "Active" : "Owned"}
                       </span>
-                      {activeCosmetic === item.id && (
+                      {equippedCosmetics[item.id] && (
                         <motion.div
                           animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
                           transition={{ duration: 2, repeat: Infinity }}
@@ -345,7 +353,7 @@ export function PetShop({
                       )}
                     </div>
                     <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">
-                      {activeCosmetic === item.id
+                      {equippedCosmetics[item.id]
                         ? "Click to Remove"
                         : "Click to Wear"}
                     </p>
@@ -368,9 +376,8 @@ export function PetShop({
               </div>
 
               {/* Sexy Active Overlay for Cosmetics */}
-              {shopCategory === "cosmetics" && activeCosmetic === item.id && (
+              {shopCategory === "cosmetics" && equippedCosmetics[item.id] && (
                 <motion.div
-                  layoutId="cosmetic-active-ring"
                   className="absolute inset-0 border-2 border-indigo-500/50 rounded-4xl pointer-events-none"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}

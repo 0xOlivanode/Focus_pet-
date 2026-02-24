@@ -115,6 +115,16 @@ export const FocusPetABI = [
   },
   {
     type: "function",
+    name: "isCosmeticEquipped",
+    inputs: [
+      { name: "", type: "address", internalType: "address" },
+      { name: "", type: "string", internalType: "string" },
+    ],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "focusSession",
     inputs: [
       {

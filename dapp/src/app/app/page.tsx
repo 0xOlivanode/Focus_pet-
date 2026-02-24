@@ -100,6 +100,8 @@ function AppPageContent() {
     totalDonated,
     handleSyncImpact,
     isSyncImpactLoading,
+    equippedCosmetics,
+    isNight,
   } = useFocusPet();
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
@@ -170,18 +172,23 @@ function AppPageContent() {
     setShowOnboarding(false);
   };
 
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
+
   useEffect(() => {
     if (username) setTempUsername(username);
     if (petName) setTempPetName(petName);
 
-    // Auto-open naming modal for new adopters
-    if (hasPet && !username && !isLoadingPet && !isProcessing && !isSyncing) {
+    // Auto-open naming modal for new adopters (only once per session)
+    if (
+      hasPet &&
+      !username &&
+      !isLoadingPet &&
+      !isProcessing &&
+      !isSyncing &&
+      !hasAutoOpened
+    ) {
       setIsEditModalOpen(true);
-    }
-
-    // Auto-close modal once name is successfully saved and synced
-    if (username && isEditModalOpen && !isProcessing && !isSyncing) {
-      setIsEditModalOpen(false);
+      setHasAutoOpened(true);
     }
   }, [
     username,
@@ -190,14 +197,30 @@ function AppPageContent() {
     isLoadingPet,
     isProcessing,
     isSyncing,
-    isEditModalOpen,
+    hasAutoOpened,
   ]);
 
   useEffect(() => {
-    if (!isConnected && !isConnecting && !isReconnecting) {
+    // Only redirect if fully mounted and not in the middle of a critical process
+    if (
+      hasMounted &&
+      !isConnected &&
+      !isConnecting &&
+      !isReconnecting &&
+      !isProcessing &&
+      !isSyncing
+    ) {
       router.push("/");
     }
-  }, [isConnected, isConnecting, isReconnecting, router]);
+  }, [
+    isConnected,
+    isConnecting,
+    isReconnecting,
+    isProcessing,
+    isSyncing,
+    router,
+    hasMounted,
+  ]);
 
   // Verification Success Listener
   useEffect(() => {
@@ -555,12 +578,17 @@ function AppPageContent() {
           <button
             onClick={() => {
               setShowOnboarding(true);
-              playSound("click"); // Added sound
+              playSound("click");
             }}
-            className="p-2 rounded-full text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all font-bold text-xs group"
             title="How to Play"
           >
-            <HelpCircle size={22} />
+            <HelpCircle size={16} />
+            <span>How to Play</span>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+            </span>
           </button>
           <ThemeToggle />
           <SoundMenu />
@@ -632,14 +660,17 @@ function AppPageContent() {
             streak={streak}
             weather={weather}
             activeCosmetic={activeCosmetic}
+            equippedCosmetics={equippedCosmetics}
             focusNote={focusNote}
             isVerified={isVerified}
+            isNight={isNight}
           />
         </div>
 
         <div className="w-full relative z-20">
           <FocusTimer
             onComplete={handleSessionComplete}
+            onFail={() => setMood("sad")}
             onStart={(note) => {
               setMood("focused");
               if (note) setFocusNote(note);
@@ -695,7 +726,7 @@ function AppPageContent() {
           showToast={showToast}
           boostEndTime={boostEndTime}
           shieldCount={shieldCount}
-          activeCosmetic={activeCosmetic}
+          equippedCosmetics={equippedCosmetics}
         />
 
         {/* Social Leaderboard */}

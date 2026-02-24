@@ -23,11 +23,18 @@ import {
   Info,
   Waves,
   ZapOff,
+  Moon,
 } from "lucide-react";
 import { useStreaming } from "@/hooks/useStreaming";
 import { parseEther, formatEther } from "viem";
 import { SuperchargeModal } from "./SuperchargeModal";
 import { calculateMonthlyAmount } from "@/lib/superfluid";
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 import {
   PetStage,
@@ -49,8 +56,10 @@ interface PetViewProps {
   streak?: number;
   weather?: WeatherType;
   activeCosmetic?: string;
+  equippedCosmetics?: Record<string, boolean>;
   focusNote?: string;
   isVerified?: boolean;
+  isNight?: boolean;
 }
 
 export function PetView({
@@ -62,8 +71,10 @@ export function PetView({
   streak = 0,
   weather = "clear",
   activeCosmetic = "",
+  equippedCosmetics = {},
   focusNote = "",
   isVerified = false,
+  isNight = false,
 }: PetViewProps) {
   const [thought, setThought] = React.useState<string | null>(null);
   const [isPoked, setIsPoked] = React.useState(false);
@@ -138,6 +149,15 @@ export function PetView({
         ];
         return happyThoughts[Math.floor(Math.random() * happyThoughts.length)];
       }
+      if (mood === "sad") {
+        const sadThoughts = [
+          "Hey! Where did you go? 🥺",
+          "Focus lost... I'm sad now. 💔",
+          "I missed you... and my health hurts. 😿",
+          "Stay with me next time? 🥺",
+        ];
+        return sadThoughts[Math.floor(Math.random() * sadThoughts.length)];
+      }
       return null;
     };
 
@@ -207,55 +227,55 @@ export function PetView({
           <span className="text-8xl">{getPetEmoji(stage)}</span>
         )}
 
-        {/* Cosmetic Overlay Layer */}
-        <AnimatePresence mode="wait">
-          {activeCosmetic && (
-            <motion.div
-              key={activeCosmetic}
-              initial={{ opacity: 0, scale: 0.5, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="absolute inset-0 pointer-events-none flex items-center justify-center z-20"
-            >
-              {activeCosmetic === "sunglasses" && (
-                <div
-                  className={`relative transform transition-all duration-500 ${
-                    stage === "egg"
-                      ? "translate-y-[-10px] scale-[0.6]"
-                      : stage === "baby"
-                        ? "translate-y-[-35px] scale-[1.5]"
-                        : stage === "teen"
-                          ? "translate-y-[-20px] scale-[0.85]"
-                          : stage === "adult"
-                            ? "translate-y-[-25px] scale-100"
-                            : "translate-y-[-30px] scale-110"
-                  }`}
-                >
-                  <span className="text-6xl drop-shadow-lg">🕶️</span>
-                </div>
-              )}
-              {activeCosmetic === "crown" && (
-                <div
-                  className={`relative transform transition-all duration-500 ${
-                    stage === "egg"
-                      ? "translate-y-[-60px] scale-[0.8]"
-                      : stage === "baby"
-                        ? "translate-y-[-90px] scale-[0.9]"
-                        : stage === "teen"
-                          ? "translate-y-[-85px] scale-100"
-                          : stage === "adult"
-                            ? "translate-y-[-100px] scale-110"
-                            : "translate-y-[-110px] scale-120"
-                  }`}
-                >
-                  <span className="text-6xl drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">
-                    👑
-                  </span>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Cosmetic Overlay Layer (Multi-Slot Wardrobe) */}
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
+          <AnimatePresence>
+            {equippedCosmetics.sunglasses && (
+              <motion.div
+                key="sunglasses"
+                initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className={`absolute transform transition-all duration-500 ${
+                  stage === "egg"
+                    ? "translate-y-[-20px] scale-[1.5]"
+                    : stage === "baby"
+                      ? "translate-y-[-35px] scale-[1.5]"
+                      : stage === "teen"
+                        ? "translate-y-[-20px] scale-[0.85]"
+                        : stage === "adult"
+                          ? "translate-y-[-57px] translate-x-[-63px] scale-80"
+                          : "translate-y-[-30px] scale-110"
+                }`}
+              >
+                <span className="text-6xl drop-shadow-lg">🕶️</span>
+              </motion.div>
+            )}
+            {equippedCosmetics.crown && (
+              <motion.div
+                key="crown"
+                initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className={`absolute transform transition-all duration-500 ${
+                  stage === "egg"
+                    ? "translate-y-[-85px] scale-[1]"
+                    : stage === "baby"
+                      ? "translate-y-[-90px] scale-[0.9]"
+                      : stage === "teen"
+                        ? "translate-y-[-85px] scale-100"
+                        : stage === "adult"
+                          ? "translate-y-[-92px] translate-x-[-50px] scale-75"
+                          : "translate-y-[-110px] scale-120"
+                } ${isNight ? "brightness-[0.7] contrast-[1.1] drop-shadow-[0_0_15px_rgba(165,180,252,0.4)]" : ""}`}
+              >
+                <span className="text-6xl drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">
+                  👑
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     );
   };
@@ -345,12 +365,18 @@ export function PetView({
               whileTap={{ scale: 0.95 }}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-md border border-neutral-200 dark:border-white/10 shadow-sm transition-all duration-300 hover:shadow-md"
             >
-              {weather === "sunny" && (
-                <Sun className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
-              )}
-              {weather === "clear" && (
-                <Sun className="w-3.5 h-3.5 text-yellow-400" />
-              )}
+              {weather === "sunny" &&
+                (isNight ? (
+                  <Moon className="w-3.5 h-3.5 text-indigo-400 fill-indigo-400/20" />
+                ) : (
+                  <Sun className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+                ))}
+              {weather === "clear" &&
+                (isNight ? (
+                  <Moon className="w-3.5 h-3.5 text-violet-400" />
+                ) : (
+                  <Sun className="w-3.5 h-3.5 text-yellow-400" />
+                ))}
               {weather === "cloudy" && (
                 <Cloud className="w-3.5 h-3.5 text-slate-400 fill-slate-400/20" />
               )}
@@ -361,7 +387,9 @@ export function PetView({
                 <CloudLightning className="w-3.5 h-3.5 text-purple-400 fill-purple-400/20" />
               )}
               <span className="text-[10px] font-black uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
-                {weather}
+                {isNight && (weather === "sunny" || weather === "clear")
+                  ? "Moonlight"
+                  : weather}
               </span>
               <Info className="w-3 h-3 text-neutral-400" />
             </motion.div>
@@ -401,7 +429,22 @@ export function PetView({
           </div>
         </div>
 
-        <WeatherLayer weather={weather} />
+        <WeatherLayer weather={weather} isNight={isNight} />
+        {/* Night Aura (Moonlight Effect) */}
+        {isNight && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="absolute inset-0 rounded-[2.5rem] border-2 border-indigo-400/20 shadow-[inset_0_0_50px_rgba(129,140,248,0.15)] pointer-events-none"
+          />
+        )}
         {/* Fire Aura (Streak Effect) */}
         {streak >= 3 && (
           <motion.div
@@ -572,35 +615,48 @@ export function PetView({
             </div>
           </Tooltip>
 
-          {/* Supercharge Toggle */}
+          {/* Supercharge Toggle with Guidance Tooltip */}
           <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setSuperchargeModalOpen(true);
-            }}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all active:scale-95 ${
-              isStreaming
-                ? "bg-cyan-500/10 text-cyan-500 border border-cyan-500/20"
-                : "text-neutral-400 hover:text-cyan-500"
-            }`}
+          <Tooltip
+            content={
+              <div className="flex flex-col gap-0.5 max-w-[150px]">
+                <span className="text-cyan-500 uppercase tracking-wider">
+                  Supercharge ⚡️
+                </span>
+                <span className="text-neutral-500">
+                  Stream G$ to reach "God Mode": 100% Health & XP Multipliers.
+                </span>
+              </div>
+            }
           >
-            {isStreaming ? (
-              <>
-                <Waves size={14} className="animate-pulse" />
-                <span className="text-[10px] font-black uppercase">
-                  Supercharged
-                </span>
-              </>
-            ) : (
-              <>
-                <Zap size={14} />
-                <span className="text-[10px] font-black uppercase">
-                  Supercharge
-                </span>
-              </>
-            )}
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSuperchargeModalOpen(true);
+              }}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all active:scale-95 cursor-help ${
+                isStreaming
+                  ? "bg-cyan-500/10 text-cyan-500 border border-cyan-500/20"
+                  : "text-neutral-400 hover:text-cyan-500"
+              }`}
+            >
+              {isStreaming ? (
+                <>
+                  <Waves size={14} className="animate-pulse" />
+                  <span className="text-[10px] font-black uppercase">
+                    Supercharged
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Zap size={14} />
+                  <span className="text-[10px] font-black uppercase">
+                    Supercharge
+                  </span>
+                </>
+              )}
+            </button>
+          </Tooltip>
         </motion.div>
 
         {/* Supercharge Modal */}
@@ -713,7 +769,14 @@ export function PetView({
           style={{ translateZ: 30 }}
           className="absolute bottom-8 flex flex-col items-center w-full px-8"
         >
-          <div className="flex items-center gap-2 text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-[0.2em] bg-white/50 dark:bg-black/20 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/20 dark:border-white/5 transition-all group-hover:bg-white/80 dark:group-hover:bg-black/40 mb-3 shadow-lg">
+          <div
+            className={cn(
+              "flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full backdrop-blur-md border transition-all mb-3 shadow-lg",
+              isNight
+                ? "text-indigo-200 bg-black/40 border-white/10 group-hover:bg-black/60"
+                : "text-neutral-400 dark:text-neutral-500 bg-white/50 dark:bg-black/20 border-white/20 dark:border-white/5 group-hover:bg-white/80 dark:group-hover:bg-black/40",
+            )}
+          >
             {stage !== "egg" && stage !== "baby" && (
               <Sparkles size={12} className="text-amber-400 animate-pulse" />
             )}
@@ -724,7 +787,14 @@ export function PetView({
           {/* XP / Evolution Bar */}
           {nextStageInfo && nextStageInfo.nextStage !== "none" && (
             <div className="w-full max-w-[160px] relative group/bar cursor-help">
-              <div className="h-2.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden border border-neutral-100/50 dark:border-neutral-700/50 shadow-inner">
+              <div
+                className={cn(
+                  "h-2.5 w-full rounded-full overflow-hidden border shadow-inner",
+                  isNight
+                    ? "bg-black/40 border-white/10"
+                    : "bg-neutral-200 dark:bg-neutral-800 border-neutral-100/50 dark:border-neutral-700/50",
+                )}
+              >
                 <motion.div
                   className="h-full bg-linear-to-r from-amber-400 to-amber-500 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.5)]"
                   initial={{ width: 0 }}
