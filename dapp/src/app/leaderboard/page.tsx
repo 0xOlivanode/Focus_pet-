@@ -44,7 +44,7 @@ export default function LeaderboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <Link
-              href="/"
+              href="/app"
               className="text-sm text-neutral-500 hover:text-indigo-600 dark:text-neutral-400 dark:hover:text-indigo-400 flex items-center gap-2 mb-2 transition-colors"
             >
               ← Back to App
