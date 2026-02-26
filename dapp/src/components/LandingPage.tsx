@@ -88,7 +88,7 @@ export function LandingPage() {
 
           <motion.div variants={itemVariants} className="mb-6 inline-block">
             <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-              Live on Celo Sepolia
+              Live on Celo Mainnet
             </span>
           </motion.div>
 
