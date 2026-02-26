@@ -6,10 +6,11 @@ import { VerifiedBadge } from "./VerifiedBadge";
 import { calculateMonthlyAmount } from "@/lib/superfluid";
 import { formatEther } from "viem";
 import { Tooltip } from "./Tooltip";
+import Link from "next/link";
 
 export function Leaderboard() {
   const { address } = useAccount();
-  const { leaderboard, isLoading } = useLeaderboard();
+  const { topTen, isLoading } = useLeaderboard();
 
   const getAvatar = (xp: number) => {
     return getPetEmoji(getPetStage(xp));
@@ -46,11 +47,19 @@ export function Leaderboard() {
 
   return (
     <div className="w-full mt-8 bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-neutral-100 dark:border-neutral-800 shadow-sm">
-      <div className="flex items-center gap-2 mb-6">
-        <span className="text-xl md:text-2xl">🏆</span>
-        <h2 className="font-bold text-lg md:text-lg">
-          Top Focusers (All-Time)
-        </h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <span className="text-xl md:text-2xl">🏆</span>
+          <h2 className="font-bold text-lg md:text-lg">
+            Top Focusers (All-Time)
+          </h2>
+        </div>
+        <Link
+          href="/leaderboard"
+          className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+        >
+          See More ➔
+        </Link>
       </div>
 
       <div className="space-y-4">
@@ -60,19 +69,16 @@ export function Leaderboard() {
           </div>
         )}
 
-        {!isLoading && leaderboard.length === 0 && (
+        {!isLoading && topTen.length === 0 && (
           <div className="text-center py-8 text-neutral-500">
             No focus sessions recorded yet. Be the first!
           </div>
         )}
 
-        {leaderboard.map((entry) => (
+        {topTen.map((entry) => (
           <div
             key={entry.rank}
-            className={`flex items-center justify-between p-2 md:p-3 rounded-xl ${
-              // Highlight "you" if we had address context, but for now just standard
-              "bg-neutral-50 dark:bg-neutral-800/50"
-            }`}
+            className={`flex items-center justify-between p-2 md:p-3 rounded-xl ${"bg-neutral-50 dark:bg-neutral-800/50"}`}
           >
             <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
               <span
@@ -84,7 +90,6 @@ export function Leaderboard() {
               </span>
               <div className="w-8 h-8 md:w-10 md:h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center text-base md:text-lg shrink-0 relative">
                 {getAvatar(entry.xp)}
-                {/* Mini Flow Icon */}
                 {getFlowBadge(entry.flowRate) && (
                   <div className="absolute -bottom-1 -right-1 text-[10px] bg-white dark:bg-neutral-900 rounded-full w-4 h-4 flex items-center justify-center shadow-xs border border-neutral-100 dark:border-neutral-800">
                     {getFlowBadge(entry.flowRate)?.icon}
@@ -116,7 +121,6 @@ export function Leaderboard() {
                         </span>
                         <SocialShare
                           text={`I'm ranked #${entry.rank} on the @FocusPet leaderboard! 🏆 Can you beat me? #FocusPet #Celo`}
-                          // className="w-7 h-7 md:w-8 md:h-8"
                         />
                       </div>
                     )}
@@ -137,6 +141,15 @@ export function Leaderboard() {
             </div>
           </div>
         ))}
+
+        {!isLoading && topTen.length > 0 && (
+          <Link
+            href="/leaderboard"
+            className="block w-full text-center py-3 text-sm font-bold text-neutral-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors bg-neutral-50 dark:bg-neutral-800/30 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-700 mt-2"
+          >
+            View Full Leaderboard
+          </Link>
+        )}
       </div>
     </div>
   );

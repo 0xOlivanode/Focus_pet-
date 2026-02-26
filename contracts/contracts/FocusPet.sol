@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.22;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -31,6 +31,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     
     IERC20 public goodDollar;
     address public ubiPool;
+
 
     // Constants
     uint256 public constant MAX_HEALTH = 100;
@@ -65,6 +66,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         goodDollar = IERC20(_goodDollar);
         ubiPool = _ubiPool;
         cfaForwarder = _cfaForwarder;
+        treasury = 0xB2914810724FE2Fb871960eB200Dea427854b1C7;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
@@ -75,6 +77,10 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     function setCfaForwarder(address _newForwarder) public onlyOwner {
         cfaForwarder = _newForwarder;
+    }
+
+    function setTreasury(address _newTreasury) public onlyOwner {
+        treasury = _newTreasury;
     }
 
     modifier hasPet() {
@@ -98,6 +104,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             totalDonated: 0,
             totalFocusTime: 0
         });
+        totalUsers += 1;
         emit PetBorn(owner);
     }
 
@@ -114,6 +121,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 amountStreamed = flowRateAmount * timeDiff;
         pet.totalDonated += amountStreamed;
         totalCommunityImpact += amountStreamed;
+        totalVolumeG$ += amountStreamed;
     }
 
     function _handleHealthDecay(Pet storage pet, uint256 timeDiff) internal {
@@ -167,6 +175,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         pet.health = min(MAX_HEALTH, pet.health + 5);
         pet.totalFocusTime += duration;
+        totalGlobalFocusTime += duration;
     }
 
     function _settleStream(address user) internal {
@@ -235,6 +244,13 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     uint256 public totalCommunityImpact; // Total G$ sent to UBI by the FocusPet community
     mapping(address => mapping(string => bool)) public isCosmeticEquipped;
 
+    // --- Metrics Tracking (Appended to fix storage layout) ---
+    uint256 public totalUsers;
+    uint256 public totalFocusSessions;
+    uint256 public totalGlobalFocusTime;
+    uint256 public totalVolumeG$;
+    address public treasury;
+
     // Buy Cosmetic & Add to Inventory
     function buyCosmetic(string memory cosmeticId, uint256 price) public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
@@ -279,6 +295,8 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         _updateStreak(pet);
         _awardRewards(pet, sessionDurationSeconds, flowRate);
 
+        totalFocusSessions += 1;
+
         emit PetFed(msg.sender, pet.health, pet.xp);
     }
 
@@ -287,11 +305,13 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 ubiFee = (amount * FEE_PERCENTAGE) / 100;
         uint256 treasuryAmount = amount - ubiFee;
 
-        require(goodDollar.transferFrom(msg.sender, address(this), treasuryAmount), "Treasury transfer failed");
+        address treasuryTarget = treasury != address(0) ? treasury : address(this);
+        require(goodDollar.transferFrom(msg.sender, treasuryTarget, treasuryAmount), "Treasury transfer failed");
         require(goodDollar.transferFrom(msg.sender, ubiPool, ubiFee), "UBI Pool transfer failed");
         
         pets[msg.sender].totalDonated += ubiFee;
         totalCommunityImpact += ubiFee;
+        totalVolumeG$ += amount;
         emit DonationSent(ubiPool, ubiFee);
     }
 

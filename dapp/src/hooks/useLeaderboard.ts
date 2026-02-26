@@ -27,7 +27,10 @@ export type LeaderboardEntry = {
 
 export function useLeaderboard() {
   const publicClient = usePublicClient();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [fullLeaderboard, setFullLeaderboard] = useState<LeaderboardEntry[]>(
+    [],
+  );
+  const [topTen, setTopTen] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchLeaderboard = async () => {
@@ -36,10 +39,6 @@ export function useLeaderboard() {
     try {
       setIsLoading(true);
 
-      // Fetch all PetFed logs
-      // We start from a recent block to save time, or 0 (earlier deployment block)
-      // Since it's a testnet and fresh deploy, 0 or "earliest" is fine, but safer to use a block if known.
-      // Let's use 'earliest' for now as the chain is Sepolia (fast enough).
       const [fedLogs, nameLogs] = await Promise.all([
         publicClient.getContractEvents({
           address: CONTRACT_ADDRESS,
@@ -55,13 +54,11 @@ export function useLeaderboard() {
         }),
       ]);
 
-      // Aggregation: Map owner -> latest data (highest XP)
       const userData: Record<
         string,
         { xp: number; health: number; username?: string }
       > = {};
 
-      // Parse Names first
       for (const log of nameLogs) {
         const { owner, username } = log.args;
         if (!owner || !username) continue;
@@ -89,34 +86,35 @@ export function useLeaderboard() {
         }
       }
 
-      // Convert to Array & Sort
-      const sortedLeaderboard = Object.entries(userData)
+      const allEntries = Object.entries(userData)
         .map(([address, data]) => ({
           address,
           xp: data.xp,
           health: data.health,
           username: data.username,
         }))
-        .sort((a, b) => b.xp - a.xp) // Descending
-        .slice(0, 10) // Only top 10 for performance
+        .sort((a, b) => b.xp - a.xp)
         .map((entry, index) => ({
           ...entry,
           rank: index + 1,
         }));
 
-      // Bonus: Check verification for top 10
+      setFullLeaderboard(allEntries);
+
+      // Fetch details only for Top 10
+      const topTenEntries = allEntries.slice(0, 10);
+
       const { ClaimSDK } = await import("@goodsdks/citizen-sdk");
 
       const verifiedResults = await Promise.all(
-        sortedLeaderboard.map(async (entry) => {
+        topTenEntries.map(async (entry) => {
           try {
-            // Simplified check: we use the modular SDK logic to check for 'whitelisted' status
             const sdk = new ClaimSDK({
               account: entry.address as `0x${string}`,
               env: "production",
               publicClient: publicClient as any,
-              walletClient: {} as any, // Dummy for read-only
-              identitySDK: {} as any, // Dummy for read-only
+              walletClient: {} as any,
+              identitySDK: {} as any,
             });
             const claimStatus = await sdk.getWalletClaimStatus();
             return {
@@ -129,10 +127,9 @@ export function useLeaderboard() {
         }),
       );
 
-      setLeaderboard(verifiedResults);
+      setTopTen(verifiedResults);
 
-      // Final Step: Fetch Flow Rates for Top 10
-      const leaderboardWithFlows = await Promise.all(
+      const withFlows = await Promise.all(
         verifiedResults.map(async (entry) => {
           try {
             const flowData = (await publicClient.readContract({
@@ -150,18 +147,16 @@ export function useLeaderboard() {
               ...entry,
               flowRate: flowData[1],
             };
-          } catch (e) {
-            console.error("Error fetching flow info for", entry.address, e);
+          } catch {
             return entry;
           }
         }),
       );
 
-      setLeaderboard(leaderboardWithFlows);
+      setTopTen(withFlows);
 
-      // NEW: Fetch totalFocusTime for Top 10 to clear XP inflation
-      const finalLeaderboard = await Promise.all(
-        leaderboardWithFlows.map(async (entry) => {
+      const finalTopTen = await Promise.all(
+        withFlows.map(async (entry) => {
           try {
             const petData = (await publicClient.readContract({
               address: CONTRACT_ADDRESS,
@@ -169,33 +164,32 @@ export function useLeaderboard() {
               functionName: "pets",
               args: [entry.address as `0x${string}`],
             })) as unknown as any[];
-
-            // index 12 is totalFocusTime in the Pet struct
             return {
               ...entry,
               totalFocusTime: Number(petData[12]),
             };
-          } catch (e) {
-            console.error(
-              "Error fetching totalFocusTime for",
-              entry.address,
-              e,
-            );
+          } catch {
             return entry;
           }
         }),
       );
 
-      setLeaderboard(finalLeaderboard);
+      setTopTen(finalTopTen);
     } catch (error) {
       console.error("Failed to fetch leaderboard logs:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
   useEffect(() => {
     fetchLeaderboard();
   }, [publicClient]);
 
-  return { leaderboard, isLoading, refetch: fetchLeaderboard };
+  return {
+    leaderboard: fullLeaderboard,
+    topTen,
+    isLoading,
+    refetch: fetchLeaderboard,
+  };
 }
