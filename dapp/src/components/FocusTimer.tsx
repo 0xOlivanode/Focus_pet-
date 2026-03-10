@@ -222,8 +222,9 @@ export function FocusTimer({
             onKeyDown={handleCustomSubmit}
             onBlur={handleCustomBlur}
             disabled={status !== "idle" && status !== "completed"}
+            style={{ fontSize: "16px" }}
             className={cn(
-              "w-16 px-2 py-2 rounded-full bg-white dark:bg-black shadow-[inset_0_0_0_2px_#6366f1] text-xs sm:text-sm font-medium text-center outline-hidden transition-all text-black dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+              "w-16 px-2 py-2 rounded-full bg-white dark:bg-black shadow-[inset_0_0_0_2px_#6366f1] font-medium text-center outline-hidden transition-all text-black dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
               status !== "idle" &&
                 status !== "completed" &&
                 "opacity-50 cursor-not-allowed",
