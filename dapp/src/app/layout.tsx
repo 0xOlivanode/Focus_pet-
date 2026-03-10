@@ -51,6 +51,8 @@ export const metadata: Metadata = {
 };
 
 import { Providers } from "./providers";
+import { Suspense } from "react";
+import { ReferralTracker } from "@/components/ReferralTracker";
 
 export default function RootLayout({
   children,
@@ -62,6 +64,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Suspense fallback={null}>
+          <ReferralTracker />
+        </Suspense>
         <Providers>{children}</Providers>
       </body>
     </html>

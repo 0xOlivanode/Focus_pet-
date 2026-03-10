@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { useIdentitySDK, IdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
+import { supabase } from "@/lib/supabase";
 
 export type IdentityStatus = "loading" | "verified" | "not_verified" | "error";
 
@@ -131,6 +132,34 @@ export function useIdentity() {
       if (interval) clearInterval(interval);
     };
   }, [isVerifying, status, address, publicClient, identitySDK]);
+
+  // Track Successful Referral
+  useEffect(() => {
+    if (status === "verified" && address) {
+      const referrer = localStorage.getItem("focuspet_referrer");
+      // Prevent self-referrals and ensure referrer exists
+      if (referrer && referrer.toLowerCase() !== address.toLowerCase()) {
+        const recordReferral = async () => {
+          try {
+            const { error } = await supabase
+              .from("referrals")
+              .insert({ referrer, referred: address });
+
+            if (!error || error.code === "23505") {
+              // 23505 = unique violation, meaning it succeeded previously
+              console.log("✅ Verified referral tracked successfully!");
+              localStorage.removeItem("focuspet_referrer"); // Clear so we don't repeat
+            } else {
+              console.error("❌ Failed to track referral:", error.message);
+            }
+          } catch (e) {
+            console.error("Referral tracking error:", e);
+          }
+        };
+        recordReferral();
+      }
+    }
+  }, [status, address]);
 
   return {
     status,

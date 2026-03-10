@@ -65,7 +65,7 @@ export function AudioProvider({
     loadAudio("buy", "/sounds/buy.wav");
   }, []);
 
-  const [isMusicMuted, setIsMusicMuted] = useState(false);
+  const [isMusicMuted, setIsMusicMuted] = useState(true);
   const musicRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {

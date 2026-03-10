@@ -7,8 +7,10 @@ import { motion } from "framer-motion";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAccount } from "wagmi";
 
+import { toast } from "sonner";
+
 export function LandingPage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -113,16 +115,28 @@ export function LandingPage() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             {isConnected && (
-              <Link
-                href="/app"
-                className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-all active:scale-95"
-              >
-                Enter App
-                <ArrowRight
-                  size={18}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
-              </Link>
+              <>
+                <Link
+                  href="/app"
+                  className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-all active:scale-95"
+                >
+                  Enter App
+                  <ArrowRight
+                    size={18}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
+                </Link>
+                <button
+                  onClick={() => {
+                    const link = `${window.location.origin}/?ref=${address}`;
+                    navigator.clipboard.writeText(link);
+                    toast.success("Referral link copied to clipboard!");
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all border border-indigo-200 dark:border-indigo-800 active:scale-95"
+                >
+                  Copy Invite Link
+                </button>
+              </>
             )}
           </motion.div>
         </motion.div>
