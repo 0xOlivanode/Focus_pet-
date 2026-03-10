@@ -95,6 +95,9 @@ export function FocusTimer({
     setStatus("idle");
   };
 
+  const [isCustom, setIsCustom] = useState(false);
+  const [customMins, setCustomMins] = useState<string>("");
+
   useEffect(() => {
     if (status === "running") {
       timerRef.current = setInterval(() => {
@@ -164,17 +167,38 @@ export function FocusTimer({
     return () => clearTimeout(checkInTimer);
   }, [showCheckIn]);
 
+  const handleCustomSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      const parsed = parseFloat(customMins);
+      if (!isNaN(parsed) && parsed > 0 && parsed <= 1440) {
+        handleDurationSelect(parsed);
+        setIsCustom(false);
+      } else {
+        setIsCustom(false);
+        setCustomMins("");
+      }
+    }
+  };
+
+  const handleCustomBlur = () => {
+    const parsed = parseFloat(customMins);
+    if (!isNaN(parsed) && parsed > 0 && parsed <= 1440) {
+      handleDurationSelect(parsed);
+    }
+    setIsCustom(false);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto p-6">
       {/* Duration Selector */}
-      <div className="flex gap-2 mb-8 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-full">
-        {[0.5, 10, 25, 45].map((mins) => (
+      <div className="flex flex-wrap gap-2 mb-8 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-full items-center justify-center">
+        {[10, 25, 45].map((mins) => (
           <button
             key={mins}
             onClick={() => handleDurationSelect(mins)}
             disabled={status !== "idle" && status !== "completed"}
             className={cn(
-              "px-4 py-2 rounded-full text-sm font-medium transition-all",
+              "px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all",
               duration === mins * 60
                 ? "bg-white dark:bg-black shadow-sm text-black dark:text-white"
                 : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300",
@@ -186,6 +210,45 @@ export function FocusTimer({
             {mins}m
           </button>
         ))}
+
+        {/* Custom Duration Input */}
+        {isCustom ? (
+          <input
+            autoFocus
+            type="text"
+            inputMode="decimal"
+            value={customMins}
+            onChange={(e) => setCustomMins(e.target.value)}
+            onKeyDown={handleCustomSubmit}
+            onBlur={handleCustomBlur}
+            disabled={status !== "idle" && status !== "completed"}
+            className={cn(
+              "w-16 px-2 py-2 rounded-full bg-white dark:bg-black shadow-[inset_0_0_0_2px_#6366f1] text-xs sm:text-sm font-medium text-center outline-hidden transition-all text-black dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+              status !== "idle" &&
+                status !== "completed" &&
+                "opacity-50 cursor-not-allowed",
+            )}
+            placeholder="min"
+          />
+        ) : (
+          <button
+            onClick={() => setIsCustom(true)}
+            disabled={status !== "idle" && status !== "completed"}
+            className={cn(
+              "px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all",
+              ![10, 25, 45].includes(duration / 60)
+                ? "bg-white dark:bg-black shadow-sm text-black dark:text-white"
+                : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300",
+              status !== "idle" &&
+                status !== "completed" &&
+                "opacity-50 cursor-not-allowed",
+            )}
+          >
+            {![10, 25, 45].includes(duration / 60)
+              ? `${duration / 60}m`
+              : "Custom"}
+          </button>
+        )}
       </div>
       {/* Focus Note Input */}
       <div className="w-full mb-8 relative group">
