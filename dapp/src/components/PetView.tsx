@@ -299,6 +299,9 @@ export function PetView({
   const bgY = useTransform(mouseY, [-0.5, 0.5], ["-20px", "20px"]);
 
   function handleMouseMove(event: React.MouseEvent<HTMLDivElement>) {
+    // Disable hover tilt effect on mobile/touch screens
+    if (typeof window !== "undefined" && window.innerWidth < 768) return;
+
     const rect = event.currentTarget.getBoundingClientRect();
     const width = rect.width;
     const height = rect.height;
@@ -311,6 +314,7 @@ export function PetView({
   }
 
   function handleMouseLeave() {
+    if (typeof window !== "undefined" && window.innerWidth < 768) return;
     x.set(0);
     y.set(0);
   }

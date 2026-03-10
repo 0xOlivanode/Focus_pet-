@@ -3,21 +3,45 @@
 import * as React from "react";
 import {
   RainbowKitProvider,
-  getDefaultConfig,
-  Locale,
+  connectorsForWallets,
 } from "@rainbow-me/rainbowkit";
+import {
+  walletConnectWallet,
+  metaMaskWallet,
+  coinbaseWallet,
+  rainbowWallet,
+} from "@rainbow-me/rainbowkit/wallets";
 import { celo } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, http, fallback } from "wagmi";
+import { WagmiProvider, http, fallback, createConfig } from "wagmi";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import "@rainbow-me/rainbowkit/styles.css";
 
 import { AudioProvider } from "@/hooks/useAudio";
 
-const config = getDefaultConfig({
-  appName: "FocusPet",
-  projectId: "a615d03b7ef9bf7b6a4117a0a9ec5845", // Replace with valid WalletConnect ID
+const projectId = "a615d03b7ef9bf7b6a4117a0a9ec5845";
+
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: "Recommended",
+      wallets: [
+        walletConnectWallet,
+        metaMaskWallet,
+        coinbaseWallet,
+        rainbowWallet,
+      ],
+    },
+  ],
+  {
+    appName: "FocusPet",
+    projectId,
+  },
+);
+
+const config = createConfig({
+  connectors,
   chains: [celo],
   transports: {
     [celo.id]: fallback([

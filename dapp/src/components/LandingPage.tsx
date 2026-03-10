@@ -34,14 +34,16 @@ export function LandingPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30 overflow-x-hidden">
       {/* Header */}
       <header className="fixed top-0 w-full z-50 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-900">
-        <div className="px-[100px] mx-auto h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="px-4 sm:px-8 md:px-12 lg:px-20 mx-auto h-16 flex items-center justify-between w-full max-w-[1400px]">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <img
               src="/focus-pet-logo.jpeg"
               alt="FocusPet Logo"
-              className="w-8 h-8 rounded-full shadow-sm"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shadow-sm"
             />
-            <h1 className="font-bold text-xl tracking-tight">FocusPet</h1>
+            <h1 className="font-bold text-lg sm:text-xl tracking-tight">
+              FocusPet
+            </h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative group">
