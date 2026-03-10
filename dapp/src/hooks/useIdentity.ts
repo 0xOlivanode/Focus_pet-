@@ -143,7 +143,10 @@ export function useIdentity() {
           try {
             const { error } = await supabase
               .from("referrals")
-              .insert({ referrer, referred: address });
+              .upsert(
+                { referrer, referred: address },
+                { onConflict: "referrer,referred", ignoreDuplicates: true },
+              );
 
             if (!error || error.code === "23505") {
               // 23505 = unique violation, meaning it succeeded previously
