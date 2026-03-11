@@ -50,9 +50,6 @@ export function FocusTimer({
   const [duration, setDuration] = useState(initialMinutes * 60);
   const [note, setNote] = useState("");
 
-  // Anti-cheat state
-  const [showCheckIn, setShowCheckIn] = useState(false);
-  const [checkInMissed, setCheckInMissed] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const progress = ((duration - timeLeft) / duration) * 100;
@@ -83,8 +80,6 @@ export function FocusTimer({
     setStatus("idle");
     setTimeLeft(duration);
     if (timerRef.current) clearInterval(timerRef.current);
-    setShowCheckIn(false);
-    setCheckInMissed(false);
   };
 
   const handleDurationSelect = (mins: number) => {
@@ -100,13 +95,7 @@ export function FocusTimer({
     if (status === "running") {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
-          if (prev <= 1) {
-            return 0;
-          }
-          // Random Check-in Logic (1% chance per second)
-          if (!showCheckIn && Math.random() < 0.005 && prev > 60) {
-            setShowCheckIn(true);
-          }
+          if (prev <= 1) return 0;
           return prev - 1;
         });
       }, 1000);
@@ -115,7 +104,7 @@ export function FocusTimer({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [status, showCheckIn]);
+  }, [status]);
 
   // Handle completion
   useEffect(() => {
@@ -125,19 +114,6 @@ export function FocusTimer({
       onComplete?.(duration / 60);
     }
   }, [timeLeft, status, onComplete, duration]);
-
-  // Check-in timeout logic
-  useEffect(() => {
-    let checkInTimer: NodeJS.Timeout;
-    if (showCheckIn) {
-      checkInTimer = setTimeout(() => {
-        setCheckInMissed(true);
-        setStatus("paused"); // Penalty: pause timer
-        setShowCheckIn(false);
-      }, 15000); // 15s to respond
-    }
-    return () => clearTimeout(checkInTimer);
-  }, [showCheckIn]);
 
   const handleCustomSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -364,58 +340,7 @@ export function FocusTimer({
           </motion.button>
         )}
       </div>
-      {/* Popups / Alerts */}
       <AnimatePresence>
-        {showCheckIn && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute bottom-20 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 p-4 rounded-2xl shadow-xl flex items-center gap-4 z-50 w-80"
-          >
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full text-blue-600 dark:text-blue-400">
-              <AlertCircle size={20} />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-sm">Still focused?</h3>
-              <p className="text-xs text-neutral-500">
-                Tap to confirm presence
-              </p>
-            </div>
-            <button
-              onClick={() => setShowCheckIn(false)}
-              className="bg-black dark:bg-white text-white dark:text-black text-xs font-bold px-4 py-2 rounded-lg"
-            >
-              I'm Here
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {checkInMissed && (
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-3xl">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white dark:bg-neutral-900 p-6 rounded-2xl max-w-xs text-center mx-4"
-            >
-              <div className="mx-auto w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-3">
-                <AlertCircle />
-              </div>
-              <h2 className="text-xl font-bold mb-2">Check-in Missed</h2>
-              <p className="text-neutral-500 text-sm mb-4">
-                You missed the focus check. The timer has been paused. Stay
-                alert to keep your pet happy!
-              </p>
-              <button
-                onClick={() => setCheckInMissed(false)}
-                className="w-full bg-indigo-600 text-white font-bold py-2 rounded-xl"
-              >
-                Resume
-              </button>
-            </motion.div>
-          </div>
-        )}
         {status === "failed" && (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center rounded-3xl">
             <motion.div
