@@ -53,8 +53,6 @@ export function FocusTimer({
   // Anti-cheat state
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [checkInMissed, setCheckInMissed] = useState(false);
-  const visibilityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const progress = ((duration - timeLeft) / duration) * 100;
@@ -118,32 +116,6 @@ export function FocusTimer({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [status, showCheckIn]);
-
-  // Tab Visibility Tracking (Focus Accountability)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && status === "running") {
-        // Start 5-second grace period
-        visibilityTimeoutRef.current = setTimeout(() => {
-          setStatus("failed");
-          onFail?.();
-        }, 5000); // 5s Grace Period
-      } else {
-        // Returned within grace period - clear timer
-        if (visibilityTimeoutRef.current) {
-          clearTimeout(visibilityTimeoutRef.current);
-          visibilityTimeoutRef.current = null;
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (visibilityTimeoutRef.current)
-        clearTimeout(visibilityTimeoutRef.current);
-    };
-  }, [status, onFail]);
 
   // Handle completion
   useEffect(() => {
