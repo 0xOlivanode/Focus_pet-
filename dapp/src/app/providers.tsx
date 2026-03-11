@@ -57,7 +57,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light">
           <RainbowKitProvider>
             <AudioProvider>{children}</AudioProvider>
             <Toaster richColors position="bottom-right" />
