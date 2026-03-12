@@ -15,7 +15,7 @@ import { celo } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, http, fallback, createConfig } from "wagmi";
 import { ThemeProvider } from "next-themes";
-import { Toaster } from "sonner";
+import { Toaster } from "react-hot-toast";
 import "@rainbow-me/rainbowkit/styles.css";
 
 import { AudioProvider } from "@/hooks/useAudio";
@@ -60,7 +60,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <ThemeProvider attribute="class" defaultTheme="light">
           <RainbowKitProvider>
             <AudioProvider>{children}</AudioProvider>
-            <Toaster richColors position="bottom-right" />
+            <Toaster position="bottom-right" />
           </RainbowKitProvider>
         </ThemeProvider>
       </QueryClientProvider>

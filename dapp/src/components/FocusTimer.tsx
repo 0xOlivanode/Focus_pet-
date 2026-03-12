@@ -13,6 +13,7 @@ import {
   Moon,
 } from "lucide-react";
 import { useFocusPet } from "@/hooks/useFocusPet";
+import { useBlockNumber } from "wagmi";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -114,6 +115,11 @@ export function FocusTimer({
       onComplete?.(duration / 60);
     }
   }, [timeLeft, status, onComplete, duration]);
+
+  // Prevent Wallet Connect / RPC from sleeping during multi-hour sessions
+  useBlockNumber({
+    watch: status === "running",
+  });
 
   const handleCustomSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {

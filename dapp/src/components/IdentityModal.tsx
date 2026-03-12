@@ -77,7 +77,7 @@ export function IdentityModal({
                 <ShieldCheck size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-semibold tracking-tight text-neutral-800 dark:text-white">
+                <h2 className="text-sm lg:text-xl font-semibold tracking-tight text-neutral-800 dark:text-white">
                   Human Verification
                 </h2>
               </div>

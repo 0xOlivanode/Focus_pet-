@@ -124,7 +124,7 @@ export function ClaimReward() {
     }
   };
 
-  if (!address) return null;
+  if (!isMounted || !address) return null;
 
   return (
     <div className="w-full mt-6 overflow-hidden bg-linear-to-br from-indigo-500/10 via-purple-500/5 to-transparent dark:from-indigo-500/20 dark:via-purple-500/10 dark:to-transparent rounded-3xl border border-indigo-100 dark:border-indigo-900/50 p-6 relative group">

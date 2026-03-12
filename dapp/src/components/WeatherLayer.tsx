@@ -54,6 +54,7 @@ export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
         {/* SUNNY / CLEAR EFFECTS */}
         {(weather === "sunny" || weather === "clear") && (
           <motion.div
+            key="sunny-clear"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -143,6 +144,7 @@ export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
         {/* NIGHT MODE STARS */}
         {isNight && (
           <motion.div
+            key="night-stars"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -178,7 +180,13 @@ export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
         {(weather === "cloudy" ||
           weather === "rainy" ||
           weather === "stormy") && (
-          <div className="absolute inset-0">
+          <motion.div
+            key="clouds"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0"
+          >
             {clouds.map((i) => (
               <motion.div
                 key={`cloud-group-${i}`}
@@ -244,12 +252,18 @@ export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
                 </motion.div>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* RAIN / STORM */}
         {(weather === "rainy" || weather === "stormy") && (
-          <div className="absolute inset-0">
+          <motion.div
+            key="rain"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0"
+          >
             {/* High-density Rain Drops */}
             {Array.from({ length: 100 }).map((_, i) => (
               <div
@@ -290,12 +304,18 @@ export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
                 />
               </div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* LIGHTNING (Stormy Only) */}
         {weather === "stormy" && (
-          <div className="absolute inset-0 pointer-events-none">
+          <motion.div
+            key="lightning"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 pointer-events-none"
+          >
             {/* Global Flash */}
             <motion.div
               animate={{
@@ -360,7 +380,7 @@ export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
                 </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

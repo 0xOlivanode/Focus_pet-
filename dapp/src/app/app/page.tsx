@@ -22,7 +22,13 @@ import { formatEther } from "viem";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SocialShare } from "@/components/SocialShare";
 import { OnboardingModal } from "@/components/OnboardingModal";
-import { ClaimReward } from "@/components/ClaimReward";
+import dynamic from "next/dynamic";
+const ClaimReward = dynamic(
+  () => import("@/components/ClaimReward").then((mod) => mod.ClaimReward),
+  {
+    ssr: false,
+  },
+);
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
@@ -39,7 +45,7 @@ import {
   Share2,
   Menu,
 } from "lucide-react";
-import { toast } from "sonner";
+import toast, { Toast } from "react-hot-toast";
 import { useAudio } from "@/hooks/useAudio";
 import { SoundMenu } from "@/components/SoundMenu";
 import { StreakFlame } from "@/components/StreakFlame";
@@ -142,22 +148,31 @@ function AppPageContent() {
     shareText = "",
   ) => {
     if (type === "success" || type === "achievement") {
-      toast.success(title, {
-        description: message,
-        action: showShare
-          ? {
-              label: "Share",
-              onClick: () => {
-                const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-                window.open(url, "_blank");
-              },
-            }
-          : undefined,
-      });
+      toast.success(
+        (t: Toast) => (
+          <div className="flex flex-col">
+            <span className="font-bold">{title}</span>
+            <span className="text-sm">{message}</span>
+            {showShare && (
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+                  window.open(url, "_blank");
+                }}
+                className="mt-2 bg-indigo-500 text-white text-xs px-3 py-1 rounded-md w-fit hover:bg-indigo-600 transition-colors"
+              >
+                Share
+              </button>
+            )}
+          </div>
+        ),
+        { duration: 5000 },
+      );
     } else if (type === "error") {
-      toast.error(title, { description: message });
+      toast.error(`${title}\n${message}`);
     } else {
-      toast.info(title, { description: message });
+      toast(`${title}\n${message}`, { icon: "ℹ️" });
     }
   };
 
@@ -204,6 +219,8 @@ function AppPageContent() {
   ]);
 
   useEffect(() => {
+    let redirectTimer: NodeJS.Timeout;
+
     // Only redirect if fully mounted and not in the middle of a critical process
     if (
       hasMounted &&
@@ -213,8 +230,16 @@ function AppPageContent() {
       !isProcessing &&
       !isSyncing
     ) {
-      router.push("/");
+      // Add a 3-second buffer for mobile wallets (like MetaMask) that temporarily
+      // drop the connection socket when returning from a background state after signing.
+      redirectTimer = setTimeout(() => {
+        router.push("/");
+      }, 3000);
     }
+
+    return () => {
+      if (redirectTimer) clearTimeout(redirectTimer);
+    };
   }, [
     isConnected,
     isConnecting,
@@ -799,13 +824,11 @@ function AppPageContent() {
         {/* Pet Shop Section */}
         <PetShop
           gBalance={gBalance as bigint | undefined}
-          allowance={allowance}
           health={health}
           isPending={isPending}
           isSuccess={isConfirmed}
           writeError={writeError}
           receiptError={receiptError}
-          onApprove={approveG}
           onBuyFood={buyFood}
           onBuySuperFood={buySuperFood}
           onBuyEnergyDrink={buyEnergyDrink}

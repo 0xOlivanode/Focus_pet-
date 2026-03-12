@@ -29,13 +29,11 @@ interface ShopItem {
 
 interface PetShopProps {
   gBalance: bigint | undefined;
-  allowance: bigint;
   health: number;
   isPending: boolean;
   isSuccess: boolean;
   writeError: any;
   receiptError: any;
-  onApprove: (amount: bigint, itemId?: string, price?: number) => void;
   onBuyFood: () => void;
   onBuySuperFood: () => void;
   onBuyEnergyDrink: () => void;
@@ -58,13 +56,11 @@ interface PetShopProps {
 
 export function PetShop({
   gBalance,
-  allowance,
   health,
   isPending,
   isSuccess,
   writeError,
   receiptError,
-  onApprove,
   onBuyFood,
   onBuySuperFood,
   onBuyEnergyDrink,
@@ -255,10 +251,6 @@ export function PetShop({
       {/* Main Shop Items */}
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-3 md:gap-4">
         {shopItems[shopCategory].map((item) => {
-          const needsApproval =
-            !inventory[item.id] &&
-            allowance < BigInt(item.price) * BigInt(10 ** 18);
-
           return (
             <motion.button
               key={item.id}
@@ -288,16 +280,8 @@ export function PetShop({
                   : {}
               }
               onClick={() => {
-                if (needsApproval) {
-                  onApprove(
-                    BigInt(item.price) * BigInt(Math.pow(10, 18)),
-                    item.id,
-                    item.price,
-                  );
-                } else {
-                  item.action();
-                  if (item.id.includes("apple")) playSound("buy");
-                }
+                item.action();
+                if (item.id.includes("apple")) playSound("buy");
               }}
               className={`group relative flex flex-col items-center justify-center gap-3 p-5 md:p-7 rounded-4xl transition-all border-2 ${
                 isPending ||
@@ -358,16 +342,6 @@ export function PetShop({
                         : "Click to Wear"}
                     </p>
                   </div>
-                ) : needsApproval ? (
-                  <div className="flex flex-col items-center gap-1 group/sec">
-                    <p className="flex items-center gap-1 text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-3 py-1 rounded-full border border-indigo-200/50 group-hover/sec:border-indigo-400 transition-colors">
-                      <Lock size={10} className="text-indigo-400" />
-                      Enable G$
-                    </p>
-                    <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-[0.2em] opacity-0 group-hover/sec:opacity-100 transition-opacity">
-                      Secure One-time Setup
-                    </span>
-                  </div>
                 ) : (
                   <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full inline-block">
                     {item.price} G$
@@ -399,14 +373,8 @@ export function PetShop({
             }
             whileTap={health === 0 && !isPending ? { scale: 0.96 } : {}}
             onClick={() => {
-              const price = BigInt(50 * 10 ** 18);
-              const reviveNeedsApproval = allowance < price;
-              if (reviveNeedsApproval) {
-                onApprove(price, "revive");
-              } else {
-                onRevive();
-                playSound("buy");
-              }
+              onRevive();
+              playSound("buy");
             }}
             className={`group relative flex flex-col items-center justify-center gap-3 p-5 md:p-7 rounded-4xl transition-all border-2 ${
               health > 0 || isPending
@@ -424,20 +392,9 @@ export function PetShop({
               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
                 Revives Dead Pet
               </p>
-              {allowance < BigInt(50 * 10 ** 18) ? (
-                <div className="flex flex-col items-center gap-1">
-                  <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-3 py-1 rounded-full border border-indigo-200/50">
-                    Enable G$
-                  </p>
-                  <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-[0.2em]">
-                    One-time Setup
-                  </span>
-                </div>
-              ) : (
-                <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full inline-block">
-                  50 G$
-                </p>
-              )}
+              <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full inline-block">
+                50 G$
+              </p>
             </div>
             {health > 0 && (
               <div className="absolute inset-0 bg-neutral-900/5 backdrop-blur-[1px] rounded-4xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

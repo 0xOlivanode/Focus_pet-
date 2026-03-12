@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAccount } from "wagmi";
 
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export function LandingPage() {
   const { isConnected, address } = useAccount();

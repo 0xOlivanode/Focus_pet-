@@ -14,7 +14,7 @@ import {
 } from "@/lib/superfluid";
 import { ERC20ABI, FocusPetABI } from "@/config/abi";
 import { useEffect, useState, useMemo } from "react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 import { getAddress } from "viem";
 
