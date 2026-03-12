@@ -561,7 +561,7 @@ export function PetView({
         {/* Floating Status Bar */}
         <motion.div
           style={{ translateZ: 40, transformStyle: "preserve-3d" }}
-          className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-black/60 backdrop-blur-md border border-white/20 dark:border-white/10 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-lg flex items-center justify-center gap-2 sm:gap-4 text-[10px] sm:text-xs font-bold text-neutral-500 z-10 w-fit sm:w-max max-w-[320px] sm:max-w-none whitespace-nowrap"
+          className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-black/60 backdrop-blur-md border border-white/20 dark:border-white/10 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-lg flex items-center justify-center gap-2 sm:gap-1.5 text-[10px] sm:text-xs font-bold text-neutral-500 z-10 w-fit sm:w-fit max-w-[320px] sm:max-w-none whitespace-nowrap"
         >
           <Tooltip
             content={

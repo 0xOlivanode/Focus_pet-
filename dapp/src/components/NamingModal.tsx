@@ -2,7 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Edit2, Sparkles, Loader2 } from "lucide-react";
+import {
+  X,
+  Edit2,
+  Sparkles,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
+import { useNameAvailability } from "@/hooks/useNameAvailability";
 
 interface NamingModalProps {
   isOpen: boolean;
@@ -21,8 +29,10 @@ export function NamingModal({
   initialPetName = "",
   isPending = false,
 }: NamingModalProps) {
-  const [username, setUsername] = useState(initialUsername);
-  const [petName, setPetName] = useState(initialPetName);
+  const [username, setUsername] = useState(initialUsername || "");
+  const [petName, setPetName] = useState(initialPetName || "");
+  const { isUsernameAvailable, isPetNameAvailable, isLoadingAvailability } =
+    useNameAvailability(initialUsername, initialPetName);
 
   useEffect(() => {
     if (isOpen) {
@@ -31,7 +41,9 @@ export function NamingModal({
     }
   }, [isOpen, initialUsername, initialPetName]);
 
-  const isValid = username.length >= 3 && petName.length >= 2;
+  const isUserValid = username.length >= 3 && isUsernameAvailable(username);
+  const isPetValid = petName.length >= 2 && isPetNameAvailable(petName);
+  const isValid = isUserValid && isPetValid && !isLoadingAvailability;
 
   return (
     <AnimatePresence>
@@ -96,22 +108,71 @@ export function NamingModal({
                         )
                       }
                       placeholder="master_focuser"
-                      className="w-full bg-neutral-50 dark:bg-neutral-800/50 border-2 border-transparent focus:border-indigo-500 rounded-2xl py-4 pl-9 pr-4 font-bold outline-none transition-all dark:text-white"
+                      className={`w-full bg-neutral-50 dark:bg-neutral-800/50 border-2 rounded-2xl py-4 pl-9 pr-12 font-bold outline-none transition-all dark:text-white ${
+                        username.length > 0 && !isUsernameAvailable(username)
+                          ? "border-red-500 focus:border-red-500"
+                          : username.length >= 3
+                            ? "border-green-500 focus:border-green-500"
+                            : "border-transparent focus:border-indigo-500"
+                      }`}
                     />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      {isLoadingAvailability ? (
+                        <Loader2
+                          size={18}
+                          className="text-neutral-400 animate-spin"
+                        />
+                      ) : username.length > 0 &&
+                        !isUsernameAvailable(username) ? (
+                        <AlertCircle size={18} className="text-red-500" />
+                      ) : username.length >= 3 ? (
+                        <CheckCircle2 size={18} className="text-green-500" />
+                      ) : null}
+                    </div>
                   </div>
+                  {username.length > 0 && !isUsernameAvailable(username) && (
+                    <p className="text-xs text-red-500 mt-2 font-medium ml-1">
+                      This hero name is already taken! ⚔️
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2 ml-1">
                     Companion's Name
                   </label>
-                  <input
-                    type="text"
-                    value={petName}
-                    onChange={(e) => setPetName(e.target.value)}
-                    placeholder="e.g. Apollo, Luna, Pixel"
-                    className="w-full bg-neutral-50 dark:bg-neutral-800/50 border-2 border-transparent focus:border-indigo-500 rounded-2xl py-4 px-5 font-bold outline-none transition-all dark:text-white"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={petName}
+                      onChange={(e) => setPetName(e.target.value)}
+                      placeholder="e.g. Apollo, Luna, Pixel"
+                      className={`w-full bg-neutral-50 dark:bg-neutral-800/50 border-2 rounded-2xl py-4 pl-5 pr-12 font-bold outline-none transition-all dark:text-white ${
+                        petName.length > 0 && !isPetNameAvailable(petName)
+                          ? "border-red-500 focus:border-red-500"
+                          : petName.length >= 2
+                            ? "border-green-500 focus:border-green-500"
+                            : "border-transparent focus:border-indigo-500"
+                      }`}
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      {isLoadingAvailability ? (
+                        <Loader2
+                          size={18}
+                          className="text-neutral-400 animate-spin"
+                        />
+                      ) : petName.length > 0 && !isPetNameAvailable(petName) ? (
+                        <AlertCircle size={18} className="text-red-500" />
+                      ) : petName.length >= 2 ? (
+                        <CheckCircle2 size={18} className="text-green-500" />
+                      ) : null}
+                    </div>
+                  </div>
+                  {petName.length > 0 && !isPetNameAvailable(petName) && (
+                    <p className="text-xs text-red-500 mt-2 font-medium ml-1">
+                      Another companion already claimed this name! 🐾
+                    </p>
+                  )}
                 </div>
 
                 <div className="pt-4">
@@ -123,13 +184,7 @@ export function NamingModal({
                     {isPending ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
-                      <>
-                        Save & Adopt
-                        <Sparkles
-                          size={16}
-                          className="group-hover:rotate-12 transition-transform"
-                        />
-                      </>
+                      <>Save & Adopt</>
                     )}
                   </button>
                 </div>
