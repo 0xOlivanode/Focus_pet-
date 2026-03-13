@@ -52,6 +52,7 @@ export function FocusTimer({
   const [note, setNote] = useState("");
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const endTimeRef = useRef<number | null>(null);
 
   const progress = ((duration - timeLeft) / duration) * 100;
 
@@ -66,12 +67,17 @@ export function FocusTimer({
       setStatus("paused");
       onPause?.();
       if (timerRef.current) clearInterval(timerRef.current);
+      endTimeRef.current = null;
     } else if (status === "completed") {
       // Restart logic
-      setTimeLeft(duration);
+      const newTimeLeft = duration;
+      setTimeLeft(newTimeLeft);
+      endTimeRef.current = Date.now() + newTimeLeft * 1000;
       setStatus("running");
       onStart?.(note);
     } else {
+      const newTimeLeft = timeLeft;
+      endTimeRef.current = Date.now() + newTimeLeft * 1000;
       setStatus("running");
       onStart?.(note);
     }
@@ -93,17 +99,32 @@ export function FocusTimer({
   const [customMins, setCustomMins] = useState<string>("");
 
   useEffect(() => {
+    const updateTimer = () => {
+      if (!endTimeRef.current) return;
+      const now = Date.now();
+      const remaining = Math.max(
+        0,
+        Math.ceil((endTimeRef.current - now) / 1000),
+      );
+      setTimeLeft(remaining);
+    };
+
     if (status === "running") {
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) return 0;
-          return prev - 1;
-        });
-      }, 1000);
+      updateTimer(); // Initial sync
+      timerRef.current = setInterval(updateTimer, 1000);
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && status === "running") {
+        updateTimer();
+      }
+    };
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [status]);
 
