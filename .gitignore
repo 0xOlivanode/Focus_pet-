@@ -9,3 +9,7 @@ node_modules/
 # Editor
 .vscode/
 .idea/
+
+package-lock.json
+yarn.lock
+
