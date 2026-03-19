@@ -306,6 +306,15 @@ export function useFocusPet() {
     });
   };
 
+  const deleteUser = () => {
+    setLastAction("profile");
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: FocusPetABI,
+      functionName: "deleteUser",
+    });
+  };
+
   const recordSession = async (
     minutes: number,
     superchargeMultiplier: number = 1,
@@ -587,6 +596,7 @@ export function useFocusPet() {
     buyCosmetic,
     revivePet,
     setNames,
+    deleteUser,
     // Economy
     gBalance,
     approveG,

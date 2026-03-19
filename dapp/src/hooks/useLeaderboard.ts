@@ -43,7 +43,7 @@ export function useLeaderboard() {
     try {
       setIsLoading(true);
 
-      const [fedLogs, nameLogs] = await Promise.all([
+      const [fedLogs, nameLogs, deletedLogs] = await Promise.all([
         publicClient.getContractEvents({
           address: CONTRACT_ADDRESS,
           abi: FocusPetABI,
@@ -56,7 +56,24 @@ export function useLeaderboard() {
           eventName: "NamesUpdated",
           fromBlock: DEPLOYMENT_BLOCK,
         }),
+        publicClient.getContractEvents({
+          address: CONTRACT_ADDRESS,
+          abi: FocusPetABI,
+          eventName: "UserDeleted",
+          fromBlock: DEPLOYMENT_BLOCK,
+        }),
       ]);
+
+      // Track the's most recent deletion to filter historical logs
+      const lastDeletedBlock: Record<string, bigint> = {};
+      for (const log of deletedLogs) {
+        const { owner } = log.args as any;
+        if (!owner) continue;
+        const block = log.blockNumber || 0n;
+        if (!lastDeletedBlock[owner] || block > lastDeletedBlock[owner]) {
+          lastDeletedBlock[owner] = block;
+        }
+      }
 
       const userData: Record<
         string,
@@ -66,6 +83,11 @@ export function useLeaderboard() {
       for (const log of nameLogs) {
         const { owner, username } = log.args as any;
         if (!owner || !username) continue;
+        
+        // Skip logs that occurred before the last reset
+        const block = log.blockNumber || 0n;
+        if (lastDeletedBlock[owner] && block <= lastDeletedBlock[owner]) continue;
+
         userData[owner] = {
           ...userData[owner],
           username,
@@ -77,6 +99,10 @@ export function useLeaderboard() {
       for (const log of fedLogs) {
         const { owner, newHealth, newXp } = log.args as any;
         if (!owner || newXp === undefined || newHealth === undefined) continue;
+
+        // Skip logs that occurred before the last reset
+        const block = log.blockNumber || 0n;
+        if (lastDeletedBlock[owner] && block <= lastDeletedBlock[owner]) continue;
 
         const currentXp = Number(newXp);
         const currentHealth = Number(newHealth);

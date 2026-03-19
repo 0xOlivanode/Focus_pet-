@@ -18,12 +18,15 @@ import {
   Mail,
   ExternalLink,
   ChevronRight,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { parseEther, parseUnits } from "viem";
 import toast from "react-hot-toast";
 import { GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
-import { ERC20ABI } from "@/config/abi";
+import { ERC20ABI, FocusPetABI } from "@/config/abi";
+import { useFocusPet } from "@/hooks/useFocusPet";
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -39,6 +42,9 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [selectedToken, setSelectedToken] = useState<"CELO" | "G$">("CELO");
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const { deleteUser, isProcessing } = useFocusPet();
 
   const handleLogout = async () => {
     onClose();
@@ -251,10 +257,57 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                     </button>
                   </div>
 
-                  <div className="pt-6 flex flex-col items-center gap-4">
+                  <div className="pt-6 flex flex-col items-center gap-3">
+                    <AnimatePresence mode="wait">
+                      {!showResetConfirm ? (
+                        <motion.button
+                          key="reset-init"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          onClick={() => setShowResetConfirm(true)}
+                          className="text-[10px] font-black text-neutral-400 hover:text-red-500 transition-colors uppercase tracking-[0.2em] flex items-center gap-2"
+                        >
+                          <RotateCcw size={12} />
+                          Reset Pet Data
+                        </motion.button>
+                      ) : (
+                        <motion.div
+                          key="reset-confirm"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="flex flex-col items-center gap-2"
+                        >
+                          <p className="text-[10px] font-black text-red-500 uppercase tracking-widest text-center max-w-[200px]">
+                            Are you sure? This will delete your pet permanently.
+                          </p>
+                          <div className="flex gap-4">
+                            <button
+                              disabled={isProcessing}
+                              onClick={() => {
+                                deleteUser();
+                                setShowResetConfirm(false);
+                                toast.success("Reset request sent!");
+                              }}
+                              className="text-[10px] font-black text-red-600 hover:underline uppercase tracking-widest"
+                            >
+                              {isProcessing ? "Processing..." : "Yes, Delete"}
+                            </button>
+                            <button
+                              onClick={() => setShowResetConfirm(false)}
+                              className="text-[10px] font-black text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 uppercase tracking-widest"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     <button
                       onClick={handleLogout}
-                      className="text-xs font-bold text-neutral-400 hover:text-red-500 transition-colors uppercase tracking-widest"
+                      className="text-[10px] font-black text-neutral-400/60 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors uppercase tracking-[0.2em] mt-2"
                     >
                       Log Out
                     </button>

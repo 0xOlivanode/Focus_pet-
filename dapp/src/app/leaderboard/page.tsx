@@ -8,6 +8,8 @@ import { useAccount } from "wagmi";
 import { formatEther } from "viem";
 import { calculateMonthlyAmount } from "@/lib/superfluid";
 import { Navbar } from "@/components/Navbar";
+import { Copy, Check } from "lucide-react";
+import toast from "react-hot-toast";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -26,9 +28,25 @@ const LeaderboardRow = ({
   entry: any;
   userAddress: string | undefined;
 }) => {
+  const [copied, setCopied] = useState(false);
   const totalFocusTime = entry.totalFocusTime || 0;
   const streak = entry.streak || 0;
   const flowRate = entry.flowRate || 0n;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(entry.address);
+    setCopied(true);
+    toast.success("Address copied!", {
+      icon: "📋",
+      style: {
+        borderRadius: "10px",
+        background: "#333",
+        color: "#fff",
+        fontSize: "12px",
+      },
+    });
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const getFlowBadge = (rate?: bigint) => {
     if (!rate || rate === 0n) return null;
@@ -75,6 +93,16 @@ const LeaderboardRow = ({
                   ? `@${entry.username}`
                   : formatAddress(entry.address)}
               </span>
+              <button
+                onClick={handleCopy}
+                className="text-neutral-400 hover:text-indigo-500 transition-colors p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              >
+                {copied ? (
+                  <Check size={10} className="text-emerald-500" />
+                ) : (
+                  <Copy size={10} />
+                )}
+              </button>
               {entry.flowRate !== undefined &&
                 entry.flowRate > 0n &&
                 flowBadge && (

@@ -212,6 +212,13 @@ export const FocusPetABI = [
   },
   {
     type: "function",
+    name: "usernameToAddress",
+    inputs: [{ name: "", type: "string", internalType: "string" }],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "revivePet",
     inputs: [],
     outputs: [],
@@ -233,6 +240,33 @@ export const FocusPetABI = [
     inputs: [{ name: "newOwner", type: "address", internalType: "address" }],
     outputs: [],
     stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "deleteUser",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "adminDeleteUser",
+    inputs: [{ name: "_user", type: "address", internalType: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "event",
+    name: "UserDeleted",
+    inputs: [
+      {
+        name: "owner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
   },
   {
     type: "event",

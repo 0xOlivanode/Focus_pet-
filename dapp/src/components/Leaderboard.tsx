@@ -7,10 +7,29 @@ import { calculateMonthlyAmount } from "@/lib/superfluid";
 import { formatEther } from "viem";
 import { Tooltip } from "./Tooltip";
 import Link from "next/link";
+import { Copy, Check } from "lucide-react";
+import toast from "react-hot-toast";
+import { useState } from "react";
 
 export function Leaderboard() {
   const { address } = useAccount();
   const { topTen, isLoading } = useLeaderboard();
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+
+  const handleCopy = (addr: string) => {
+    navigator.clipboard.writeText(addr);
+    setCopiedAddress(addr);
+    toast.success("Address copied!", {
+      icon: "📋",
+      style: {
+        borderRadius: "10px",
+        background: "#333",
+        color: "#fff",
+        fontSize: "12px",
+      },
+    });
+    setTimeout(() => setCopiedAddress(null), 2000);
+  };
 
   const getAvatar = (xp: number) => {
     return getPetEmoji(getPetStage(xp));
@@ -90,11 +109,21 @@ export function Leaderboard() {
               </div>
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1.5 md:gap-2">
-                  <span className="font-bold text-xs md:text-sm truncate max-w-[80px] md:max-w-none">
-                    {entry.username
-                      ? `@${entry.username}`
-                      : formatAddress(entry.address)}
-                  </span>
+                    <span className="font-bold text-xs md:text-sm truncate max-w-[80px] md:max-w-none">
+                      {entry.username
+                        ? `@${entry.username}`
+                        : formatAddress(entry.address)}
+                    </span>
+                    <button
+                      onClick={() => handleCopy(entry.address)}
+                      className="text-neutral-400 hover:text-indigo-500 transition-colors p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    >
+                      {copiedAddress === entry.address ? (
+                        <Check size={10} className="text-emerald-500" />
+                      ) : (
+                        <Copy size={10} />
+                      )}
+                    </button>
                   {entry.isVerified && <VerifiedBadge size={12} />}
                   {getFlowBadge(entry.flowRate) && (
                     <Tooltip content={getFlowBadge(entry.flowRate)?.label}>

@@ -53,6 +53,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     event BoostActivated(address indexed owner, uint256 endTime);
     event ShieldAdded(address indexed owner, uint256 newCount);
     event DonationSent(address indexed to, uint256 amount);
+    event UserDeleted(address indexed owner);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -125,7 +126,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _handleHealthDecay(Pet storage pet, uint256 timeDiff) internal {
-        uint256 healthLoss = (timeDiff * DECAY_RATE_PER_DAY) / 1 days;
+        uint256 healthLoss = (timeDiff / 1 days) * DECAY_RATE_PER_DAY;
         pet.health = (healthLoss > pet.health) ? 0 : pet.health - healthLoss;
     }
 
@@ -185,7 +186,6 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     // Buy Food: +20 Health, Costs 10 G$
     function buyFood() public {
-        _settleStream(msg.sender); // Sync state first
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
@@ -199,7 +199,6 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     // Buy Super Food: 100 Health, Costs 30 G$
     function buySuperFood() public {
-        _settleStream(msg.sender); // Sync state first
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
@@ -252,6 +251,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     uint256 public totalGlobalFocusTime;
     uint256 public totalVolumeG$;
     address public treasury;
+    mapping(string => address) public usernameToAddress;
 
     // Buy Cosmetic & Add to Inventory
     function buyCosmetic(string memory cosmeticId, uint256 price) public {
@@ -276,7 +276,6 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     // Revive Pet: Sets Health to 50, Costs 50 G$
     function revivePet() public {
-        _settleStream(msg.sender); // Sync state first
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health == 0, "Pet is alive");
@@ -319,11 +318,52 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function setNames(string memory _username, string memory _petName) public hasPet {
-        _settleStream(msg.sender);
-        Pet storage pet = pets[msg.sender];
-        pet.username = _username;
-        pet.petName = _petName;
+        if (bytes(_username).length > 0) {
+            address existing = usernameToAddress[_username];
+            require(existing == address(0) || existing == msg.sender, "Username taken");
+            
+            // Clear old mapping
+            string memory oldUsername = pets[msg.sender].username;
+            if (bytes(oldUsername).length > 0 && keccak256(bytes(oldUsername)) != keccak256(bytes(_username))) {
+                delete usernameToAddress[oldUsername];
+            }
+            
+            usernameToAddress[_username] = msg.sender;
+        }
+
+        pets[msg.sender].username = _username;
+        pets[msg.sender].petName = _petName;
         emit NamesUpdated(msg.sender, _username, _petName);
+    }
+
+    function deleteUser() public {
+        _clearUserData(msg.sender);
+    }
+
+    // Admin-Reset: Allows owner to delete specific user data
+    function adminDeleteUser(address _user) public onlyOwner {
+        _clearUserData(_user);
+    }
+
+    function _clearUserData(address _user) internal {
+        string memory username = pets[_user].username;
+        if (bytes(username).length > 0) {
+            delete usernameToAddress[username];
+        }
+
+        // Wipe inventory & equipped states
+        ownedCosmetics[_user]["sunglasses"] = false;
+        ownedCosmetics[_user]["crown"] = false;
+        isCosmeticEquipped[_user]["sunglasses"] = false;
+        isCosmeticEquipped[_user]["crown"] = false;
+
+        delete pets[_user];
+        
+        if (totalUsers > 0) {
+            totalUsers -= 1;
+        }
+
+        emit UserDeleted(_user);
     }
 
     function getPet(address owner) public view returns (Pet memory) {
