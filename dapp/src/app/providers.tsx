@@ -39,7 +39,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         appearance: {
           theme: "light",
           accentColor: "#4f46e5",
-          logo: "https://focus-pet.xyz/favicon.ico",
+          logo: "/focus-pet.png",
         },
         embeddedWallets: {
           ethereum: {

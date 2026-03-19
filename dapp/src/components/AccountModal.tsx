@@ -258,7 +258,7 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                   </div>
 
                   <div className="pt-6 flex flex-col items-center gap-3">
-                    <AnimatePresence mode="wait">
+                    {/* <AnimatePresence mode="wait">
                       {!showResetConfirm ? (
                         <motion.button
                           key="reset-init"
@@ -303,7 +303,7 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                           </div>
                         </motion.div>
                       )}
-                    </AnimatePresence>
+                    </AnimatePresence> */}
 
                     <button
                       onClick={handleLogout}
