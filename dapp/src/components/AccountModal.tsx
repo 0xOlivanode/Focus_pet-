@@ -163,14 +163,11 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                       className="w-full flex items-center justify-between p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center">
-                          <div className="w-5 h-5 rounded-md bg-linear-to-tr from-indigo-500 to-purple-500 shadow-sm" />
-                        </div>
                         <div className="text-left">
-                          <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                          <div className="text-xs text-neutral-400 uppercase tracking-widest">
                             Wallet Address
                           </div>
-                          <div className="font-bold text-neutral-900 dark:text-white">
+                          <div className="text-neutral-900 dark:text-white">
                             {address?.slice(0, 6)}...{address?.slice(-4)}
                           </div>
                         </div>
@@ -185,20 +182,14 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                     {user?.email && (
                       <div className="w-full flex items-center justify-between p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center">
-                            <Mail size={18} className="text-neutral-400" />
-                          </div>
                           <div className="text-left">
-                            <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                            <div className="text-xs text-neutral-400 uppercase tracking-widest">
                               Connected Email
                             </div>
-                            <div className="font-bold text-neutral-900 dark:text-white">
+                            <div className=" text-neutral-900 dark:text-white">
                               {user.email.address}
                             </div>
                           </div>
-                        </div>
-                        <div className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-[10px] font-bold text-indigo-500 uppercase">
-                          Recent
                         </div>
                       </div>
                     )}
@@ -230,7 +221,7 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                           G
                         </div>
                         <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                          GoodDollar
+                          G$
                         </span>
                       </div>
                       <div className="font-bold text-lg text-neutral-900 dark:text-white">
