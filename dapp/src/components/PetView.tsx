@@ -387,16 +387,35 @@ export function PetView({
             : "border-neutral-100 dark:border-neutral-800 shadow-indigo-500/5",
         )}
       >
-        {/* Grid Pattern (Base Layer) */}
-        <div
-          className="absolute inset-0 opacity-15 dark:opacity-30 rounded-4xl overflow-hidden"
-          style={{
-            backgroundImage:
-              "radial-gradient(#6366f1 1.5px, transparent 1.5px)",
-            backgroundSize: "24px 24px",
-            transform: "translateZ(0px)",
-          }}
-        ></div>
+        {/* --- Background & Parallax Isolation Layer --- */}
+        <div className="absolute inset-0 rounded-4xl overflow-hidden pointer-events-none">
+          {/* Grid Pattern (Base Layer) */}
+          <div
+            className="absolute inset-0 opacity-15 dark:opacity-30"
+            style={{
+              backgroundImage:
+                "radial-gradient(#6366f1 1.5px, transparent 1.5px)",
+              backgroundSize: "24px 24px",
+              transform: "translateZ(0px)",
+            }}
+          ></div>
+
+          {/* Background Ambient Glow (Parallax Layer 1) */}
+          <motion.div
+            style={{ x: bgX, y: bgY, translateZ: -60, scale: 1.5 }}
+            className={`absolute inset-0 blur-[120px] opacity-40 transition-colors duration-3000 ${
+              stage === "egg"
+                ? "bg-indigo-300/40"
+                : stage === "baby"
+                  ? "bg-sky-400/30"
+                  : stage === "teen"
+                    ? "bg-blue-400/30"
+                    : stage === "adult"
+                      ? "bg-violet-500/20"
+                      : "bg-fuchsia-600/20"
+            }`}
+          />
+        </div>
 
         {/* Weather Indicator Badge */}
         <div
@@ -723,21 +742,6 @@ export function PetView({
           onStop={stopSupercharge}
         />
 
-        {/* Background Ambient Glow (Parallax Layer 1) */}
-        <motion.div
-          style={{ x: bgX, y: bgY, translateZ: -60, scale: 1.5 }}
-          className={`absolute inset-0 blur-[120px] opacity-40 transition-colors duration-3000 ${
-            stage === "egg"
-              ? "bg-indigo-300/40"
-              : stage === "baby"
-                ? "bg-sky-400/30"
-                : stage === "teen"
-                  ? "bg-blue-400/30"
-                  : stage === "adult"
-                    ? "bg-violet-500/20"
-                    : "bg-fuchsia-600/20"
-          }`}
-        />
 
         {/* Environmental Elements (Parallax Layer 2) */}
         <motion.div
