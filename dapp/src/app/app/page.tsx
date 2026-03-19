@@ -276,16 +276,18 @@ function AppPageContent() {
       if (isConfirmed && hash && hash !== syncedHash) {
         setIsSyncing(true);
         setSyncedHash(hash);
-        
+
         try {
           // Parallelize refetching for speed
           await Promise.all([
             refetch(),
             refetchLeaderboard(),
             refetchAllowance(),
-            typeof refetchGBalance === "function" ? (refetchGBalance as () => void)() : Promise.resolve(),
+            typeof refetchGBalance === "function"
+              ? (refetchGBalance as () => void)()
+              : Promise.resolve(),
           ]);
-          
+
           router.refresh();
 
           // Celebration logic...
@@ -318,7 +320,7 @@ function AppPageContent() {
               "Profile Updated! 👤",
               "Your on-chain identity has been saved successfully.",
               "info",
-              );
+            );
           }
         } catch (error) {
           console.error("Sync error:", error);
@@ -431,7 +433,7 @@ function AppPageContent() {
 
   if (!hasPet) {
     return (
-      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+      <div className="min-h-screen w-screen overflow-x-hidden bg-neutral-950 flex flex-col items-center justify-center p-6 text-center relative">
         {/* Immersive Background Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 blur-[120px] rounded-full" />
         <div className="absolute top-1/4 left-1/4 w-[300px] h-[300px] bg-purple-500/5 blur-[100px] rounded-full" />
@@ -603,9 +605,9 @@ function AppPageContent() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30">
       {/* Header */}
-      <Navbar 
-        onOpenOnboarding={() => setShowOnboarding(true)} 
-        onOpenProfile={() => setIsEditModalOpen(true)} 
+      <Navbar
+        onOpenOnboarding={() => setShowOnboarding(true)}
+        onOpenProfile={() => setIsEditModalOpen(true)}
       />
 
       <main className="flex flex-col items-center pt-8 px-4 max-w-[800px] mx-auto pb-20 w-full">
