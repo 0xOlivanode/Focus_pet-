@@ -32,6 +32,13 @@ export const FocusPetABI = [
   },
   {
     type: "function",
+    name: "totalUsers",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "PRICE_SUPER_FOOD",
     inputs: [],
     outputs: [{ name: "", type: "uint256", internalType: "uint256" }],

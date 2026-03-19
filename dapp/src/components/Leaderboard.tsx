@@ -13,7 +13,7 @@ import { useState } from "react";
 
 export function Leaderboard() {
   const { address } = useAccount();
-  const { topTen, isLoading } = useLeaderboard();
+  const { topTen, isLoading, totalUsers } = useLeaderboard();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
   const handleCopy = (addr: string) => {
@@ -69,7 +69,14 @@ export function Leaderboard() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <span className="text-xl md:text-2xl">🏆</span>
-          <h2 className="font-bold text-lg md:text-lg">Top Focusers</h2>
+          <div className="flex flex-col">
+            <h2 className="font-bold text-lg md:text-lg">Top Focusers</h2>
+            {!isLoading && totalUsers > 0 && (
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">
+                Join {totalUsers.toLocaleString()} players in the arena
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

@@ -34,6 +34,7 @@ export function useLeaderboard() {
   );
   const [topTen, setTopTen] = useState<LeaderboardEntry[]>([]);
   const [userEntry, setUserEntry] = useState<LeaderboardEntry | null>(null);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const { address: accountAddress } = useAccount();
 
@@ -43,7 +44,7 @@ export function useLeaderboard() {
     try {
       setIsLoading(true);
 
-      const [fedLogs, nameLogs, deletedLogs] = await Promise.all([
+      const [fedLogs, nameLogs, deletedLogs, usersCount] = await Promise.all([
         publicClient.getContractEvents({
           address: CONTRACT_ADDRESS,
           abi: FocusPetABI,
@@ -62,7 +63,16 @@ export function useLeaderboard() {
           eventName: "UserDeleted",
           fromBlock: DEPLOYMENT_BLOCK,
         }),
+        publicClient.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: FocusPetABI,
+          functionName: "totalUsers",
+        }),
       ]);
+
+      if (usersCount) {
+        setTotalUsers(Number(usersCount));
+      }
 
       // Track the's most recent deletion to filter historical logs
       const lastDeletedBlock: Record<string, bigint> = {};
@@ -225,6 +235,7 @@ export function useLeaderboard() {
     leaderboard: fullLeaderboard,
     topTen,
     userEntry,
+    totalUsers,
     isLoading,
     refetch: fetchLeaderboard,
   };
