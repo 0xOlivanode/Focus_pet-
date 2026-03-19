@@ -50,16 +50,8 @@ export function Leaderboard() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <span className="text-xl md:text-2xl">🏆</span>
-          <h2 className="font-bold text-lg md:text-lg">
-            Top Focusers (All-Time)
-          </h2>
+          <h2 className="font-bold text-lg md:text-lg">Top Focusers</h2>
         </div>
-        <Link
-          href="/leaderboard"
-          className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-        >
-          See More ➔
-        </Link>
       </div>
 
       <div className="space-y-4">

@@ -1,16 +1,20 @@
 "use client";
 
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+
 import { ArrowRight, Clock, Trophy, Heart } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
+import { PrivyConnectButton } from "./PrivyConnectButton";
+import { AccountModal } from "./AccountModal";
 import { useAccount } from "wagmi";
 
 import toast from "react-hot-toast";
 
 export function LandingPage() {
   const { isConnected, address } = useAccount();
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -49,11 +53,7 @@ export function LandingPage() {
             <div className="relative group">
               {/* <div className="absolute -inset-1 bg-linear-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div> */}
               <div className="relative bg-white dark:bg-black rounded-xl p-1">
-                <ConnectButton
-                  label="Start Your Journey"
-                  showBalance={false}
-                  accountStatus="address"
-                />
+                <PrivyConnectButton onOpenAccount={() => setIsAccountModalOpen(true)} />
               </div>
             </div>
             <ThemeToggle />
@@ -194,6 +194,11 @@ export function LandingPage() {
       <footer className="py-8 text-center text-sm text-neutral-500 border-t border-neutral-100 dark:border-neutral-900">
         <p>Built with ❤️ on Celo • Powered by GoodDollar</p>
       </footer>
+
+      <AccountModal 
+        isOpen={isAccountModalOpen} 
+        onClose={() => setIsAccountModalOpen(false)} 
+      />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   SUPERFLUID_FORWARDER_CELO,
   CFAv1ForwarderAbi,
 } from "@/lib/superfluid";
+import { useAccount } from "wagmi";
 
 export type LeaderboardEntry = {
   rank: number;
@@ -23,6 +24,7 @@ export type LeaderboardEntry = {
   isVerified?: boolean;
   flowRate?: bigint;
   totalFocusTime?: number;
+  streak?: number;
 };
 
 export function useLeaderboard() {
@@ -31,7 +33,9 @@ export function useLeaderboard() {
     [],
   );
   const [topTen, setTopTen] = useState<LeaderboardEntry[]>([]);
+  const [userEntry, setUserEntry] = useState<LeaderboardEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { address: accountAddress } = useAccount();
 
   const fetchLeaderboard = async () => {
     if (!publicClient) return;
@@ -60,7 +64,7 @@ export function useLeaderboard() {
       > = {};
 
       for (const log of nameLogs) {
-        const { owner, username } = log.args;
+        const { owner, username } = log.args as any;
         if (!owner || !username) continue;
         userData[owner] = {
           ...userData[owner],
@@ -71,7 +75,7 @@ export function useLeaderboard() {
       }
 
       for (const log of fedLogs) {
-        const { owner, newHealth, newXp } = log.args;
+        const { owner, newHealth, newXp } = log.args as any;
         if (!owner || newXp === undefined || newHealth === undefined) continue;
 
         const currentXp = Number(newXp);
@@ -92,6 +96,7 @@ export function useLeaderboard() {
           xp: data.xp,
           health: data.health,
           username: data.username,
+          rank: 0,
         }))
         .sort((a, b) => b.xp - a.xp)
         .map((entry, index) => ({
@@ -101,13 +106,42 @@ export function useLeaderboard() {
 
       setFullLeaderboard(allEntries);
 
-      // Fetch details only for Top 10
-      const topTenEntries = allEntries.slice(0, 10);
+      // 2. FETCH TOP 100 DETAILS (Multicall for Speed)
+      if (allEntries.length > 0) {
+        const top100 = allEntries.slice(0, 100);
+        // 🏷️ Add the User themselves if they are not in the top 100
+        const userInTop100 = accountAddress && top100.some(e => e.address.toLowerCase() === accountAddress.toLowerCase());
+        const usersToEnrich = [...top100];
+        if (accountAddress && !userInTop100) {
+          const personalEntry = allEntries.find(e => e.address.toLowerCase() === accountAddress.toLowerCase());
+          if (personalEntry) usersToEnrich.push(personalEntry);
+        }
 
-      const { ClaimSDK } = await import("@goodsdks/citizen-sdk");
+        // Prepare Multicall for Pet Data and Flow Info
+        const calls = [
+          ...usersToEnrich.map(entry => ({
+            address: CONTRACT_ADDRESS,
+            abi: FocusPetABI,
+            functionName: "pets",
+            args: [entry.address as `0x${string}`]
+          })),
+          ...usersToEnrich.map(entry => ({
+            address: SUPERFLUID_FORWARDER_CELO,
+            abi: CFAv1ForwarderAbi,
+            functionName: "getFlowInfo",
+            args: [G_DOLLAR_CELO, entry.address as `0x${string}`, UBI_POOL_ADDRESS_CELO]
+          }))
+        ];
 
-      const verifiedResults = await Promise.all(
-        topTenEntries.map(async (entry) => {
+        const multicallResults = await publicClient.multicall({ contracts: calls as any });
+        
+        const { ClaimSDK } = await import("@goodsdks/citizen-sdk");
+        
+        const enrichedList = await Promise.all(usersToEnrich.map(async (entry, i) => {
+          const petDataResult = multicallResults[i].result as any;
+          const flowDataResult = multicallResults[i + usersToEnrich.length].result as any;
+          
+          let isVerified = false;
           try {
             const sdk = new ClaimSDK({
               account: entry.address as `0x${string}`,
@@ -117,64 +151,39 @@ export function useLeaderboard() {
               identitySDK: {} as any,
             });
             const claimStatus = await sdk.getWalletClaimStatus();
-            return {
-              ...entry,
-              isVerified: claimStatus.status !== "not_whitelisted",
-            };
-          } catch {
-            return { ...entry, isVerified: false };
-          }
-        }),
-      );
+            isVerified = claimStatus.status !== "not_whitelisted";
+          } catch {}
 
-      setTopTen(verifiedResults);
+          // Correctly extract data based on ABI named outputs or array indices
+          const totalFocusTime = Number(petDataResult?.totalFocusTime ?? petDataResult?.[12] ?? 0);
+          const streak = Number(petDataResult?.streak ?? petDataResult?.[6] ?? 0);
+          const flowRate = flowDataResult?.[1] ?? 0n;
 
-      const withFlows = await Promise.all(
-        verifiedResults.map(async (entry) => {
-          try {
-            const flowData = (await publicClient.readContract({
-              address: SUPERFLUID_FORWARDER_CELO,
-              abi: CFAv1ForwarderAbi,
-              functionName: "getFlowInfo",
-              args: [
-                G_DOLLAR_CELO,
-                entry.address as `0x${string}`,
-                UBI_POOL_ADDRESS_CELO as `0x${string}`,
-              ],
-            })) as [bigint, bigint, bigint, bigint];
+          return {
+            ...entry,
+            isVerified,
+            totalFocusTime,
+            streak,
+            flowRate
+          };
+        }));
 
-            return {
-              ...entry,
-              flowRate: flowData[1],
-            };
-          } catch {
-            return entry;
-          }
-        }),
-      );
+        const finalTop100 = enrichedList.slice(0, 100);
+        setTopTen(finalTop100.slice(0, 10));
 
-      setTopTen(withFlows);
-
-      const finalTopTen = await Promise.all(
-        withFlows.map(async (entry) => {
-          try {
-            const petData = (await publicClient.readContract({
-              address: CONTRACT_ADDRESS,
-              abi: FocusPetABI,
-              functionName: "pets",
-              args: [entry.address as `0x${string}`],
-            })) as unknown as any[];
-            return {
-              ...entry,
-              totalFocusTime: Number(petData[12]),
-            };
-          } catch {
-            return entry;
-          }
-        }),
-      );
-
-      setTopTen(finalTopTen);
+        if (accountAddress) {
+          const personal = enrichedList.find(e => e.address.toLowerCase() === accountAddress.toLowerCase());
+          if (personal) setUserEntry(personal);
+        }
+        
+        // 🔥 SYNC BACK TO FULL LEADERBOARD (Top 100)
+        setFullLeaderboard(current => 
+          current.map(entry => {
+            const enriched = enrichedList.find(e => e.address.toLowerCase() === entry.address.toLowerCase());
+            return enriched ? { ...entry, ...enriched } : entry;
+          })
+        );
+      }
     } catch (error) {
       console.error("Failed to fetch leaderboard logs:", error);
     } finally {
@@ -184,11 +193,12 @@ export function useLeaderboard() {
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [publicClient]);
+  }, [publicClient, accountAddress]);
 
   return {
     leaderboard: fullLeaderboard,
     topTen,
+    userEntry,
     isLoading,
     refetch: fetchLeaderboard,
   };

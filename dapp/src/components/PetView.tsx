@@ -182,6 +182,7 @@ export function PetView({
     },
     sad: {
       rotate: [0, -4, 4, 0],
+      y: health <= 0 ? [0, 10, 0] : 0,
       transition: { repeat: Infinity, duration: 4 },
     },
     sleeping: {
@@ -218,13 +219,44 @@ export function PetView({
             alt={getStageName(stage)}
             width={256}
             height={256}
-            className={`object-contain transition-all duration-700 ${
-              mood === "sleeping" ? "brightness-50 grayscale-50" : ""
-            }`}
+            className={cn(
+              "object-contain transition-all duration-700",
+              mood === "sleeping" && "brightness-50 grayscale-50",
+              health <= 0 && "grayscale brightness-50 blur-[2px]",
+            )}
             priority
           />
         ) : (
-          <span className="text-8xl">{getPetEmoji(stage)}</span>
+          <span className={cn("text-8xl", health <= 0 && "grayscale opacity-50")}>
+            {getPetEmoji(stage)}
+          </span>
+        )}
+
+        {/* Death Overlay */}
+        {health <= 0 && (
+          <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
+              animate={{
+                opacity: [0.7, 1, 0.7],
+                scale: [1, 1.1, 1],
+                rotate: [-5, 5, -5],
+              }}
+              transition={{ duration: 4, repeat: Infinity }}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="bg-red-500/20 backdrop-blur-md p-6 rounded-full border-2 border-red-500/50 shadow-[0_0_40px_rgba(239,68,68,0.4)]">
+                <ZapOff
+                  size={48}
+                  className="text-red-500 drop-shadow-lg"
+                  strokeWidth={3}
+                />
+              </div>
+              {/* <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
+                Sync & Revive
+              </span> */}
+            </motion.div>
+          </div>
         )}
 
         {/* Cosmetic Overlay Layer (Multi-Slot Wardrobe) */}
@@ -348,7 +380,12 @@ export function PetView({
           rotateY,
           transformStyle: "preserve-3d",
         }}
-        className="w-[90%] mx-auto h-80 md:h-100 bg-white dark:bg-[#0a0a0b] rounded-4xl border border-neutral-100 dark:border-neutral-800 flex items-center justify-center relative group transition-colors duration-500 shadow-xl shadow-indigo-500/5 cursor-pointer perspective-origin-center will-change-transform"
+        className={cn(
+          "w-[90%] mx-auto h-80 md:h-100 bg-white dark:bg-[#0a0a0b] rounded-4xl border flex items-center justify-center relative group transition-colors duration-500 shadow-xl cursor-pointer perspective-origin-center will-change-transform",
+          health <= 0
+            ? "border-red-500/40 shadow-red-500/10"
+            : "border-neutral-100 dark:border-neutral-800 shadow-indigo-500/5",
+        )}
       >
         {/* Grid Pattern (Base Layer) */}
         <div

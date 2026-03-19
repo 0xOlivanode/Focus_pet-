@@ -364,8 +364,8 @@ export function PetShop({
           );
         })}
 
-        {/* Revive Special Case Logic */}
-        {shopCategory === "consumables" && (
+        {/* Revive Special Case Logic - Commented out until upgrade is complete */}
+        {/* {shopCategory === "consumables" && (
           <motion.button
             disabled={health > 0 || isPending}
             whileHover={
@@ -404,7 +404,7 @@ export function PetShop({
               </div>
             )}
           </motion.button>
-        )}
+        )} */}
       </div>
 
       {/* Mining State Indicator (Discreet) */}

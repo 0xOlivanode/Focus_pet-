@@ -15,10 +15,11 @@ import { useFocusPet } from "@/hooks/useFocusPet";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
 import { useIdentity } from "@/hooks/useIdentity";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+
 import { useAccount } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatEther } from "viem";
+import { PrivyConnectButton } from "@/components/PrivyConnectButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SocialShare } from "@/components/SocialShare";
 import { OnboardingModal } from "@/components/OnboardingModal";
@@ -48,9 +49,10 @@ import {
 import toast, { Toast } from "react-hot-toast";
 import { useAudio } from "@/hooks/useAudio";
 import { SoundMenu } from "@/components/SoundMenu";
-import { StreakFlame } from "@/components/StreakFlame";
+import { StreakFlame } from "./../../components/StreakFlame";
 import { NamingModal } from "@/components/NamingModal";
 import { useStreaming } from "@/hooks/useStreaming";
+import { Navbar } from "@/components/Navbar";
 
 import { Suspense } from "react";
 
@@ -274,47 +276,55 @@ function AppPageContent() {
       if (isConfirmed && hash && hash !== syncedHash) {
         setIsSyncing(true);
         setSyncedHash(hash);
-        await refetch();
-        await refetchLeaderboard();
-        refetchAllowance();
-        if (typeof refetchGBalance === "function") {
-          (refetchGBalance as () => void)();
-        }
-        router.refresh();
+        
+        try {
+          // Parallelize refetching for speed
+          await Promise.all([
+            refetch(),
+            refetchLeaderboard(),
+            refetchAllowance(),
+            typeof refetchGBalance === "function" ? (refetchGBalance as () => void)() : Promise.resolve(),
+          ]);
+          
+          router.refresh();
 
-        // Celebration confetti for focus sessions or level ups!
-        if (lastAction === "focus") {
-          confetti({
-            particleCount: 150,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ["#6366f1", "#8B5CF6", "#EC4899"],
-          });
-          playSound("success");
-          showToast(
-            "Focus Recorded! 🏆",
-            "Your pet is growing stronger and your status is updated on-chain.",
-            "achievement",
-            true,
-            `I just focused ${focusNote ? `on "${focusNote}" ` : ""}for ${lastSessionDuration < 1 ? Math.round(lastSessionDuration * 60) + " seconds" : lastSessionDuration + " minutes"} with FocusPet! 🦅 My pet is leveling up on Celo. #FocusPet #BuildWithCelo`,
-          );
-        } else if (lastAction === "shop") {
-          showToast(
-            "Shop Success! 🛍️",
-            "Your items have been delivered and your pet is happy.",
-            "success",
-            true,
-            `I just bought a new item for my @FocusPet! 🛍️ My productivity is paying off. #FocusPet #Celo`,
-          );
-          playSound("pop");
-        } else if (lastAction === "profile") {
-          showToast(
-            "Profile Updated! 👤",
-            "Your on-chain identity has been saved successfully.",
-            "info",
-          );
+          // Celebration logic...
+          if (lastAction === "focus") {
+            confetti({
+              particleCount: 150,
+              spread: 70,
+              origin: { y: 0.6 },
+              colors: ["#6366f1", "#8B5CF6", "#EC4899"],
+            });
+            playSound("success");
+            showToast(
+              "Focus Recorded! 🏆",
+              "Your pet is growing stronger and your status is updated on-chain.",
+              "achievement",
+              true,
+              `I just focused ${focusNote ? `on "${focusNote}" ` : ""}for ${lastSessionDuration < 1 ? Math.round(lastSessionDuration * 60) + " seconds" : lastSessionDuration + " minutes"} with FocusPet! 🦅 My pet is leveling up on Celo. #FocusPet #BuildWithCelo`,
+            );
+          } else if (lastAction === "shop") {
+            showToast(
+              "Shop Success! 🛍️",
+              "Your items have been delivered and your pet is happy.",
+              "success",
+              true,
+              `I just bought a new item for my @FocusPet! 🛍️ My productivity is paying off. #FocusPet #Celo`,
+            );
+            playSound("pop");
+          } else if (lastAction === "profile") {
+            showToast(
+              "Profile Updated! 👤",
+              "Your on-chain identity has been saved successfully.",
+              "info",
+              );
+          }
+        } catch (error) {
+          console.error("Sync error:", error);
+        } finally {
+          setIsSyncing(false);
         }
-        setIsSyncing(false);
       }
     };
 
@@ -593,140 +603,10 @@ function AppPageContent() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30">
       {/* Header */}
-      <header className="p-3 sm:p-4 px-3 sm:px-6 md:px-12 lg:px-20 flex items-center justify-between border-b border-neutral-100 dark:border-neutral-900 w-full max-w-[1400px] mx-auto relative z-50">
-        <div className="flex items-center gap-2 shrink-0">
-          <img
-            src="/focus-pet-logo.jpeg"
-            className="rounded-full h-8 w-8 sm:h-10 sm:w-10 shadow-sm"
-            alt="FocusPet Logo"
-          />
-          <h1 className="font-bold text-base sm:text-lg tracking-tight hidden sm:block">
-            FocusPet
-          </h1>
-        </div>
-
-        {/* Desktop / Core Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 text-sm font-medium">
-          {/* Always Visible on Mobile: Streak & Connect */}
-          <StreakFlame count={streak} />
-
-          <div className="hidden sm:flex items-center gap-2">
-            <button
-              onClick={() => {
-                setShowOnboarding(true);
-                playSound("click");
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all font-bold text-xs group"
-              title="How to Play"
-            >
-              <HelpCircle size={16} />
-              <span>How to Play</span>
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-              </span>
-            </button>
-            <ThemeToggle />
-            <SoundMenu />
-            <button
-              onClick={() => {
-                setIsEditModalOpen(true);
-                playSound("click");
-              }}
-              className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-              title="Edit Profile"
-            >
-              <User size={18} />
-            </button>
-            <button
-              onClick={() => {
-                if (address) {
-                  const link = `${window.location.origin}/?ref=${address}`;
-                  navigator.clipboard.writeText(link);
-                  toast.success("Invite link copied!");
-                  playSound("click");
-                } else {
-                  toast.error("Please connect your wallet first.");
-                }
-              }}
-              className="p-2 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex flex-shrink-0 items-center justify-center h-[36px] w-[36px]"
-              title="Copy Invite Link"
-            >
-              <Share2 size={18} />
-            </button>
-          </div>
-
-          <ConnectButton
-            accountStatus="avatar"
-            chainStatus="none"
-            showBalance={false}
-          />
-
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="sm:hidden p-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-          >
-            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-
-        {/* Mobile Dropdown Menu */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute top-[60px] right-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl p-2 flex flex-col gap-2 sm:hidden backdrop-blur-md"
-            >
-              <button
-                onClick={() => {
-                  setShowOnboarding(true);
-                  playSound("click");
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center gap-3 px-4 py-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-sm w-full text-left"
-              >
-                <HelpCircle size={18} />
-                <span>How to Play</span>
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditModalOpen(true);
-                  playSound("click");
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center gap-3 px-4 py-2 rounded-xl text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-sm w-full text-left transition-colors"
-              >
-                <User size={18} />
-                <span>Edit Profile</span>
-              </button>
-              <button
-                onClick={() => {
-                  if (address) {
-                    const link = `${window.location.origin}/?ref=${address}`;
-                    navigator.clipboard.writeText(link);
-                    toast.success("Invite link copied!");
-                    playSound("click");
-                    setIsMobileMenuOpen(false);
-                  } else {
-                    toast.error("Please connect your wallet first.");
-                  }
-                }}
-                className="flex items-center gap-3 px-4 py-2 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-bold text-sm w-full text-left transition-colors"
-              >
-                <Share2 size={18} />
-                <span>Invite Friend</span>
-              </button>
-              <div className="flex items-center justify-between gap-2 border-t border-neutral-100 dark:border-neutral-800 pt-2 mt-1 px-2">
-                <ThemeToggle />
-                <SoundMenu />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
+      <Navbar 
+        onOpenOnboarding={() => setShowOnboarding(true)} 
+        onOpenProfile={() => setIsEditModalOpen(true)} 
+      />
 
       <main className="flex flex-col items-center pt-8 px-4 max-w-[800px] mx-auto pb-20 w-full">
         <div className="text-center mb-10 w-full">
@@ -872,15 +752,19 @@ function AppPageContent() {
       {(isProcessing || isSyncing) && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white p-4">
           <div className="text-6xl mb-4 animate-bounce">⏳</div>
-          <h2 className="text-2xl font-bold mb-2">Processing...</h2>
+          <h2 className="text-2xl font-bold mb-2">
+            {isSyncing ? "Updating Life..." : "Processing..."}
+          </h2>
           <p className="text-neutral-300 text-center animate-pulse">
             {isSigning
               ? "Preparing your rewards..."
-              : isPending
-                ? "Please confirm in your wallet..."
-                : isConfirming
-                  ? "Saving your progress..."
-                  : "Almost there..."}
+              : isSyncing
+                ? "Syncing your pet's new state with Celo..."
+                : isPending
+                  ? "Please confirm in your wallet..."
+                  : isConfirming
+                    ? "Saving your progress..."
+                    : "Almost there..."}
           </p>
         </div>
       )}

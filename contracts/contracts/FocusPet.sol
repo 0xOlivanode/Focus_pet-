@@ -125,7 +125,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _handleHealthDecay(Pet storage pet, uint256 timeDiff) internal {
-        uint256 healthLoss = (timeDiff / 1 days) * DECAY_RATE_PER_DAY;
+        uint256 healthLoss = (timeDiff * DECAY_RATE_PER_DAY) / 1 days;
         pet.health = (healthLoss > pet.health) ? 0 : pet.health - healthLoss;
     }
 
@@ -185,6 +185,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     // Buy Food: +20 Health, Costs 10 G$
     function buyFood() public {
+        _settleStream(msg.sender); // Sync state first
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
@@ -198,6 +199,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     // Buy Super Food: 100 Health, Costs 30 G$
     function buySuperFood() public {
+        _settleStream(msg.sender); // Sync state first
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
@@ -274,6 +276,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     // Revive Pet: Sets Health to 50, Costs 50 G$
     function revivePet() public {
+        _settleStream(msg.sender); // Sync state first
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health == 0, "Pet is alive");

@@ -5,12 +5,124 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import Link from "next/link";
 import { useAccount } from "wagmi";
+import { formatEther } from "viem";
+import { calculateMonthlyAmount } from "@/lib/superfluid";
+import { Navbar } from "@/components/Navbar";
 
 const ITEMS_PER_PAGE = 20;
 
+const formatAddress = (addr: string) => {
+  return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+};
+
+const getAvatar = (xp: number) => {
+  return getPetEmoji(getPetStage(xp));
+};
+
+const LeaderboardRow = ({
+  entry,
+  userAddress,
+}: {
+  entry: any;
+  userAddress: string | undefined;
+}) => {
+  const totalFocusTime = entry.totalFocusTime || 0;
+  const streak = entry.streak || 0;
+  const flowRate = entry.flowRate || 0n;
+
+  const getFlowBadge = (rate?: bigint) => {
+    if (!rate || rate === 0n) return null;
+    const monthlyAmount = Number(formatEther(calculateMonthlyAmount(rate)));
+    if (monthlyAmount >= 90)
+      return { class: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" };
+    if (monthlyAmount >= 45)
+      return { class: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20" };
+    if (monthlyAmount >= 9)
+      return {
+        class: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+      };
+    return null;
+  };
+
+  const flowBadge = getFlowBadge(flowRate);
+
+  return (
+    <tr
+      className={`hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors ${
+        userAddress && entry.address.toLowerCase() === userAddress.toLowerCase()
+          ? "bg-indigo-50/50 dark:bg-indigo-900/10"
+          : ""
+      }`}
+    >
+      <td className="px-6 py-4">
+        <span
+          className={`font-mono font-black ${
+            entry.rank <= 3 ? "text-yellow-500" : "text-neutral-400"
+          }`}
+        >
+          #{entry.rank}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 shrink-0 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xl shadow-sm border border-white dark:border-neutral-700">
+            {getAvatar(entry.xp)}
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-bold text-xs lg:text-sm text-neutral-900 dark:text-neutral-100 capitalize">
+                {entry.username
+                  ? `@${entry.username}`
+                  : formatAddress(entry.address)}
+              </span>
+              {entry.flowRate !== undefined &&
+                entry.flowRate > 0n &&
+                flowBadge && (
+                  <span
+                    title="Supercharged"
+                    className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border ${flowBadge.class}`}
+                  >
+                    Supercharged
+                  </span>
+                )}
+              {userAddress &&
+                entry.address.toLowerCase() === userAddress.toLowerCase() && (
+                  <span className="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">
+                    YOU
+                  </span>
+                )}
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] text-neutral-500 font-medium whitespace-nowrap">
+                {totalFocusTime >= 3600
+                  ? `${(totalFocusTime / 3600).toFixed(1)} hrs`
+                  : `${(totalFocusTime / 60).toFixed(1)} mins`}{" "}
+                focused
+              </span>
+              {streak > 0 && (
+                <>
+                  <div className="w-1 h-1 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                  <span className="text-[10px] font-bold text-amber-500 flex items-center gap-0.5 whitespace-nowrap">
+                    🔥 {streak}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-right flex">
+        <span className="font-mono font-black text-xs lg:text-base text-indigo-600 dark:text-indigo-400 shrink-0">
+          {entry.xp.toLocaleString()} XP
+        </span>
+      </td>
+    </tr>
+  );
+};
+
 export default function LeaderboardPage() {
   const { address: userAddress } = useAccount();
-  const { leaderboard, isLoading } = useLeaderboard();
+  const { leaderboard, userEntry, isLoading } = useLeaderboard();
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -30,17 +142,10 @@ export default function LeaderboardPage() {
     currentPage * ITEMS_PER_PAGE,
   );
 
-  const formatAddress = (addr: string) => {
-    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
-  };
-
-  const getAvatar = (xp: number) => {
-    return getPetEmoji(getPetStage(xp));
-  };
-
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+      <Navbar />
+      <div className="p-4 md:p-8 max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <Link
@@ -49,8 +154,8 @@ export default function LeaderboardPage() {
             >
               ← Back to App
             </Link>
-            <h1 className="text-3xl font-black text-neutral-900 dark:text-white">
-              Global <span className="text-indigo-600">Leaderboard</span>
+            <h1 className="text-[24px] lg:text-3xl font-black text-neutral-900 dark:text-white">
+              The <span className="text-indigo-600">Hall of Fame</span>
             </h1>
           </div>
 
@@ -71,6 +176,66 @@ export default function LeaderboardPage() {
           </div>
         </div>
 
+        {/* 🏆 YOUR RANK WIDGET */}
+        {userAddress && userEntry && (
+          <div className="mb-6 bg-indigo-600 dark:bg-indigo-700 rounded-2xl p-4 text-white shadow-lg shadow-indigo-500/20 flex items-center justify-between overflow-hidden relative">
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl border border-white/30">
+                {getAvatar(userEntry.xp)}
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-black text-xl">
+                    #{userEntry.rank}
+                  </span>
+                  <span className="font-bold">You</span>
+                  {userEntry.flowRate !== undefined &&
+                    userEntry.flowRate > 0n && (
+                      <span className="text-[8px] bg-white text-indigo-600 px-1.5 py-0.5 rounded-full font-black uppercase">
+                        Supercharged ⚡
+                      </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-2 text-indigo-100 text-xs font-medium">
+                  <span>{userEntry.xp.toLocaleString()} XP</span>
+                  <div className="w-1 h-1 rounded-full bg-indigo-300" />
+                  <span>
+                    {(userEntry.totalFocusTime || 0) >= 3600
+                      ? `${((userEntry.totalFocusTime || 0) / 3600).toFixed(1)} hrs`
+                      : `${((userEntry.totalFocusTime || 0) / 60).toFixed(1)} mins`}{" "}
+                    focused
+                  </span>
+                  {userEntry.streak && userEntry.streak > 0 && (
+                    <>
+                      <div className="w-1 h-1 rounded-full bg-indigo-300" />
+                      <span className="font-bold text-white flex items-center gap-0.5">
+                        🔥 {userEntry.streak} Streak
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute top-0 right-0 h-full w-48 bg-linear-to-l from-white/10 to-transparent pointer-events-none" />
+
+            <div className="hidden sm:block relative z-10 transition-transform hover:scale-105 duration-300">
+              <div className="px-5 py-3 5 backdrop-blur-xl rounded-2xl   text-center flex flex-col items-center justify-center min-w-[120px]">
+                <div className="text-2xl font-black tracking-tighter text-white drop-shadow-md">
+                  Top{" "}
+                  {Math.max(
+                    1,
+                    Math.ceil(
+                      (userEntry.rank / (leaderboard.length || 1)) * 100,
+                    ),
+                  )}
+                  %
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -82,8 +247,8 @@ export default function LeaderboardPage() {
                   <th className="px-6 py-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">
                     Focuser
                   </th>
-                  <th className="px-6 py-4 text-xs font-bold text-neutral-400 uppercase tracking-wider text-right">
-                    XP Score
+                  <th className="px-6 py-4 text-xs font-bold text-neutral-400 uppercase tracking-wider text-right flex">
+                    <span className="shrink-0">XP Score</span>
                   </th>
                 </tr>
               </thead>
@@ -107,57 +272,11 @@ export default function LeaderboardPage() {
                   ))
                 ) : paginatedEntries.length > 0 ? (
                   paginatedEntries.map((entry) => (
-                    <tr
+                    <LeaderboardRow
                       key={entry.address}
-                      className={`hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors ${
-                        userAddress &&
-                        entry.address.toLowerCase() ===
-                          userAddress.toLowerCase()
-                          ? "bg-indigo-50/50 dark:bg-indigo-900/10"
-                          : ""
-                      }`}
-                    >
-                      <td className="px-6 py-4">
-                        <span
-                          className={`font-mono font-black ${
-                            entry.rank <= 3
-                              ? "text-yellow-500"
-                              : "text-neutral-400"
-                          }`}
-                        >
-                          #{entry.rank}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xl shadow-sm border border-white dark:border-neutral-700">
-                            {getAvatar(entry.xp)}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-sm text-neutral-900 dark:text-neutral-100">
-                              {entry.username
-                                ? `@${entry.username}`
-                                : formatAddress(entry.address)}
-                            </span>
-                            <span className="text-[10px] text-neutral-400 font-mono">
-                              {entry.address.substring(0, 10)}...
-                            </span>
-                          </div>
-                          {userAddress &&
-                            entry.address.toLowerCase() ===
-                              userAddress.toLowerCase() && (
-                              <span className="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter ml-1">
-                                YOU
-                              </span>
-                            )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="font-mono font-black text-indigo-600 dark:text-indigo-400">
-                          {entry.xp.toLocaleString()} XP
-                        </span>
-                      </td>
-                    </tr>
+                      entry={entry}
+                      userAddress={userAddress}
+                    />
                   ))
                 ) : (
                   <tr>
