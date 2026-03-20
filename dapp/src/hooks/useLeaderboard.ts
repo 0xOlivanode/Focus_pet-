@@ -140,11 +140,10 @@ export function useLeaderboard() {
           rank: index + 1,
         }));
 
-      setFullLeaderboard(allEntries);
-
       // 2. FETCH TOP 100 DETAILS (Multicall for Speed)
       if (allEntries.length > 0) {
         const top100 = allEntries.slice(0, 100);
+        setFullLeaderboard(top100);
         // 🏷️ Add the User themselves if they are not in the top 100
         const userInTop100 = accountAddress && top100.some(e => e.address.toLowerCase() === accountAddress.toLowerCase());
         const usersToEnrich = [...top100];
@@ -213,12 +212,9 @@ export function useLeaderboard() {
         }
         
         // 🔥 SYNC BACK TO FULL LEADERBOARD (Top 100)
-        setFullLeaderboard(current => 
-          current.map(entry => {
-            const enriched = enrichedList.find(e => e.address.toLowerCase() === entry.address.toLowerCase());
-            return enriched ? { ...entry, ...enriched } : entry;
-          })
-        );
+        // Note: enrichedList already contains top 100 + user (if not in top 100)
+        // We only want the top 100 for the leaderboard state
+        setFullLeaderboard(enrichedList.slice(0, 100));
       }
     } catch (error) {
       console.error("Failed to fetch leaderboard logs:", error);
