@@ -103,7 +103,7 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="sm:hidden p-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
           >
-            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            {isMobileMenuOpen ? <X key="nav-close" size={20} /> : <Menu key="nav-open" size={20} />}
           </button>
         </div>
 
@@ -167,9 +167,9 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
         </AnimatePresence>
       </header>
 
-      <AccountModal 
-        isOpen={isAccountModalOpen} 
-        onClose={() => setIsAccountModalOpen(false)} 
+      <AccountModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
       />
     </>
   );

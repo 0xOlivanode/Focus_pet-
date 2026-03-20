@@ -93,10 +93,11 @@ export function useLeaderboard() {
       for (const log of nameLogs) {
         const { owner, username } = log.args as any;
         if (!owner || !username) continue;
-        
+
         // Skip logs that occurred before the last reset
         const block = log.blockNumber || 0n;
-        if (lastDeletedBlock[owner] && block <= lastDeletedBlock[owner]) continue;
+        if (lastDeletedBlock[owner] && block <= lastDeletedBlock[owner])
+          continue;
 
         userData[owner] = {
           ...userData[owner],
@@ -112,7 +113,8 @@ export function useLeaderboard() {
 
         // Skip logs that occurred before the last reset
         const block = log.blockNumber || 0n;
-        if (lastDeletedBlock[owner] && block <= lastDeletedBlock[owner]) continue;
+        if (lastDeletedBlock[owner] && block <= lastDeletedBlock[owner])
+          continue;
 
         const currentXp = Number(newXp);
         const currentHealth = Number(newHealth);
@@ -145,72 +147,93 @@ export function useLeaderboard() {
         const top100 = allEntries.slice(0, 100);
         setFullLeaderboard(top100);
         // 🏷️ Add the User themselves if they are not in the top 100
-        const userInTop100 = accountAddress && top100.some(e => e.address.toLowerCase() === accountAddress.toLowerCase());
+        const userInTop100 =
+          accountAddress &&
+          top100.some(
+            (e) => e.address.toLowerCase() === accountAddress.toLowerCase(),
+          );
         const usersToEnrich = [...top100];
         if (accountAddress && !userInTop100) {
-          const personalEntry = allEntries.find(e => e.address.toLowerCase() === accountAddress.toLowerCase());
+          const personalEntry = allEntries.find(
+            (e) => e.address.toLowerCase() === accountAddress.toLowerCase(),
+          );
           if (personalEntry) usersToEnrich.push(personalEntry);
         }
 
         // Prepare Multicall for Pet Data and Flow Info
         const calls = [
-          ...usersToEnrich.map(entry => ({
+          ...usersToEnrich.map((entry) => ({
             address: CONTRACT_ADDRESS,
             abi: FocusPetABI,
             functionName: "pets",
-            args: [entry.address as `0x${string}`]
+            args: [entry.address as `0x${string}`],
           })),
-          ...usersToEnrich.map(entry => ({
+          ...usersToEnrich.map((entry) => ({
             address: SUPERFLUID_FORWARDER_CELO,
             abi: CFAv1ForwarderAbi,
             functionName: "getFlowInfo",
-            args: [G_DOLLAR_CELO, entry.address as `0x${string}`, UBI_POOL_ADDRESS_CELO]
-          }))
+            args: [
+              G_DOLLAR_CELO,
+              entry.address as `0x${string}`,
+              UBI_POOL_ADDRESS_CELO,
+            ],
+          })),
         ];
 
-        const multicallResults = await publicClient.multicall({ contracts: calls as any });
-        
+        const multicallResults = await publicClient.multicall({
+          contracts: calls as any,
+        });
+
         const { ClaimSDK } = await import("@goodsdks/citizen-sdk");
-        
-        const enrichedList = await Promise.all(usersToEnrich.map(async (entry, i) => {
-          const petDataResult = multicallResults[i].result as any;
-          const flowDataResult = multicallResults[i + usersToEnrich.length].result as any;
-          
-          let isVerified = false;
-          try {
-            const sdk = new ClaimSDK({
-              account: entry.address as `0x${string}`,
-              env: "production",
-              publicClient: publicClient as any,
-              walletClient: {} as any,
-              identitySDK: {} as any,
-            });
-            const claimStatus = await sdk.getWalletClaimStatus();
-            isVerified = claimStatus.status !== "not_whitelisted";
-          } catch {}
 
-          // Correctly extract data based on ABI named outputs or array indices
-          const totalFocusTime = Number(petDataResult?.totalFocusTime ?? petDataResult?.[12] ?? 0);
-          const streak = Number(petDataResult?.streak ?? petDataResult?.[6] ?? 0);
-          const flowRate = flowDataResult?.[1] ?? 0n;
+        const enrichedList = await Promise.all(
+          usersToEnrich.map(async (entry, i) => {
+            const petDataResult = multicallResults[i].result as any;
+            const flowDataResult = multicallResults[i + usersToEnrich.length]
+              .result as any;
 
-          return {
-            ...entry,
-            isVerified,
-            totalFocusTime,
-            streak,
-            flowRate
-          };
-        }));
+            let isVerified = false;
+            try {
+              const sdk = new ClaimSDK({
+                account: entry.address as `0x${string}`,
+                env: "production",
+                publicClient: publicClient as any,
+                walletClient: {} as any,
+                identitySDK: {} as any,
+              });
+              const claimStatus = await sdk.getWalletClaimStatus();
+              isVerified = claimStatus.status !== "not_whitelisted";
+            } catch {}
+
+            // Correctly extract data based on ABI named outputs or array indices
+            const totalFocusTime = Number(
+              petDataResult?.totalFocusTime ?? petDataResult?.[12] ?? 0,
+            );
+            const streak = Number(
+              petDataResult?.streak ?? petDataResult?.[6] ?? 0,
+            );
+            const flowRate = flowDataResult?.[1] ?? 0n;
+
+            return {
+              ...entry,
+              isVerified,
+              totalFocusTime,
+              streak,
+              flowRate,
+            };
+          }),
+        );
 
         const finalTop100 = enrichedList.slice(0, 100);
         setTopTen(finalTop100.slice(0, 10));
 
         if (accountAddress) {
-          const personal = enrichedList.find(e => e.address.toLowerCase() === accountAddress.toLowerCase());
+          const personal = enrichedList.find(
+            (e) => e.address.toLowerCase() === accountAddress.toLowerCase(),
+          );
           if (personal) setUserEntry(personal);
         }
-        
+
         // 🔥 SYNC BACK TO FULL LEADERBOARD (Top 100)
         // Note: enrichedList already contains top 100 + user (if not in top 100)
         // We only want the top 100 for the leaderboard state
