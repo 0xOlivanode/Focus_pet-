@@ -62,6 +62,58 @@ export function FocusTimer({
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
+  // --- Persistence Logic ---
+  useEffect(() => {
+    const saved = localStorage.getItem("focus-session");
+    if (saved) {
+      try {
+        const { status: s, duration: d, endTime: e, note: n } = JSON.parse(saved);
+        if (s === "running" && e) {
+          const now = Date.now();
+          const remaining = Math.max(0, Math.ceil((e - now) / 1000));
+          
+          setDuration(d);
+          setNote(n);
+          onNoteChange?.(n);
+
+          if (remaining > 0) {
+            setTimeLeft(remaining);
+            setStatus("running");
+            endTimeRef.current = e;
+          } else {
+            // Session finished while away
+            setTimeLeft(0);
+            setStatus("completed");
+            // Trigger completion after a short delay to ensure parent is ready
+            setTimeout(() => onComplete?.(d / 60), 500);
+          }
+        } else if (s === "paused") {
+          // Keep paused state but don't resume automatically
+          setStatus("paused");
+          setDuration(d);
+          setNote(n);
+          onNoteChange?.(n);
+        }
+      } catch (err) {
+        console.error("Failed to restore session:", err);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status !== "idle" && status !== "failed") {
+      localStorage.setItem("focus-session", JSON.stringify({
+        status,
+        duration,
+        endTime: endTimeRef.current,
+        note,
+        updatedAt: Date.now()
+      }));
+    } else {
+      localStorage.removeItem("focus-session");
+    }
+  }, [status, duration, note, timeLeft]);
+
   const toggleTimer = () => {
     if (status === "running") {
       setStatus("paused");

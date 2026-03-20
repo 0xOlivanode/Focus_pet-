@@ -232,11 +232,17 @@ function AppPageContent() {
       !isProcessing &&
       !isSyncing
     ) {
-      // Add a 3-second buffer for mobile wallets (like MetaMask) that temporarily
-      // drop the connection socket when returning from a background state after signing.
+      // Mobile Resilience: Add a generous 10-second buffer (15s if in a session) 
+      // to let mobile wallets/Privy re-sync after returning from the background.
+      const hasActiveSession = localStorage.getItem("focus-session");
+      const bufferTime = hasActiveSession ? 15000 : 10000;
+
       redirectTimer = setTimeout(() => {
-        router.push("/");
-      }, 3000);
+        // Double check state before final redirect
+        if (!isConnected && !isConnecting && !isReconnecting) {
+          router.push("/");
+        }
+      }, bufferTime);
     }
 
     return () => {
