@@ -20,8 +20,6 @@ import { useAccount } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatEther } from "viem";
 import { PrivyConnectButton } from "@/components/PrivyConnectButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { SocialShare } from "@/components/SocialShare";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import dynamic from "next/dynamic";
 const ClaimReward = dynamic(
@@ -34,7 +32,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
   Gift,
-  Sparkles,
   AlertCircle,
   Loader2,
   ExternalLink,
@@ -42,7 +39,6 @@ import {
   User,
   Edit2,
   X,
-  Clock,
   Share2,
   Menu,
 } from "lucide-react";
@@ -408,8 +404,8 @@ function AppPageContent() {
   // --- Conditional Rendering Blocks ---
   if (!hasMounted) {
     return (
-      <div className="min-h-screen bg-[#fafafa] dark:bg-[#050505] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      <div style={{ minHeight: "100vh", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Loader2 style={{ width: 28, height: 28, color: "#E05C28" }} className="animate-spin" />
       </div>
     );
   }
@@ -417,9 +413,9 @@ function AppPageContent() {
   if (!isConnected) {
     if (isConnecting || isReconnecting) {
       return (
-        <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-500">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
-          <p className="animate-pulse">Connecting to Celo...</p>
+        <div style={{ minHeight: "100vh", background: "#FAF7F2", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <Loader2 style={{ width: 28, height: 28, color: "#E05C28" }} className="animate-spin" />
+          <p style={{ fontSize: 13, fontWeight: 600, color: "#8A8478", letterSpacing: "0.05em" }}>Connecting to Celo…</p>
         </div>
       );
     }
@@ -428,177 +424,283 @@ function AppPageContent() {
 
   if (isLoadingPet) {
     return (
-      <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-500">
-        <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
-        <p className="animate-pulse font-bold text-sm uppercase tracking-widest text-neutral-400">
-          Syncing with Celo...
-        </p>
+      <div style={{ minHeight: "100vh", background: "#FAF7F2", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+          style={{ width: 28, height: 28, border: "3px solid #EDE7DC", borderTopColor: "#E05C28", borderRadius: "50%" }}
+        />
+        <p style={{ fontSize: 13, fontWeight: 600, color: "#8A8478", letterSpacing: "0.05em" }}>Syncing with Celo…</p>
       </div>
     );
   }
 
   if (!hasPet) {
+    const FONT_DISPLAY = "var(--font-syne), var(--font-geist-sans)";
+    const C = {
+      bg: "#FAF7F2", surface: "#FFFFFF",
+      border: "#EDE7DC", border2: "#E0D9CE",
+      text1: "#1C1A16", text2: "#8A8478", text3: "#C4BDB3",
+      orange: "#E05C28", orangeLight: "#FEF0E8",
+      green: "#2E7A4F", greenLight: "#EBF5EE",
+    };
+
+    const MINI_STAGES = [
+      { emoji: "🐣", image: "/assets/pets/cyber_dino/baby_sunny.png",  label: "Baby",  time: "1h"   },
+      { emoji: "🦖", image: "/assets/pets/cyber_dino/adult_sunny.png", label: "Teen",  time: "30h"  },
+      { emoji: "🐉", image: null,                                       label: "Adult", time: "100h" },
+      { emoji: "👑", image: null,                                       label: "Elder", time: "250h" },
+    ];
+
     return (
-      <div className="min-h-screen w-screen overflow-x-hidden bg-neutral-950 flex flex-col items-center justify-center p-6 text-center relative">
-        {/* Immersive Background Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 blur-[120px] rounded-full" />
-        <div className="absolute top-1/4 left-1/4 w-[300px] h-[300px] bg-purple-500/5 blur-[100px] rounded-full" />
+      <div style={{ minHeight: "100vh", background: C.bg, overflowX: "hidden", fontFamily: "var(--font-geist-sans)" }}>
 
-        <div className="relative z-10 flex flex-col items-center max-w-lg w-full">
-          {/* Floating Egg Container */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className="relative mb-12"
-          >
-            <motion.div
-              animate={{
-                y: [0, -20, 0],
-                rotate: [-1, 1, -1],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="text-[140px] leading-none drop-shadow-[0_0_30px_rgba(165,180,252,0.3)] select-none"
-            >
-              🥚
-            </motion.div>
-
-            {/* Soft Glow Under Egg */}
-            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-24 h-4 bg-indigo-500/20 blur-xl rounded-full animate-pulse" />
-
-            {/* Thought Bubble */}
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 1.5, duration: 0.5 }}
-              className="absolute -right-12 -top-4 bg-white/10 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest text-indigo-300"
-            >
-              Quietly waiting...
-            </motion.div>
-          </motion.div>
-
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-          >
-            <h1 className="text-5xl font-black mb-4 tracking-tighter bg-clip-text text-transparent bg-linear-to-b from-white to-white/60">
-              Your Journey Awaits
-            </h1>
-            <p className="text-neutral-400 mb-10 text-lg font-medium leading-relaxed">
-              Your pet is sleeping inside this egg. <br />
-              Focus to give it the energy it needs to hatch.
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.8 }}
-            className="w-full flex flex-col gap-6"
-          >
-            {/* Glassmorphism Timer Card */}
-            {/* Glassmorphism Hatch Card */}
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[40px] shadow-2xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-linear-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-              <div className="relative z-10 flex flex-col items-center text-center">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-6 block">
-                  Step 1: Introduction
-                </span>
-
-                <h2 className="text-2xl font-black text-white mb-2">
-                  Ready to Meet?
-                </h2>
-                <p className="text-neutral-400 text-sm mb-8 max-w-[260px] leading-relaxed">
-                  Your new companion is waiting to hatch. No waiting
-                  required—let's begin your journey now.
-                </p>
-
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={async () => {
-                    playSound("hatch");
-                    // Trigger immediate hatch logic
-                    await handleSessionComplete(0);
-                  }}
-                  disabled={isProcessing}
-                  onMouseEnter={() => playSound("hover")}
-                  className="relative group/btn overflow-hidden bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black text-sm shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.5)] transition-all duration-300"
-                >
-                  <span className="relative z-10 flex items-center gap-2">
-                    <Sparkles size={16} className="text-indigo-400" />
-                    HATCH NOW
-                    <Sparkles size={16} className="text-indigo-400" />
-                  </span>
-
-                  {/* Button Sheen */}
-                  <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 ease-in-out" />
-                </motion.button>
-
-                <p className="text-[10px] text-neutral-600 mt-6 font-medium italic">
-                  Completing this action initializes your pet on-chain.
-                </p>
-              </div>
+        {/* Minimal nav */}
+        <header style={{ height: 58, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 32px" }}>
+          <div style={{ maxWidth: 1100, width: "100%", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <img src="/focus-pet-logo.jpeg" alt="FocusPet" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+              <span style={{ fontWeight: 800, fontSize: 15, fontFamily: FONT_DISPLAY, letterSpacing: "-0.02em", color: C.text1 }}>FocusPet</span>
             </div>
-
             <button
               onClick={() => setShowOnboarding(true)}
-              className="flex items-center justify-center gap-2 text-neutral-500 hover:text-white transition-colors font-bold text-sm tracking-wide"
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: C.text2, background: "transparent", border: "none", cursor: "pointer" }}
             >
-              <HelpCircle size={18} />
-              How does this work?
+              <HelpCircle size={15} /> How it works
             </button>
-          </motion.div>
+          </div>
+        </header>
+
+        {/* Main content */}
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "64px 32px", display: "flex", alignItems: "center", gap: 80, flexWrap: "wrap" }}>
+
+          {/* Left — text */}
+          <div style={{ flex: "1 1 380px", minWidth: 0 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as unknown as never }}
+              style={{ marginBottom: 16 }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, padding: "5px 14px", borderRadius: 20, background: C.orangeLight, color: C.orange }}>
+                New trainer
+              </span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, delay: 0.08, ease: [0.22, 1, 0.36, 1] as unknown as never }}
+              style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: "clamp(40px, 5.5vw, 68px)", lineHeight: 1.02, letterSpacing: "-0.04em", color: C.text1, marginBottom: 20 }}
+            >
+              Something<br />wonderful<br />is inside.
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.16, ease: [0.22, 1, 0.36, 1] as unknown as never }}
+              style={{ fontSize: 16, lineHeight: 1.75, color: C.text2, maxWidth: 380, marginBottom: 36 }}
+            >
+              Your pet is waiting to hatch. Tap the button below to mint it on Celo
+              and begin your focus journey. It takes just a second.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.24, ease: [0.22, 1, 0.36, 1] as unknown as never }}
+              style={{ display: "flex", flexDirection: "column" as const, gap: 14, alignItems: "flex-start" }}
+            >
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={async () => {
+                  playSound("click");
+                  await handleSessionComplete(0);
+                }}
+                disabled={isProcessing}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "15px 32px", borderRadius: 12,
+                  fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 16,
+                  background: isProcessing ? C.text3 : C.orange,
+                  color: "#fff", border: "none", cursor: isProcessing ? "not-allowed" : "pointer",
+                  letterSpacing: "-0.01em", transition: "background 0.2s",
+                }}
+              >
+                {isProcessing ? (
+                  <>
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                      style={{ width: 16, height: 16, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} />
+                    Hatching…
+                  </>
+                ) : (
+                  "Hatch my pet 🥚"
+                )}
+              </motion.button>
+
+              <p style={{ fontSize: 12, color: C.text3, fontWeight: 500 }}>
+                Minted on Celo · Gas covered · Yours forever
+              </p>
+            </motion.div>
+
+            {/* Evolution preview */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.38, ease: [0.22, 1, 0.36, 1] as unknown as never }}
+              style={{ marginTop: 48 }}
+            >
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.text3, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: 14 }}>
+                Your pet could become →
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                {MINI_STAGES.map((s, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.45 + i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] as unknown as never }}
+                    style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 4, padding: "10px 12px", borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, minWidth: 64 }}
+                  >
+                    {s.image
+                      ? <img src={s.image} alt={s.label} style={{ width: 36, height: 36, objectFit: "contain" }} />
+                      : <span style={{ fontSize: 28 }}>{s.emoji}</span>
+                    }
+                    <span style={{ fontSize: 10, fontWeight: 700, color: C.text1 }}>{s.label}</span>
+                    <span style={{ fontSize: 9, color: C.text3 }}>{s.time}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Right — egg */}
+          <div style={{ flex: "1 1 300px", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.88, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] as unknown as never }}
+              style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 24 }}
+            >
+              {/* Card */}
+              <div style={{
+                background: C.surface, borderRadius: 28, padding: "40px 36px",
+                border: `1px solid ${C.border}`,
+                boxShadow: "0 4px 6px rgba(0,0,0,0.03), 0 20px 60px rgba(0,0,0,0.08)",
+                display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 20, textAlign: "center" as const,
+              }}>
+                {/* Egg */}
+                <motion.div
+                  animate={{ y: [0, -14, 0], rotate: [-2, 2, -2] }}
+                  transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
+                  style={{ position: "relative" as const }}
+                >
+                  <img
+                    src="/assets/pets/cyber_dino/egg_sunny.png"
+                    alt="Your egg"
+                    style={{ width: 160, height: 160, objectFit: "contain" }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  {/* Fallback emoji if image fails */}
+                  <motion.div
+                    animate={{ y: [0, -14, 0], rotate: [-2, 2, -2] }}
+                    transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
+                    style={{ fontSize: 100, lineHeight: 1, display: "none" }}
+                  >🥚</motion.div>
+
+                  {/* "tap to hatch" bubble */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8, x: 10 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    transition={{ delay: 1.2, duration: 0.4, ease: [0.22, 1, 0.36, 1] as unknown as never }}
+                    style={{
+                      position: "absolute" as const, top: -8, right: -48,
+                      background: C.orangeLight, border: `1px solid #F4C9B3`,
+                      padding: "5px 10px", borderRadius: 20,
+                      fontSize: 10, fontWeight: 700, color: C.orange,
+                      whiteSpace: "nowrap" as const,
+                    }}
+                  >
+                    ✨ Ready to hatch
+                  </motion.div>
+                </motion.div>
+
+                {/* Shadow */}
+                <motion.div
+                  animate={{ scaleX: [1, 0.85, 1], opacity: [0.25, 0.15, 0.25] }}
+                  transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
+                  style={{ width: 80, height: 10, borderRadius: "50%", background: C.text1, filter: "blur(8px)" }}
+                />
+
+                <div>
+                  <p style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 18, letterSpacing: "-0.02em", color: C.text1, marginBottom: 4 }}>
+                    Your Egg
+                  </p>
+                  <p style={{ fontSize: 12, color: C.text2 }}>Quietly waiting…</p>
+                </div>
+
+                {/* Heartbeat dots */}
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {[0, 0.3, 0.6].map((d, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{ scale: [1, 1.6, 1], opacity: [0.4, 1, 0.4] }}
+                      transition={{ repeat: Infinity, duration: 1.5, delay: d, ease: "easeInOut" }}
+                      style={{ width: 6, height: 6, borderRadius: "50%", background: C.orange }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <p style={{ fontSize: 12, color: C.text3, textAlign: "center" as const, maxWidth: 220 }}>
+                Stage 1 of 5 · Focus to unlock<br />each evolution
+              </p>
+            </motion.div>
+          </div>
         </div>
 
         {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
 
-        {/* Loading Overlay */}
+        {/* Processing overlay */}
         <AnimatePresence>
           {(isProcessing || isSyncing) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-50 flex flex-col items-center justify-center text-white p-4"
+              style={{
+                position: "fixed" as const, inset: 0, background: "rgba(250,247,242,0.92)",
+                backdropFilter: "blur(12px)", zIndex: 50,
+                display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", gap: 20, padding: 24,
+              }}
             >
-              <div className="relative">
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="absolute inset-0 bg-indigo-500/40 blur-3xl rounded-full"
-                />
-                <div className="text-9xl mb-12 relative z-10">🐣</div>
-              </div>
-              <h2 className="text-4xl font-black mb-4 tracking-tight">
-                Hatching...
-              </h2>
-              <p className="text-neutral-400 text-center max-w-xs font-medium leading-relaxed mb-6">
-                {isSigning
-                  ? "Securing focus reward..."
-                  : isPending
-                    ? "Confirm in your wallet..."
-                    : isConfirming
-                      ? "Waking up your new friend..."
-                      : "Almost there!"}
-              </p>
+              <motion.div
+                animate={{ y: [0, -16, 0], rotate: [-3, 3, -3] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                style={{ fontSize: 88, lineHeight: 1 }}
+              >
+                🐣
+              </motion.div>
 
-              {/* View on Explorer Link */}
+              <div style={{ textAlign: "center" as const }}>
+                <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 32, letterSpacing: "-0.04em", color: C.text1, marginBottom: 8 }}>
+                  Hatching…
+                </h2>
+                <p style={{ fontSize: 15, color: C.text2, lineHeight: 1.65 }}>
+                  {isSigning ? "Preparing your reward…"
+                    : isPending ? "Please confirm in your wallet…"
+                    : isConfirming ? "Waking up your new friend…"
+                    : "Almost there…"}
+                </p>
+              </div>
+
               {hash && (
-                <a
-                  href={`https://celoscan.io/tx/${hash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 text-xs font-bold transition-colors bg-white/5 px-3 py-1.5 rounded-full border border-white/5"
+                <a href={`https://celoscan.io/tx/${hash}`} target="_blank" rel="noopener noreferrer"
+                  style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: C.orange, textDecoration: "none", padding: "8px 16px", borderRadius: 20, background: C.orangeLight, border: `1px solid #F4C9B3` }}
                 >
-                  View on CeloScan
-                  <ExternalLink size={12} />
+                  View on CeloScan <ExternalLink size={12} />
                 </a>
               )}
             </motion.div>
@@ -608,136 +710,176 @@ function AppPageContent() {
     );
   }
 
+  const FD = "var(--font-syne), var(--font-geist-sans)";
+
+  const fmtTime = (s: number) =>
+    s >= 3600
+      ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`
+      : s >= 60
+        ? `${Math.floor(s / 60)}m`
+        : `${s}s`;
+
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30">
-      {/* Header */}
+    <div style={{ minHeight: "100vh", background: "#FAF7F2", fontFamily: "var(--font-geist-sans)" }}>
       <Navbar
         onOpenOnboarding={() => setShowOnboarding(true)}
         onOpenProfile={() => setIsEditModalOpen(true)}
       />
 
-      <main className="flex flex-col items-center pt-8 px-4 max-w-[800px] mx-auto pb-20 w-full">
-        <div className="text-center mb-10 w-full">
-          <h2 className="text-3xl font-black tracking-tight mb-1 flex items-center justify-center gap-2">
-            {petName || "Unnamed Pet"}
-            <button
-              onClick={() => {
-                setIsEditModalOpen(true);
-                playSound("click");
-              }}
-              className="text-neutral-400 hover:text-indigo-500 transition-colors"
-            >
-              <Edit2 size={16} />
-            </button>
-          </h2>
+      <main
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "24px 20px 80px",
+        }}
+      >
+        {/* ── 2-column grid ── */}
+        <div
+          style={{
+            display: "flex",
+            gap: 20,
+            alignItems: "stretch",
+            flexWrap: "wrap",
+          }}
+        >
+          {/* LEFT: Pet card */}
+          <div style={{ flex: "1 1 340px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
 
-          <div className="flex flex-col items-center gap-4 mt-2">
-            <p className="text-neutral-500 font-bold flex items-center justify-center gap-1.5 bg-neutral-50 dark:bg-neutral-900/40 px-4 py-1.5 rounded-2xl border border-neutral-100 dark:border-neutral-800">
-              <span className="opacity-60 text-[10px] uppercase tracking-wider font-black">
-                By
-              </span>
-              <span className="text-indigo-500 font-extrabold text-sm">
-                @{username || "focuser"}
-              </span>
-              <span className="w-1 h-1 bg-neutral-300 dark:bg-neutral-700 rounded-full mx-1" />
-              <Clock size={14} className="text-indigo-500" />
-              <span className="text-neutral-700 dark:text-neutral-300 font-black text-sm">
-                {totalTime >= 3600
-                  ? `${Math.floor(totalTime / 3600)}h ${Math.floor((totalTime % 3600) / 60)}m`
-                  : totalTime >= 60
-                    ? `${Math.floor(totalTime / 60)}m ${totalTime % 60}s`
-                    : `${totalTime}s`}
-              </span>
-              <span className="opacity-60 text-[10px] uppercase tracking-wider font-black">
-                Total
-              </span>
-            </p>
+            {/* Identity strip */}
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 20,
+                border: "1px solid #E8E0D5",
+                padding: "16px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                  <h2
+                    style={{
+                      fontFamily: FD,
+                      fontWeight: 800,
+                      fontSize: 20,
+                      color: "#1C1A16",
+                      letterSpacing: "-0.03em",
+                      margin: 0,
+                    }}
+                  >
+                    {petName || "Unnamed"}
+                  </h2>
+                  <button
+                    onClick={() => { setIsEditModalOpen(true); playSound("click"); }}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      color: "#B0A89E", padding: 2, display: "flex", alignItems: "center",
+                    }}
+                  >
+                    <Edit2 size={13} />
+                  </button>
+                </div>
+                <p style={{ fontSize: 13, color: "#7A7067", fontWeight: 600, margin: 0 }}>
+                  @{username || "focuser"}
+                </p>
+              </div>
+
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#B0A89E", margin: "0 0 2px" }}>
+                  Total Focus
+                </p>
+                <p style={{ fontFamily: FD, fontWeight: 800, fontSize: 18, color: "#1C1A16", margin: 0, letterSpacing: "-0.02em" }}>
+                  {fmtTime(totalTime)}
+                </p>
+              </div>
+            </div>
+
+            {/* PetView */}
+            <div style={{ borderRadius: 20, overflow: "hidden", flex: 1, minHeight: 0 }}>
+              <PetView
+                stage={stage}
+                health={health}
+                xp={xp}
+                mood={mood}
+                nextStageInfo={nextStageInfo}
+                streak={streak}
+                weather={weather}
+                activeCosmetic={activeCosmetic}
+                equippedCosmetics={equippedCosmetics}
+                focusNote={focusNote}
+                isVerified={isVerified}
+                isNight={isNight}
+              />
+            </div>
+          </div>
+
+          {/* RIGHT: Timer + Claim */}
+          <div style={{ flex: "1 1 340px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+            <FocusTimer
+              onComplete={handleSessionComplete}
+              onFail={() => setMood("sad")}
+              onStart={(note) => {
+                setMood("focused");
+                if (note) setFocusNote(note);
+                if (weather === "rainy" || weather === "stormy") {
+                  showToast("Coming home?", "The clouds are beginning to clear...", "success");
+                }
+              }}
+              onPause={() => setMood("sleeping")}
+              onNoteChange={setFocusNote}
+              isSupercharged={isStreaming}
+              streak={streak}
+            />
+
+            {/* GoodDollar Daily Reward */}
+            <ClaimReward />
           </div>
         </div>
 
-        <div className="w-full relative z-10">
-          <PetView
-            stage={stage}
-            health={health}
+        {/* ── Full-width sections ── */}
+        <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+          <ImpactDashboard
+            totalDonated={totalDonated}
             xp={xp}
-            mood={mood}
-            nextStageInfo={nextStageInfo}
-            streak={streak}
-            weather={weather}
-            activeCosmetic={activeCosmetic}
+            isStreaming={isStreaming}
+            flowRate={flowRate}
+            lastUpdated={lastUpdated}
+            globalUbiBalance={globalUbiBalance}
+            onSync={handleSyncImpact}
+            isSyncing={isSyncImpactLoading}
+          />
+
+          <PetShop
+            gBalance={gBalance as bigint | undefined}
+            health={health}
+            isPending={isPending}
+            isSuccess={isConfirmed}
+            writeError={writeError}
+            receiptError={receiptError}
+            onBuyFood={buyFood}
+            onBuySuperFood={buySuperFood}
+            onBuyEnergyDrink={buyEnergyDrink}
+            onBuyShield={buyShield}
+            onBuyCosmetic={buyCosmetic}
+            onToggleCosmetic={toggleCosmetic}
+            inventory={inventory}
+            onRevive={revivePet}
+            playSound={playSound}
+            showToast={showToast}
+            boostEndTime={boostEndTime}
+            shieldCount={shieldCount}
             equippedCosmetics={equippedCosmetics}
-            focusNote={focusNote}
-            isVerified={isVerified}
-            isNight={isNight}
           />
+
+          <Leaderboard />
         </div>
-
-        <div className="w-full relative z-20">
-          <FocusTimer
-            onComplete={handleSessionComplete}
-            onFail={() => setMood("sad")}
-            onStart={(note) => {
-              setMood("focused");
-              if (note) setFocusNote(note);
-              if (weather === "rainy" || weather === "stormy") {
-                showToast(
-                  "Coming home? ✨",
-                  "The clouds are beginning to clear...",
-                  "success",
-                );
-              }
-            }}
-            onPause={() => setMood("sleeping")}
-            onNoteChange={setFocusNote}
-            isSupercharged={isStreaming}
-            streak={streak}
-          />
-        </div>
-
-        {/* GoodDollar Daily Reward */}
-        <ClaimReward />
-
-        {/* Social Impact Dashboard */}
-        <ImpactDashboard
-          totalDonated={totalDonated}
-          xp={xp}
-          isStreaming={isStreaming}
-          flowRate={flowRate}
-          lastUpdated={lastUpdated}
-          globalUbiBalance={globalUbiBalance}
-          onSync={handleSyncImpact}
-          isSyncing={isSyncImpactLoading}
-        />
-
-        {/* Pet Shop Section */}
-        <PetShop
-          gBalance={gBalance as bigint | undefined}
-          health={health}
-          isPending={isPending}
-          isSuccess={isConfirmed}
-          writeError={writeError}
-          receiptError={receiptError}
-          onBuyFood={buyFood}
-          onBuySuperFood={buySuperFood}
-          onBuyEnergyDrink={buyEnergyDrink}
-          onBuyShield={buyShield}
-          onBuyCosmetic={buyCosmetic}
-          onToggleCosmetic={toggleCosmetic}
-          inventory={inventory}
-          onRevive={revivePet}
-          playSound={playSound}
-          showToast={showToast}
-          boostEndTime={boostEndTime}
-          shieldCount={shieldCount}
-          equippedCosmetics={equippedCosmetics}
-        />
-
-        {/* Social Leaderboard */}
-        <Leaderboard />
 
         {isPending && (
-          <p className="mt-4 text-xs text-indigo-500 animate-pulse text-center">
-            Transaction pending...
+          <p style={{ textAlign: "center", fontSize: 12, color: "#E05C28", marginTop: 12 }}>
+            Transaction pending…
           </p>
         )}
       </main>
@@ -757,25 +899,67 @@ function AppPageContent() {
       />
 
       {/* Full Screen Loading Overlay */}
-      {(isProcessing || isSyncing) && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white p-4">
-          <div className="text-6xl mb-4 animate-bounce">⏳</div>
-          <h2 className="text-2xl font-bold mb-2">
-            {isSyncing ? "Updating Life..." : "Processing..."}
-          </h2>
-          <p className="text-neutral-300 text-center animate-pulse">
-            {isSigning
-              ? "Preparing your rewards..."
-              : isSyncing
-                ? "Syncing your pet's new state with Celo..."
-                : isPending
-                  ? "Please confirm in your wallet..."
-                  : isConfirming
-                    ? "Saving your progress..."
-                    : "Almost there..."}
-          </p>
-        </div>
-      )}
+      <AnimatePresence>
+        {(isProcessing || isSyncing) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed", inset: 0,
+              background: "rgba(250,247,242,0.94)",
+              backdropFilter: "blur(14px)",
+              zIndex: 50,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              gap: 20, padding: 24,
+            }}
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1.3, ease: "linear" }}
+              style={{
+                width: 44, height: 44,
+                border: "3px solid #EDE7DC",
+                borderTopColor: "#E05C28",
+                borderRadius: "50%",
+              }}
+            />
+            <div style={{ textAlign: "center" }}>
+              <h2 style={{
+                fontFamily: "var(--font-syne), var(--font-geist-sans)",
+                fontWeight: 800, fontSize: 22,
+                letterSpacing: "-0.03em", color: "#1C1A16", marginBottom: 8,
+              }}>
+                {isSyncing ? "Updating your pet…" : "Processing…"}
+              </h2>
+              <p style={{ fontSize: 14, color: "#7A7067", lineHeight: 1.6 }}>
+                {isSigning ? "Preparing your rewards…"
+                  : isSyncing ? "Syncing with Celo…"
+                  : isPending ? "Confirm in your wallet…"
+                  : isConfirming ? "Saving your progress…"
+                  : "Almost there…"}
+              </p>
+            </div>
+            {hash && (
+              <a
+                href={`https://celoscan.io/tx/${hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  fontSize: 12, fontWeight: 700, color: "#E05C28",
+                  textDecoration: "none", padding: "8px 16px",
+                  borderRadius: 20, background: "#FFF0EA",
+                  border: "1px solid #F4C9B3",
+                }}
+              >
+                View on CeloScan <ExternalLink size={12} />
+              </a>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

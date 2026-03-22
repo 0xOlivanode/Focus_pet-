@@ -7,19 +7,14 @@ import {
   Pause,
   Square,
   CheckCircle2,
-  AlertCircle,
   Coins,
   XCircle,
   Moon,
 } from "lucide-react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useBlockNumber } from "wagmi";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
 
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+const FD = "var(--font-syne), var(--font-geist-sans)";
 
 type TimerState = "idle" | "running" | "paused" | "completed" | "failed";
 
@@ -54,7 +49,8 @@ export function FocusTimer({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const endTimeRef = useRef<number | null>(null);
 
-  const progress = ((duration - timeLeft) / duration) * 100;
+  // remaining fraction: 1.0 = full ring, 0.0 = empty (countdown style)
+  const remaining = duration > 0 ? timeLeft / duration : 1;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -71,24 +67,19 @@ export function FocusTimer({
         if (s === "running" && e) {
           const now = Date.now();
           const remaining = Math.max(0, Math.ceil((e - now) / 1000));
-          
           setDuration(d);
           setNote(n);
           onNoteChange?.(n);
-
           if (remaining > 0) {
             setTimeLeft(remaining);
             setStatus("running");
             endTimeRef.current = e;
           } else {
-            // Session finished while away
             setTimeLeft(0);
             setStatus("completed");
-            // Trigger completion after a short delay to ensure parent is ready
             setTimeout(() => onComplete?.(d / 60), 500);
           }
         } else if (s === "paused") {
-          // Keep paused state but don't resume automatically
           setStatus("paused");
           setDuration(d);
           setNote(n);
@@ -107,7 +98,7 @@ export function FocusTimer({
         duration,
         endTime: endTimeRef.current,
         note,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       }));
     } else {
       localStorage.removeItem("focus-session");
@@ -121,7 +112,6 @@ export function FocusTimer({
       if (timerRef.current) clearInterval(timerRef.current);
       endTimeRef.current = null;
     } else if (status === "completed") {
-      // Restart logic
       const newTimeLeft = duration;
       setTimeLeft(newTimeLeft);
       endTimeRef.current = Date.now() + newTimeLeft * 1000;
@@ -154,15 +144,12 @@ export function FocusTimer({
     const updateTimer = () => {
       if (!endTimeRef.current) return;
       const now = Date.now();
-      const remaining = Math.max(
-        0,
-        Math.ceil((endTimeRef.current - now) / 1000),
-      );
+      const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
       setTimeLeft(remaining);
     };
 
     if (status === "running") {
-      updateTimer(); // Initial sync
+      updateTimer();
       timerRef.current = setInterval(updateTimer, 1000);
     }
 
@@ -173,14 +160,12 @@ export function FocusTimer({
     };
 
     window.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       window.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [status]);
 
-  // Handle completion
   useEffect(() => {
     if (timeLeft === 0 && status === "running") {
       setStatus("completed");
@@ -189,10 +174,8 @@ export function FocusTimer({
     }
   }, [timeLeft, status, onComplete, duration]);
 
-  // Prevent Wallet Connect / RPC from sleeping during multi-hour sessions
-  useBlockNumber({
-    watch: status === "running",
-  });
+  // Keep wallet/RPC alive during long sessions
+  useBlockNumber({ watch: status === "running" });
 
   const handleCustomSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -215,30 +198,106 @@ export function FocusTimer({
     setIsCustom(false);
   };
 
+  const canChangeDuration = status === "idle" || status === "completed";
+
+  const statusLabel =
+    status === "idle" ? "Ready to focus" :
+    status === "paused" ? "Paused" :
+    status === "completed" ? "Session complete!" :
+    status === "failed" ? "Session abandoned" :
+    "Focusing…";
+
+  const ringColor =
+    status === "completed" ? "#2E7A4F" :
+    status === "failed"    ? "#DC2626" :
+    "#E05C28";
+
+  const isActive = status === "running";
+  const RL = 128; // ring radius for 280px viewbox
+  const CIRCL = 2 * Math.PI * RL; // ≈ 804.2
+
   return (
-    <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto p-6">
-      {/* Duration Selector */}
-      <div className="flex flex-wrap gap-2 mb-8 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-full items-center justify-center">
+    <div
+      style={{
+        background: "#1C1A16",
+        borderRadius: 28,
+        padding: "28px 24px 32px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Ambient glow behind ring */}
+      <div
+        style={{
+          position: "absolute",
+          top: "30%", left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 320, height: 320,
+          borderRadius: "50%",
+          background: isActive
+            ? "radial-gradient(circle, rgba(224,92,40,0.14) 0%, transparent 70%)"
+            : status === "completed"
+              ? "radial-gradient(circle, rgba(46,122,79,0.12) 0%, transparent 70%)"
+              : "radial-gradient(circle, rgba(224,92,40,0.06) 0%, transparent 70%)",
+          transition: "background 0.6s",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Top row: label + supercharge */}
+      <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#5A5450" }}>
+          Focus Session
+        </p>
+        {isSupercharged && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "4px 10px", borderRadius: 99,
+              background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)",
+              fontSize: 10, fontWeight: 700, color: "#F59E0B",
+              textTransform: "uppercase", letterSpacing: "0.08em",
+            }}
+          >
+            <Coins size={11} color="#F59E0B" />
+            Supercharged
+          </motion.div>
+        )}
+      </div>
+
+      {/* Duration pills */}
+      <div
+        style={{
+          display: "flex", gap: 4, marginBottom: 22,
+          background: "#262420", padding: 4, borderRadius: 99,
+          flexWrap: "wrap", justifyContent: "center",
+        }}
+      >
         {[10, 25, 45].map((mins) => (
           <button
             key={mins}
             onClick={() => handleDurationSelect(mins)}
-            disabled={status !== "idle" && status !== "completed"}
-            className={cn(
-              "px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all",
-              duration === mins * 60
-                ? "bg-white dark:bg-black shadow-sm text-black dark:text-white"
-                : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300",
-              status !== "idle" &&
-                status !== "completed" &&
-                "opacity-50 cursor-not-allowed",
-            )}
+            disabled={!canChangeDuration}
+            style={{
+              padding: "7px 18px", borderRadius: 99,
+              fontSize: 13, fontWeight: 700, border: "none",
+              cursor: canChangeDuration ? "pointer" : "not-allowed",
+              background: duration === mins * 60 ? "#FAF7F2" : "transparent",
+              color: duration === mins * 60 ? "#1C1A16" : "#5A5450",
+              boxShadow: duration === mins * 60 ? "0 1px 6px rgba(0,0,0,0.2)" : "none",
+              transition: "all 0.15s",
+              opacity: canChangeDuration ? 1 : 0.4,
+            }}
           >
             {mins}m
           </button>
         ))}
 
-        {/* Custom Duration Input */}
         {isCustom ? (
           <input
             autoFocus
@@ -248,198 +307,251 @@ export function FocusTimer({
             onChange={(e) => setCustomMins(e.target.value)}
             onKeyDown={handleCustomSubmit}
             onBlur={handleCustomBlur}
-            disabled={status !== "idle" && status !== "completed"}
-            style={{ fontSize: "16px" }}
-            className={cn(
-              "w-16 px-2 py-2 rounded-full bg-white dark:bg-black shadow-[inset_0_0_0_2px_#6366f1] font-medium text-center outline-hidden transition-all text-black dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-              status !== "idle" &&
-                status !== "completed" &&
-                "opacity-50 cursor-not-allowed",
-            )}
+            disabled={!canChangeDuration}
+            style={{
+              width: 60, padding: "7px 8px", borderRadius: 99,
+              background: "#FAF7F2", border: "1.5px solid #E05C28",
+              fontSize: 13, fontWeight: 700,
+              textAlign: "center", outline: "none", color: "#1C1A16",
+            }}
             placeholder="min"
           />
         ) : (
           <button
             onClick={() => setIsCustom(true)}
-            disabled={status !== "idle" && status !== "completed"}
-            className={cn(
-              "px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all",
-              ![10, 25, 45].includes(duration / 60)
-                ? "bg-white dark:bg-black shadow-sm text-black dark:text-white"
-                : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300",
-              status !== "idle" &&
-                status !== "completed" &&
-                "opacity-50 cursor-not-allowed",
-            )}
+            disabled={!canChangeDuration}
+            style={{
+              padding: "7px 16px", borderRadius: 99,
+              fontSize: 13, fontWeight: 700, border: "none",
+              cursor: canChangeDuration ? "pointer" : "not-allowed",
+              background: ![10, 25, 45].includes(duration / 60) ? "#FAF7F2" : "transparent",
+              color: ![10, 25, 45].includes(duration / 60) ? "#1C1A16" : "#5A5450",
+              opacity: canChangeDuration ? 1 : 0.4,
+            }}
           >
-            {![10, 25, 45].includes(duration / 60)
-              ? `${duration / 60}m`
-              : "Custom"}
+            {![10, 25, 45].includes(duration / 60) ? `${duration / 60}m` : "Custom"}
           </button>
         )}
       </div>
-      {/* Focus Note Input */}
-      <div className="w-full mb-8 relative group">
+
+      {/* Note input */}
+      <div style={{ width: "100%", position: "relative", marginBottom: 28 }}>
         <input
           type="text"
           value={note}
-          onChange={(e) => {
-            setNote(e.target.value);
-            onNoteChange?.(e.target.value);
-          }}
+          onChange={(e) => { setNote(e.target.value); onNoteChange?.(e.target.value); }}
           disabled={status === "running" || status === "paused"}
-          placeholder="What are we focusing on?"
-          className={cn(
-            "w-full bg-neutral-100 dark:bg-neutral-800/50 border-2 border-transparent px-6 py-4 rounded-3xl text-sm font-bold text-center transition-all placeholder:text-neutral-400 focus:outline-hidden",
-            status === "running" || status === "paused"
-              ? "opacity-50 border-indigo-500/20 text-indigo-500"
-              : "hover:bg-neutral-200 dark:hover:bg-neutral-800 focus:bg-white dark:focus:bg-neutral-900 focus:border-indigo-500/50 focus:shadow-xl focus:shadow-indigo-500/5",
-          )}
+          placeholder="What are you focusing on?"
+          style={{
+            width: "100%",
+            padding: "11px 16px",
+            borderRadius: 12,
+            border: `1.5px solid ${isActive ? "rgba(224,92,40,0.5)" : "#2C2A26"}`,
+            background: "#262420",
+            fontSize: 13, fontWeight: 600,
+            color: isActive ? "#E05C28" : "#FAF7F2",
+            outline: "none", textAlign: "center",
+            boxSizing: "border-box", transition: "all 0.2s",
+          }}
         />
+        {/* Placeholder colour override via CSS trick not needed — handled by style */}
         {note && (status === "running" || status === "paused") && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-[8px] font-black text-white px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-indigo-500/30"
+            style={{
+              position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
+              background: "#E05C28", color: "#fff",
+              fontSize: 8, fontWeight: 800, padding: "3px 10px",
+              borderRadius: 99, textTransform: "uppercase", letterSpacing: "0.12em",
+              whiteSpace: "nowrap",
+            }}
           >
-            ACTIVE INTENTION
+            Active Intention
           </motion.div>
         )}
       </div>
-      {/* Main Timer Display */}
-      <div className="relative w-72 h-72 flex items-center justify-center">
-        {/* Background Ring */}
-        <svg className="absolute w-full h-full transform -rotate-90">
-          <circle
-            cx="144"
-            cy="144"
-            r="130"
-            className="stroke-neutral-200 dark:stroke-neutral-800 fill-none"
-            strokeWidth="12"
-          />
-          {/* Progress Ring */}
+
+      {/* ── Ring ── */}
+      <div
+        style={{
+          position: "relative", width: 280, height: 280,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        <svg
+          viewBox="0 0 280 280"
+          style={{ position: "absolute", width: "100%", height: "100%", transform: "rotate(-90deg)" }}
+        >
+          {/* Track */}
+          <circle cx="140" cy="140" r={RL} fill="none" stroke="#2C2A26" strokeWidth="12" />
+          {/* Progress */}
           <motion.circle
-            cx="144"
-            cy="144"
-            r="130"
-            className="stroke-indigo-500 fill-none"
+            cx="140" cy="140" r={RL}
+            fill="none"
+            stroke={ringColor}
             strokeWidth="12"
             strokeLinecap="round"
-            strokeDasharray="816" // 2 * PI * 130
-            initial={{ strokeDashoffset: 816 }}
-            animate={{ strokeDashoffset: 816 - (816 * progress) / 100 }}
+            strokeDasharray={CIRCL}
+            initial={{ strokeDashoffset: 0 }}
+            animate={{ strokeDashoffset: CIRCL * (1 - remaining) }}
             transition={{ duration: 0.5 }}
+            style={{
+              filter: isActive
+                ? `drop-shadow(0 0 10px ${ringColor}99)`
+                : status === "completed"
+                  ? "drop-shadow(0 0 8px rgba(46,122,79,0.7))"
+                  : "none",
+            }}
           />
         </svg>
 
-        {/* Time Text */}
-        <div className="flex flex-col items-center z-10">
-          <motion.div
+        {/* Center text */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", zIndex: 10 }}>
+          <motion.span
             key={timeLeft}
-            initial={{ opacity: 0.5, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-6xl font-bold font-mono tracking-tighter text-neutral-900 dark:text-white"
+            initial={{ opacity: 0.7 }}
+            animate={{ opacity: 1 }}
+            style={{
+              fontFamily: "var(--font-geist-mono)",
+              fontSize: 52, fontWeight: 700,
+              letterSpacing: "-0.03em",
+              color: "#FAF7F2", lineHeight: 1,
+            }}
           >
             {formatTime(timeLeft)}
-          </motion.div>
+          </motion.span>
 
           {isNight && status === "idle" && (
             <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              style={{
+                display: "flex", alignItems: "center", gap: 4,
+                padding: "4px 10px", borderRadius: 99,
+                background: "rgba(224,92,40,0.15)", marginTop: 10,
+              }}
             >
-              <Moon className="w-3 h-3 text-indigo-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
-                Night Owl Bonus 1.1x
+              <Moon size={10} color="#E05C28" />
+              <span style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#E05C28" }}>
+                Night Owl 1.1×
               </span>
             </motion.div>
           )}
-          <p className="text-neutral-500 mt-2 font-medium bg-neutral-100 dark:bg-neutral-800 px-3 py-1 rounded-full text-xs uppercase tracking-widest">
-            {status === "idle"
-              ? "Ready to Focus"
-              : status === "paused"
-                ? "Paused"
-                : status === "completed"
-                  ? "Session Complete"
-                  : status === "failed"
-                    ? "Focus Abandoned"
-                    : "Focusing..."}
-          </p>
+
+          <span
+            style={{
+              marginTop: 10,
+              fontSize: 10, fontWeight: 700, color: "#5A5450",
+              textTransform: "uppercase", letterSpacing: "0.12em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {statusLabel}
+          </span>
         </div>
       </div>
+
       {/* Controls */}
-      <div className="flex gap-4 mt-8">
-        {status === "idle" ||
-        status === "paused" ||
-        status === "completed" ||
-        status === "failed" ? (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={toggleTimer}
-            className={cn(
-              "w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all",
-              status === "completed"
-                ? "bg-green-500 shadow-green-500/30"
-                : status === "failed"
-                  ? "bg-red-500 shadow-red-500/30"
-                  : "bg-indigo-600 shadow-indigo-500/30",
-            )}
-          >
-            {status === "completed" ? (
-              <CheckCircle2 className="w-6 h-6 text-white" />
-            ) : status === "failed" ? (
-              <XCircle className="w-6 h-6 text-white" />
-            ) : (
-              <Play className="w-6 h-6 ml-1 text-white" />
-            )}
-          </motion.button>
-        ) : (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={toggleTimer}
-            className="w-16 h-16 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30"
-          >
-            <Pause className="w-6 h-6 text-white" />
-          </motion.button>
-        )}
+      <div style={{ display: "flex", gap: 16, marginTop: 28, alignItems: "center" }}>
+        <motion.button
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
+          onClick={toggleTimer}
+          style={{
+            width: 64, height: 64, borderRadius: "50%",
+            border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background:
+              status === "completed" ? "#2E7A4F" :
+              status === "failed"    ? "#DC2626" :
+              "#E05C28",
+            boxShadow:
+              status === "completed" ? "0 4px 20px rgba(46,122,79,0.45)" :
+              status === "failed"    ? "0 4px 20px rgba(220,38,38,0.45)" :
+              isActive               ? "0 4px 24px rgba(224,92,40,0.55)" :
+              "0 4px 20px rgba(224,92,40,0.4)",
+          }}
+        >
+          {status === "completed" ? (
+            <CheckCircle2 size={26} color="#fff" />
+          ) : status === "failed" ? (
+            <XCircle size={26} color="#fff" />
+          ) : isActive ? (
+            <Pause size={24} color="#fff" />
+          ) : (
+            <Play size={24} color="#fff" style={{ marginLeft: 3 }} />
+          )}
+        </motion.button>
 
         {status !== "idle" && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.94 }}
             onClick={resetTimer}
-            className="w-16 h-16 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 flex items-center justify-center"
+            style={{
+              width: 48, height: 48, borderRadius: "50%",
+              border: "1px solid #2C2A26",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "#262420",
+            }}
           >
-            <Square className="w-5 h-5 text-white" />
+            <Square size={15} color="#5A5450" />
           </motion.button>
         )}
       </div>
+
+      {/* Failed overlay */}
       <AnimatePresence>
         {status === "failed" && (
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center rounded-3xl">
+          <div
+            style={{
+              position: "absolute", inset: 0,
+              background: "rgba(28,26,22,0.94)",
+              backdropFilter: "blur(8px)",
+              zIndex: 50,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 28, padding: 24,
+            }}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white dark:bg-neutral-900 p-8 rounded-2xl max-w-xs text-center mx-4 shadow-2xl border border-red-500/20"
+              style={{
+                background: "#262420", padding: 32, borderRadius: 20,
+                maxWidth: 280, textAlign: "center",
+                border: "1px solid #3A3530",
+              }}
             >
-              <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-4">
-                <XCircle size={32} />
+              <div
+                style={{
+                  width: 56, height: 56, borderRadius: "50%",
+                  background: "rgba(220,38,38,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 16px",
+                }}
+              >
+                <XCircle size={28} color="#DC2626" />
               </div>
-              <h2 className="text-2xl font-black mb-2 text-neutral-900 dark:text-white">
-                Focus Abandoned!
+              <h2 style={{ fontFamily: FD, fontWeight: 800, fontSize: 20, color: "#FAF7F2", marginBottom: 8 }}>
+                Session abandoned
               </h2>
-              <p className="text-neutral-500 dark:text-neutral-400 text-sm mb-6 leading-relaxed">
-                You left the session and broke your focus and now your pet is
-                disappointed. 🥺
+              <p style={{ fontSize: 13, color: "#7A7067", lineHeight: 1.65, marginBottom: 20 }}>
+                You left the session. Your pet noticed. 🥺
               </p>
               <button
                 onClick={resetTimer}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl transition-colors shadow-lg shadow-red-600/20"
+                style={{
+                  width: "100%", padding: "13px 0",
+                  background: "#DC2626", color: "#fff",
+                  border: "none", borderRadius: 12,
+                  fontFamily: FD, fontWeight: 800, fontSize: 14,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 16px rgba(220,38,38,0.35)",
+                }}
               >
                 Try Again
               </button>

@@ -5,14 +5,7 @@ import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { useIdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Gift,
-  Sparkles,
-  AlertCircle,
-  Loader2,
-  ExternalLink,
-  ShieldCheck,
-} from "lucide-react";
+import { Gift, AlertCircle, ShieldCheck } from "lucide-react";
 import { formatEther } from "viem";
 import { useIdentity } from "@/hooks/useIdentity";
 import { IdentityModal } from "./IdentityModal";
@@ -126,106 +119,152 @@ export function ClaimReward() {
 
   if (!isMounted || !address) return null;
 
+  const FD = "var(--font-syne), var(--font-geist-sans)";
+  const amount = isLoading ? "—" : parseFloat(formatEther(entitlement)).toFixed(2);
+
   return (
-    <div className="w-full mt-6 overflow-hidden bg-linear-to-br from-indigo-500/10 via-purple-500/5 to-transparent dark:from-indigo-500/20 dark:via-purple-500/10 dark:to-transparent rounded-3xl border border-indigo-100 dark:border-indigo-900/50 p-6 relative group">
-      {/* Background Sparkles */}
-      {/* <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
-        <Sparkles className="w-12 h-12 text-indigo-400 animate-pulse" />
-      </div> */}
+    <div
+      style={{
+        background: "#fff",
+        borderRadius: 20,
+        border: "1px solid #E8E0D5",
+        padding: "18px 20px",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Green left accent bar */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0, top: 0, bottom: 0,
+          width: 4,
+          background: "linear-gradient(to bottom, #2E7A4F, #4CAF72)",
+          borderRadius: "20px 0 0 20px",
+        }}
+      />
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl text-indigo-600 dark:text-indigo-400">
-              <Gift size={20} />
-            </div>
-            <h3 className="font-black text-lg tracking-tight">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        {/* Left: label + amount */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              width: 44, height: 44, borderRadius: 14,
+              background: "#EAF5EF",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Gift size={20} color="#2E7A4F" />
+          </div>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7A7067", marginBottom: 2 }}>
               Daily G$ Reward
-            </h3>
-          </div>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium max-w-xs leading-relaxed">
-            As a verified human, you can claim free GoodDollar tokens every day.
-          </p>
-        </div>
-
-        <div className="flex flex-col items-end gap-3">
-          <div className="text-right">
-            <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 block mb-1">
-              Available to Claim
-            </span>
-            <div className="flex items-baseline gap-1 justify-end">
-              <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400 tracking-tighter">
-                {isLoading
-                  ? "..."
-                  : parseFloat(formatEther(entitlement)).toFixed(2)}
+            </p>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <span style={{ fontFamily: FD, fontWeight: 800, fontSize: 22, color: "#2E7A4F", letterSpacing: "-0.03em", lineHeight: 1 }}>
+                {amount}
               </span>
-              <span className="text-xs font-bold text-indigo-400 dark:text-indigo-600">
-                G$
-              </span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#7A9E8A" }}>G$</span>
+              <span style={{ fontSize: 11, color: "#B0A89E", marginLeft: 2 }}>available</span>
             </div>
           </div>
-
-          <AnimatePresence mode="wait">
-            {status === "not_whitelisted" ? (
-              <motion.button
-                key="verify"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={() => setIsVerifying(true)}
-                className="flex items-center gap-2 bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 px-6 py-3 rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/10 border border-indigo-100 dark:border-indigo-900/50 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all active:scale-95 group/verify"
-              >
-                Face Verify In-App
-                <ShieldCheck
-                  size={14}
-                  className="group-hover/verify:scale-110 transition-transform"
-                />
-              </motion.button>
-            ) : status === "already_claimed" ? (
-              <motion.div
-                key="claimed"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 px-6 py-3 rounded-2xl font-bold text-sm border border-neutral-200 dark:border-neutral-700"
-              >
-                Claimed Today ✨
-              </motion.div>
-            ) : (
-              <motion.button
-                key="claim"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                disabled={entitlement === BigInt(0) || isClaiming}
-                onClick={handleClaim}
-                className="relative overflow-hidden group/btn flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-neutral-200 dark:disabled:bg-neutral-800 text-white disabled:text-neutral-400 px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/20 transition-all hover:-translate-y-1 active:scale-95 group"
-              >
-                {isClaiming ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    Claim Now
-                    <Sparkles
-                      size={16}
-                      className="group-hover/btn:rotate-12 transition-transform"
-                    />
-                  </>
-                )}
-                {/* Glow Effect */}
-                <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-              </motion.button>
-            )}
-          </AnimatePresence>
         </div>
+
+        {/* Right: action */}
+        <AnimatePresence mode="wait">
+          {status === "not_whitelisted" ? (
+            <motion.button
+              key="verify"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => setIsVerifying(true)}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                display: "flex", alignItems: "center", gap: 7,
+                padding: "10px 18px", borderRadius: 12,
+                background: "#EAF5EF", border: "1px solid #C3E0CE",
+                color: "#2E7A4F", fontSize: 13, fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <ShieldCheck size={15} />
+              Verify to Claim
+            </motion.button>
+          ) : status === "already_claimed" ? (
+            <motion.div
+              key="claimed"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "10px 18px", borderRadius: 12,
+                background: "#F0EBE3", border: "1px solid #E8E0D5",
+                color: "#7A7067", fontSize: 13, fontWeight: 700,
+              }}
+            >
+              Claimed today ✓
+            </motion.div>
+          ) : (
+            <motion.button
+              key="claim"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              disabled={entitlement === BigInt(0) || isClaiming}
+              onClick={handleClaim}
+              whileHover={!isClaiming ? { scale: 1.03 } : {}}
+              whileTap={!isClaiming ? { scale: 0.97 } : {}}
+              style={{
+                display: "flex", alignItems: "center", gap: 7,
+                padding: "10px 20px", borderRadius: 12,
+                background: entitlement === BigInt(0) || isClaiming ? "#E8E0D5" : "#2E7A4F",
+                border: "none",
+                color: entitlement === BigInt(0) || isClaiming ? "#B0A89E" : "#fff",
+                fontSize: 13, fontWeight: 700,
+                cursor: entitlement === BigInt(0) || isClaiming ? "not-allowed" : "pointer",
+                boxShadow: entitlement > BigInt(0) && !isClaiming ? "0 4px 14px rgba(46,122,79,0.3)" : "none",
+                transition: "all 0.2s",
+              }}
+            >
+              {isClaiming ? (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                  style={{ width: 15, height: 15, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }}
+                />
+              ) : (
+                <Gift size={15} />
+              )}
+              {isClaiming ? "Claiming…" : "Claim G$"}
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       {status === "not_whitelisted" && (
-        <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg border border-amber-100 dark:border-amber-900/30">
-          <AlertCircle size={14} />
-          First time? You'll need to complete a quick face scan to ensure one
-          human = one reward.
+        <div
+          style={{
+            marginTop: 12,
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "8px 12px", borderRadius: 10,
+            background: "#FFFBEB", border: "1px solid #FDE68A",
+            fontSize: 11, fontWeight: 600, color: "#92400E",
+          }}
+        >
+          <AlertCircle size={13} color="#D97706" />
+          You'll need to complete a quick face scan — one human, one reward.
         </div>
       )}
 
-      {/* Embedded Verification Modal */}
       <IdentityModal
         isOpen={isVerifying}
         onClose={() => setIsVerifying(false)}

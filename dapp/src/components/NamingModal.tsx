@@ -1,16 +1,26 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Edit2,
-  Sparkles,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-} from "lucide-react";
+import { motion, AnimatePresence, type Easing } from "framer-motion";
+import { X, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useNameAvailability } from "@/hooks/useNameAvailability";
+
+const C = {
+  cream: "#FAF7F2",
+  creamDark: "#F0EBE3",
+  border: "#E8E0D5",
+  text: "#1C1A16",
+  muted: "#7A7067",
+  subtle: "#B0A89E",
+  orange: "#E05C28",
+  orangeLight: "#FFF0EA",
+  green: "#2E7A4F",
+  red: "#DC2626",
+  redLight: "#FEF2F2",
+};
+
+const FD = "var(--font-syne), var(--font-geist-sans)";
+const EASE: Easing = [0.22, 1, 0.36, 1] as unknown as Easing;
 
 interface NamingModalProps {
   isOpen: boolean;
@@ -45,150 +55,350 @@ export function NamingModal({
   const isPetValid = petName.length >= 2 && isPetNameAvailable(petName);
   const isValid = isUserValid && isPetValid && !isLoadingAvailability;
 
+  const userTaken = username.length > 0 && !isUsernameAvailable(username);
+  const petTaken = petName.length > 0 && !isPetNameAvailable(petName);
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 overflow-hidden">
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={!isPending ? onClose : undefined}
-            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(28,26,22,0.45)",
+              backdropFilter: "blur(8px)",
+            }}
           />
 
-          {/* Modal Content */}
+          {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative bg-white dark:bg-neutral-900 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-neutral-100 dark:border-neutral-800 z-101"
+            exit={{ opacity: 0, scale: 0.94, y: 16 }}
+            transition={{ duration: 0.4, ease: EASE }}
+            style={{
+              position: "relative",
+              background: C.cream,
+              borderRadius: 28,
+              width: "100%",
+              maxWidth: 420,
+              boxShadow: "0 24px 64px rgba(28,26,22,0.18)",
+              border: `1px solid ${C.border}`,
+              overflow: "hidden",
+            }}
           >
-            {!isPending && (
-              <button
-                onClick={onClose}
-                className="absolute top-6 right-6 p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors z-10"
-              >
-                <X size={20} />
-              </button>
-            )}
-
-            <div className="p-8 md:p-10">
-              <div className="flex flex-col items-center text-center mb-8">
-                <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4">
-                  <Sparkles size={32} />
-                </div>
-                <h2 className="text-2xl font-black tracking-tight mb-2">
-                  A Legend is Born! 🥚✨
+            {/* Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "20px 24px 0",
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    fontFamily: FD,
+                    fontSize: 22,
+                    fontWeight: 800,
+                    color: C.text,
+                    letterSpacing: "-0.03em",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Pick your names
                 </h2>
-                <p className="text-neutral-400 text-sm font-medium leading-relaxed">
-                  Every epic journey needs a hero and a companion. What shall we
-                  call you both?
-                </p>
               </div>
+              {!isPending && (
+                <button
+                  onClick={onClose}
+                  style={{
+                    background: C.creamDark,
+                    border: "none",
+                    borderRadius: "50%",
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    color: C.muted,
+                    flexShrink: 0,
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
 
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2 ml-1">
-                    Your Hero Name
-                  </label>
-                  <div className="relative group">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 font-black group-focus-within:text-indigo-500 transition-colors">
-                      @
-                    </span>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) =>
-                        setUsername(
-                          e.target.value
-                            .toLowerCase()
-                            .replace(/[^a-z0-9_]/g, ""),
-                        )
-                      }
-                      placeholder="master_focuser"
-                      className={`w-full bg-neutral-50 dark:bg-neutral-800/50 border-2 rounded-2xl py-4 pl-9 pr-12 font-bold outline-none transition-all dark:text-white ${
-                        username.length > 0 && !isUsernameAvailable(username)
-                          ? "border-red-500 focus:border-red-500"
-                          : username.length >= 3
-                            ? "border-green-500 focus:border-green-500"
-                            : "border-transparent focus:border-indigo-500"
-                      }`}
-                    />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                      {isLoadingAvailability ? (
-                        <Loader2
-                          size={18}
-                          className="text-neutral-400 animate-spin"
-                        />
-                      ) : username.length > 0 &&
-                        !isUsernameAvailable(username) ? (
-                        <AlertCircle size={18} className="text-red-500" />
-                      ) : username.length >= 3 ? (
-                        <CheckCircle2 size={18} className="text-green-500" />
-                      ) : null}
-                    </div>
-                  </div>
-                  {username.length > 0 && !isUsernameAvailable(username) && (
-                    <p className="text-xs text-red-500 mt-2 font-medium ml-1">
-                      This hero name is already taken! ⚔️
-                    </p>
-                  )}
-                </div>
+            {/* Body */}
+            <div
+              style={{
+                padding: "20px 24px 28px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 18,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 13,
+                  color: C.muted,
+                  lineHeight: 1.6,
+                  marginTop: -4,
+                }}
+              >
+                Every journey needs a hero and a companion.
+              </p>
 
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2 ml-1">
-                    Companion's Name
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={petName}
-                      onChange={(e) => setPetName(e.target.value)}
-                      placeholder="e.g. Apollo, Luna, Pixel"
-                      className={`w-full bg-neutral-50 dark:bg-neutral-800/50 border-2 rounded-2xl py-4 pl-5 pr-12 font-bold outline-none transition-all dark:text-white ${
-                        petName.length > 0 && !isPetNameAvailable(petName)
-                          ? "border-red-500 focus:border-red-500"
-                          : petName.length >= 2
-                            ? "border-green-500 focus:border-green-500"
-                            : "border-transparent focus:border-indigo-500"
-                      }`}
-                    />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                      {isLoadingAvailability ? (
-                        <Loader2
-                          size={18}
-                          className="text-neutral-400 animate-spin"
-                        />
-                      ) : petName.length > 0 && !isPetNameAvailable(petName) ? (
-                        <AlertCircle size={18} className="text-red-500" />
-                      ) : petName.length >= 2 ? (
-                        <CheckCircle2 size={18} className="text-green-500" />
-                      ) : null}
-                    </div>
-                  </div>
-                  {petName.length > 0 && !isPetNameAvailable(petName) && (
-                    <p className="text-xs text-red-500 mt-2 font-medium ml-1">
-                      Another companion already claimed this name! 🐾
-                    </p>
-                  )}
-                </div>
-
-                <div className="pt-4">
-                  <button
-                    onClick={() => onSave(username, petName)}
-                    disabled={!isValid || isPending}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-neutral-200 dark:disabled:bg-neutral-800 text-white disabled:text-neutral-400 px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/20 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 group"
+              {/* Username field */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase" as const,
+                    color: C.muted,
+                    marginBottom: 8,
+                  }}
+                >
+                  Your name
+                </label>
+                <div style={{ position: "relative" }}>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 14,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      color: C.subtle,
+                      pointerEvents: "none",
+                    }}
                   >
-                    {isPending ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <>Save & Adopt</>
-                    )}
-                  </button>
+                    @
+                  </span>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) =>
+                      setUsername(
+                        e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                      )
+                    }
+                    placeholder="master_focuser"
+                    style={{
+                      width: "100%",
+                      padding: "13px 44px 13px 30px",
+                      borderRadius: 12,
+                      border: `1.5px solid ${
+                        userTaken ? C.red : isUserValid ? C.green : C.border
+                      }`,
+                      background: userTaken ? C.redLight : "#fff",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: C.text,
+                      outline: "none",
+                      boxSizing: "border-box",
+                      transition: "border-color 0.15s",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 14,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                    }}
+                  >
+                    {isLoadingAvailability ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1,
+                          ease: "linear",
+                        }}
+                        style={{
+                          width: 16,
+                          height: 16,
+                          border: `2px solid ${C.border}`,
+                          borderTopColor: C.orange,
+                          borderRadius: "50%",
+                        }}
+                      />
+                    ) : userTaken ? (
+                      <AlertCircle size={16} color={C.red} />
+                    ) : isUserValid ? (
+                      <CheckCircle2 size={16} color={C.green} />
+                    ) : null}
+                  </div>
                 </div>
+                {userTaken && (
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: C.red,
+                      marginTop: 6,
+                      fontWeight: 500,
+                    }}
+                  >
+                    That name is taken. Try another.
+                  </p>
+                )}
               </div>
+
+              {/* Pet name field */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase" as const,
+                    color: C.muted,
+                    marginBottom: 8,
+                  }}
+                >
+                  Your pet's name
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="text"
+                    value={petName}
+                    onChange={(e) => setPetName(e.target.value)}
+                    placeholder="Apollo, Luna, Pixel…"
+                    style={{
+                      width: "100%",
+                      padding: "13px 44px 13px 14px",
+                      borderRadius: 12,
+                      border: `1.5px solid ${
+                        petTaken ? C.red : isPetValid ? C.green : C.border
+                      }`,
+                      background: petTaken ? C.redLight : "#fff",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: C.text,
+                      outline: "none",
+                      boxSizing: "border-box",
+                      transition: "border-color 0.15s",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 14,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                    }}
+                  >
+                    {isLoadingAvailability ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1,
+                          ease: "linear",
+                        }}
+                        style={{
+                          width: 16,
+                          height: 16,
+                          border: `2px solid ${C.border}`,
+                          borderTopColor: C.orange,
+                          borderRadius: "50%",
+                        }}
+                      />
+                    ) : petTaken ? (
+                      <AlertCircle size={16} color={C.red} />
+                    ) : isPetValid ? (
+                      <CheckCircle2 size={16} color={C.green} />
+                    ) : null}
+                  </div>
+                </div>
+                {petTaken && (
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: C.red,
+                      marginTop: 6,
+                      fontWeight: 500,
+                    }}
+                  >
+                    That name is taken. Try another.
+                  </p>
+                )}
+              </div>
+
+              {/* Save button */}
+              <motion.button
+                onClick={() => onSave(username, petName)}
+                disabled={!isValid || isPending}
+                whileHover={isValid && !isPending ? { scale: 1.02 } : {}}
+                whileTap={isValid && !isPending ? { scale: 0.97 } : {}}
+                style={{
+                  width: "100%",
+                  padding: "14px 0",
+                  borderRadius: 14,
+                  border: "none",
+                  background: isValid && !isPending ? C.orange : C.border,
+                  color: isValid && !isPending ? "#fff" : C.subtle,
+                  fontFamily: FD,
+                  fontSize: 15,
+                  fontWeight: 800,
+                  cursor: isValid && !isPending ? "pointer" : "not-allowed",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  boxShadow:
+                    isValid && !isPending
+                      ? "0 4px 16px rgba(224,92,40,0.3)"
+                      : "none",
+                  transition: "background 0.2s, box-shadow 0.2s",
+                  marginTop: 4,
+                }}
+              >
+                {isPending ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 1,
+                      ease: "linear",
+                    }}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      border: "2.5px solid rgba(255,255,255,0.3)",
+                      borderTopColor: "#fff",
+                      borderRadius: "50%",
+                    }}
+                  />
+                ) : (
+                  "Save & continue →"
+                )}
+              </motion.button>
             </div>
           </motion.div>
         </div>

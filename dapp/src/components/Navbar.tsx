@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { HelpCircle, User, Share2, Menu, X } from "lucide-react";
-import { ThemeToggle } from "./ThemeToggle";
 import { SoundMenu } from "./SoundMenu";
 import { StreakFlame } from "./StreakFlame";
 import { PrivyConnectButton } from "./PrivyConnectButton";
@@ -12,6 +11,18 @@ import { useAudio } from "@/hooks/useAudio";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { AccountModal } from "./AccountModal";
+
+const C = {
+  bg: "#FAF7F2",
+  border: "#E8E0D5",
+  surface: "#F0EBE3",
+  text: "#1C1A16",
+  muted: "#7A7067",
+  orange: "#E05C28",
+  orangeLight: "#FFF0EA",
+};
+
+const FD = "var(--font-syne), var(--font-geist-sans)";
 
 interface NavbarProps {
   onOpenOnboarding?: () => void;
@@ -25,122 +36,200 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
+  const iconBtn = {
+    width: 36,
+    height: 36,
+    borderRadius: "50%",
+    background: C.surface,
+    border: `1px solid ${C.border}`,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    color: C.muted,
+    flexShrink: 0,
+  } as React.CSSProperties;
+
   return (
     <>
-      <header className="p-3 sm:p-4 px-3 sm:px-6 md:px-12 lg:px-20 flex items-center justify-between border-b border-neutral-100 dark:border-neutral-900 w-full max-w-[1400px] mx-auto relative z-50">
-        <div className="flex items-center gap-2 shrink-0">
-          <img
-            src="/focus-pet-logo.jpeg"
-            className="rounded-full h-8 w-8 sm:h-10 sm:w-10 shadow-sm"
-            alt="FocusPet Logo"
-          />
-          <h1 className="font-bold text-base sm:text-lg tracking-tight hidden sm:block">
-            FocusPet
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2 text-sm font-medium">
-          <StreakFlame count={streak} />
-
-          <div className="hidden sm:flex items-center gap-2">
-            {onOpenOnboarding && (
-              <button
-                onClick={() => {
-                  onOpenOnboarding();
-                  playSound("click");
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all font-bold text-xs group"
-                title="How to Play"
-              >
-                <HelpCircle size={16} />
-                <span>How to Play</span>
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                </span>
-              </button>
-            )}
-            <ThemeToggle />
-            <SoundMenu />
-            {onOpenProfile && (
-              <button
-                onClick={() => {
-                  onOpenProfile();
-                  playSound("click");
-                }}
-                className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-                title="Edit Profile"
-              >
-                <User size={18} />
-              </button>
-            )}
-            <button
-              onClick={() => {
-                if (address) {
-                  const link = `${window.location.origin}/?ref=${address}`;
-                  navigator.clipboard.writeText(link);
-                  toast.success("Invite link copied!");
-                  playSound("click");
-                } else {
-                  toast.error("Please connect your wallet first.");
-                }
+      <header
+        style={{
+          background: C.bg,
+          borderBottom: `1px solid ${C.border}`,
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "0 20px",
+            height: 58,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          {/* Logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            <img
+              src="/focus-pet-logo.jpeg"
+              alt="FocusPet"
+              style={{ width: 30, height: 30, borderRadius: "50%", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+            />
+            <span
+              style={{
+                fontFamily: FD,
+                fontWeight: 800,
+                fontSize: 16,
+                letterSpacing: "-0.02em",
+                color: C.text,
               }}
-              className="p-2 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex shrink-0 items-center justify-center h-[36px] w-[36px]"
-              title="Copy Invite Link"
             >
-              <Share2 size={18} />
-            </button>
+              FocusPet
+            </span>
           </div>
 
-          <PrivyConnectButton 
-            onOpenAccount={() => {
-              setIsAccountModalOpen(true);
-              playSound("click");
-            }} 
-          />
+          {/* Right side */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <StreakFlame count={streak} />
 
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="sm:hidden p-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-          >
-            {isMobileMenuOpen ? <X key="nav-close" size={20} /> : <Menu key="nav-open" size={20} />}
-          </button>
+            {/* Desktop-only */}
+            <div className="hidden sm:flex items-center" style={{ gap: 8 }}>
+              {onOpenOnboarding && (
+                <button
+                  onClick={() => { onOpenOnboarding(); playSound("click"); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "7px 14px",
+                    borderRadius: 99,
+                    background: C.orangeLight,
+                    border: `1px solid #F4C9B3`,
+                    color: C.orange,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  <HelpCircle size={13} />
+                  <span>How to Play</span>
+                  <motion.span
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ repeat: Infinity, duration: 1.8 }}
+                    style={{ width: 5, height: 5, borderRadius: "50%", background: C.orange, display: "inline-block" }}
+                  />
+                </button>
+              )}
+
+              <SoundMenu />
+
+              {onOpenProfile && (
+                <button
+                  onClick={() => { onOpenProfile(); playSound("click"); }}
+                  style={iconBtn}
+                  title="Edit Profile"
+                >
+                  <User size={15} />
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  if (address) {
+                    const link = `${window.location.origin}/?ref=${address}`;
+                    navigator.clipboard.writeText(link);
+                    toast.success("Invite link copied!");
+                    playSound("click");
+                  } else {
+                    toast.error("Please connect your wallet first.");
+                  }
+                }}
+                style={iconBtn}
+                title="Copy Invite Link"
+              >
+                <Share2 size={15} />
+              </button>
+            </div>
+
+            <PrivyConnectButton
+              onOpenAccount={() => {
+                setIsAccountModalOpen(true);
+                playSound("click");
+              }}
+            />
+
+            {/* Mobile menu toggle — wrapper handles visibility so button keeps display:flex */}
+            <div className="sm:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                style={iconBtn}
+              >
+                {isMobileMenuOpen ? <X size={17} /> : <Menu size={17} />}
+              </button>
+            </div>
+          </div>
         </div>
 
+        {/* Mobile dropdown */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute top-[60px] right-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl p-2 flex flex-col gap-2 sm:hidden backdrop-blur-md z-50"
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                position: "absolute",
+                top: 62,
+                right: 16,
+                background: C.bg,
+                border: `1px solid ${C.border}`,
+                borderRadius: 20,
+                boxShadow: "0 8px 32px rgba(28,26,22,0.12)",
+                padding: 10,
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                zIndex: 50,
+                minWidth: 200,
+              }}
             >
               {onOpenOnboarding && (
                 <button
-                  onClick={() => {
-                    onOpenOnboarding();
-                    playSound("click");
-                    setIsMobileMenuOpen(false);
+                  onClick={() => { onOpenOnboarding(); playSound("click"); setIsMobileMenuOpen(false); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "10px 14px", borderRadius: 12,
+                    background: C.orangeLight, color: C.orange,
+                    fontSize: 13, fontWeight: 700,
+                    border: "none", cursor: "pointer", width: "100%", textAlign: "left",
                   }}
-                  className="flex items-center gap-3 px-4 py-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-sm w-full text-left"
                 >
-                  <HelpCircle size={18} />
-                  <span>How to Play</span>
+                  <HelpCircle size={16} />
+                  How to Play
                 </button>
               )}
+
               {onOpenProfile && (
                 <button
-                  onClick={() => {
-                    onOpenProfile();
-                    playSound("click");
-                    setIsMobileMenuOpen(false);
+                  onClick={() => { onOpenProfile(); playSound("click"); setIsMobileMenuOpen(false); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "10px 14px", borderRadius: 12,
+                    color: C.text, fontSize: 13, fontWeight: 600,
+                    background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left",
                   }}
-                  className="flex items-center gap-3 px-4 py-2 rounded-xl text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-sm w-full text-left transition-colors"
                 >
-                  <User size={18} />
-                  <span>Edit Profile</span>
+                  <User size={16} />
+                  Edit Profile
                 </button>
               )}
+
               <button
                 onClick={() => {
                   if (address) {
@@ -149,17 +238,26 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
                     toast.success("Invite link copied!");
                     playSound("click");
                     setIsMobileMenuOpen(false);
-                  } else {
-                    toast.error("Please connect your wallet first.");
                   }
                 }}
-                className="flex items-center gap-3 px-4 py-2 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-bold text-sm w-full text-left transition-colors"
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 14px", borderRadius: 12,
+                  color: C.text, fontSize: 13, fontWeight: 600,
+                  background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left",
+                }}
               >
-                <Share2 size={18} />
-                <span>Invite Friend</span>
+                <Share2 size={16} />
+                Invite Friend
               </button>
-              <div className="flex items-center justify-between gap-2 border-t border-neutral-100 dark:border-neutral-800 pt-2 mt-1 px-2">
-                <ThemeToggle />
+
+              <div
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "flex-end",
+                  padding: "6px 10px 2px",
+                  borderTop: `1px solid ${C.border}`, marginTop: 2,
+                }}
+              >
                 <SoundMenu />
               </div>
             </motion.div>

@@ -1,175 +1,350 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  ArrowRight,
-  Zap,
-  Target,
-  Sparkles,
-  Trophy,
-  Globe,
-  ShieldCheck,
-  Heart,
-  ShoppingBag,
-} from "lucide-react";
+import { motion, AnimatePresence, type Easing } from "framer-motion";
+import { X, ArrowRight } from "lucide-react";
+
+const C = {
+  cream: "#FAF7F2",
+  creamDark: "#F0EBE3",
+  border: "#E8E0D5",
+  text: "#1C1A16",
+  muted: "#7A7067",
+  orange: "#E05C28",
+  orangeLight: "#FFF0EA",
+  green: "#2E7A4F",
+  greenLight: "#EAF5EF",
+};
+
+const FD = "var(--font-syne), var(--font-geist-sans)";
+const EASE: Easing = [0.22, 1, 0.36, 1] as unknown as Easing;
 
 interface OnboardingModalProps {
   onClose: () => void;
 }
 
+const steps = [
+  {
+    id: 1,
+    emoji: "🥚",
+    title: "Focus to Start",
+    description:
+      "Set your timer and get to work. Your pet stays an egg until you complete your first session — hatch it by doing the thing.",
+    impact: "Hatch your pet & earn base XP",
+    impactColor: C.orange,
+    impactBg: C.orangeLight,
+  },
+  {
+    id: 2,
+    emoji: "⚡️",
+    title: "Supercharge It",
+    description:
+      "Stream G$ to the UBI pool to reach God Mode. Get 100% Health stability and up to a 2× XP multiplier on every session.",
+    impact: "Boost XP & auto-heal your pet",
+    impactColor: "#B45309",
+    impactBg: "#FFFBEB",
+  },
+  {
+    id: 3,
+    emoji: "🛍️",
+    title: "Visit the Shop",
+    description:
+      "Spend your earned G$ on Food to heal, Shields to prevent decay, and Cosmetics to give your pet its own vibe.",
+    impact: "Level up faster & look cool",
+    impactColor: C.orange,
+    impactBg: C.orangeLight,
+  },
+  {
+    id: 4,
+    emoji: "🌍",
+    title: "Global Impact",
+    description:
+      "Every second you focus, you contribute to the Global UBI pool. Your deep work literally helps feed the world.",
+    impact: "Help provide basic income",
+    impactColor: C.green,
+    impactBg: C.greenLight,
+  },
+  {
+    id: 5,
+    emoji: "🛡️",
+    title: "Get Verified",
+    description:
+      "Complete Face Verification to earn a Verified Focuser badge. Lock in your leaderboard position and flex your credibility.",
+    impact: "Badge & leaderboard prestige",
+    impactColor: "#1D4ED8",
+    impactBg: "#EFF6FF",
+  },
+];
+
 export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const [step, setStep] = useState(1);
-
-  const steps = [
-    {
-      id: 1,
-      title: "Focus to Start",
-      description:
-        "Set your timer and engage in deep work. Your pet stays an egg until you complete your first session! 🧗",
-      icon: <Target className="w-8 h-8 text-indigo-500" />,
-      image: "🥚",
-      impact: "Hatch your pet & earn base XP",
-    },
-    {
-      id: 2,
-      title: "Supercharge",
-      description:
-        "Stream G$ to the UBI pool to reach 'God Mode'. You'll get 100% Health stability and up to 2.0x XP multipliers! 🚀",
-      icon: <Zap className="w-8 h-8 text-amber-500" />,
-      image: "⚡️",
-      impact: "Boost XP & auto-heal pet",
-    },
-    {
-      id: 3,
-      title: "The Shop",
-      description:
-        "Spend earned G$ on Food to heal, Shields to prevent decay, and Cosmetics to give your pet a unique style. 🕶️",
-      icon: <ShoppingBag className="w-8 h-8 text-pink-500" />,
-      image: "🛍️",
-      impact: "Level up faster & look cool",
-    },
-    {
-      id: 4,
-      title: "Global Impact",
-      description:
-        "Every second you focus, you're contributing to the Global UBI pool. Your productivity literally feeds the world. ❤️",
-      icon: <Globe className="w-8 h-8 text-green-500" />,
-      image: "🌍",
-      impact: "Help provide basic income",
-    },
-    {
-      id: 5,
-      title: "Verified Identity",
-      description:
-        "Complete Face Verification to earn a 'Verified Focuser' badge. Secure your place on the leaderboard! 🏅",
-      icon: <ShieldCheck className="w-8 h-8 text-blue-500" />,
-      image: "🛡️",
-      impact: "Badge & Leaderboard prestige",
-    },
-  ];
-
-  const currentStep = steps[step - 1];
+  const current = steps[step - 1];
+  const isLast = step === steps.length;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+      }}
+    >
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(28,26,22,0.45)",
+          backdropFilter: "blur(8px)",
+        }}
       />
 
-      {/* Modal Content */}
+      {/* Modal */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative bg-white dark:bg-neutral-900 w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-neutral-100 dark:border-neutral-800 mx-4 md:mx-0"
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
+        transition={{ duration: 0.4, ease: EASE }}
+        style={{
+          position: "relative",
+          background: C.cream,
+          borderRadius: 28,
+          width: "100%",
+          maxWidth: 420,
+          overflow: "hidden",
+          boxShadow: "0 24px 64px rgba(28,26,22,0.18)",
+          border: `1px solid ${C.border}`,
+        }}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 md:top-6 md:right-6 p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors z-10"
+        {/* Top bar */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "20px 20px 0",
+          }}
         >
-          <X size={20} />
-        </button>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: C.muted,
+            }}
+          >
+            How It Works
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              background: C.creamDark,
+              border: "none",
+              borderRadius: "50%",
+              width: 32,
+              height: 32,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: C.muted,
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
 
-        <div className="p-6 md:p-10 flex flex-col items-center text-center">
+        {/* Step content */}
+        <div
+          style={{
+            padding: "24px 28px 28px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 24 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="flex flex-col items-center"
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.3, ease: EASE }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
             >
-              <div className="w-24 h-24 bg-neutral-50 dark:bg-neutral-800 rounded-full flex items-center justify-center text-6xl mb-8 shadow-inner">
-                {currentStep.image}
+              {/* Emoji bubble */}
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: "50%",
+                  background: C.creamDark,
+                  border: `2px solid ${C.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 40,
+                  marginBottom: 24,
+                  boxShadow: "0 4px 16px rgba(28,26,22,0.08)",
+                }}
+              >
+                {current.emoji}
+              </motion.div>
+
+              {/* Step counter */}
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: C.orange,
+                  marginBottom: 8,
+                }}
+              >
+                Step {step} of {steps.length}
               </div>
 
-              {/* <div className="mb-4 inline-flex items-center gap-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
-                {currentStep.icon}
-              </div> */}
-
-              <h2 className="text-2xl font-black mb-3 tracking-tight">
-                {currentStep.title}
+              {/* Title */}
+              <h2
+                style={{
+                  fontFamily: FD,
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color: C.text,
+                  marginBottom: 12,
+                  lineHeight: 1.2,
+                }}
+              >
+                {current.title}
               </h2>
-              <p className="text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-[280px] text-sm font-medium mb-6">
-                {currentStep.description}
+
+              {/* Description */}
+              <p
+                style={{
+                  fontSize: 14,
+                  lineHeight: 1.65,
+                  color: C.muted,
+                  maxWidth: 300,
+                  marginBottom: 20,
+                }}
+              >
+                {current.description}
               </p>
 
-              {currentStep.impact && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
-                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-                    Impact: {currentStep.impact}
-                  </span>
-                </div>
-              )}
+              {/* Impact pill */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 14px",
+                  borderRadius: 99,
+                  background: current.impactBg,
+                  border: `1px solid ${current.impactColor}22`,
+                }}
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.4, 1] }}
+                  transition={{ duration: 1.6, repeat: Infinity }}
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: current.impactColor,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: current.impactColor,
+                  }}
+                >
+                  {current.impact}
+                </span>
+              </div>
             </motion.div>
           </AnimatePresence>
 
-          {/* Dots */}
-          <div className="flex gap-2 mt-10">
+          {/* Progress dots */}
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              marginTop: 28,
+              marginBottom: 24,
+              alignItems: "center",
+            }}
+          >
             {steps.map((s) => (
-              <div
+              <motion.div
                 key={s.id}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  step === s.id
-                    ? "w-8 bg-indigo-500"
-                    : "w-1.5 bg-neutral-200 dark:bg-neutral-700"
-                }`}
+                animate={{
+                  width: step === s.id ? 24 : 6,
+                  background: step === s.id ? C.orange : C.border,
+                }}
+                transition={{ duration: 0.25 }}
+                style={{ height: 6, borderRadius: 99 }}
               />
             ))}
           </div>
 
-          <div className="w-full mt-10">
-            {step < 5 ? (
-              <button
-                onClick={() => setStep(step + 1)}
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 group shadow-xl shadow-indigo-500/20 active:scale-95"
-              >
-                Next Step
-                <ArrowRight
-                  size={18}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
-              </button>
-            ) : (
-              <button
-                onClick={onClose}
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-indigo-500/20 active:scale-95"
-              >
-                Let's Go! 🚀
-              </button>
-            )}
+          {/* Buttons */}
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+            <motion.button
+              onClick={isLast ? onClose : () => setStep(step + 1)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                width: "100%",
+                padding: "14px 0",
+                background: C.orange,
+                color: "#fff",
+                border: "none",
+                borderRadius: 14,
+                fontFamily: FD,
+                fontSize: 15,
+                fontWeight: 800,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                boxShadow: "0 4px 16px rgba(224,92,40,0.3)",
+              }}
+            >
+              {isLast ? "Let's go! 🚀" : "Next"}
+              {!isLast && <ArrowRight size={16} />}
+            </motion.button>
 
             <button
               onClick={onClose}
-              className="mt-4 text-[10px] font-black uppercase tracking-widest text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: C.muted,
+                cursor: "pointer",
+                padding: "4px 0",
+              }}
             >
               Skip Tutorial
             </button>

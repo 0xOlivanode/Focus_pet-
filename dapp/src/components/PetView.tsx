@@ -15,26 +15,18 @@ import {
 import {
   Heart,
   Zap,
-  Sparkles,
   Sun,
   Cloud,
   CloudRain,
   CloudLightning,
-  Info,
   Waves,
   ZapOff,
   Moon,
 } from "lucide-react";
 import { useStreaming } from "@/hooks/useStreaming";
-import { parseEther, formatEther } from "viem";
+import { formatEther } from "viem";
 import { SuperchargeModal } from "./SuperchargeModal";
 import { calculateMonthlyAmount } from "@/lib/superfluid";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
 
 import {
   PetStage,
@@ -46,6 +38,8 @@ import {
 } from "@/utils/pet";
 
 import { WeatherLayer, WeatherType } from "./WeatherLayer";
+
+const FD = "var(--font-syne), var(--font-geist-sans)";
 
 interface PetViewProps {
   stage: PetStage;
@@ -78,232 +72,139 @@ export function PetView({
 }: PetViewProps) {
   const [thought, setThought] = React.useState<string | null>(null);
   const [isPoked, setIsPoked] = React.useState(false);
-  const [popups, setPopups] = React.useState<{ id: number; value: string }[]>(
-    [],
-  );
+  const [popups, setPopups] = React.useState<{ id: number; value: string }[]>([]);
   const lastXpRef = React.useRef(xp);
 
-  const { isStreaming, startSupercharge, stopSupercharge, flowRate } =
-    useStreaming();
+  const { isStreaming, startSupercharge, stopSupercharge, flowRate } = useStreaming();
   const [superchargeModalOpen, setSuperchargeModalOpen] = React.useState(false);
 
-  // Handle XP Popups
+  // XP popup on gain
   React.useEffect(() => {
     if (xp > lastXpRef.current) {
       const diff = xp - lastXpRef.current;
       const id = Date.now();
       setPopups((prev) => [...prev, { id, value: `+${diff} XP` }]);
-      setTimeout(() => {
-        setPopups((prev) => prev.filter((p) => p.id !== id));
-      }, 2000);
+      setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 2000);
     }
     lastXpRef.current = xp;
   }, [xp]);
 
-  // Handle Poke
+  // Poke
   const handlePoke = () => {
     if (isPoked) return;
     setIsPoked(true);
-
-    // Random poked thought
-    const pokedThoughts = [
-      "Hehe! 😄",
-      "That tickles! ✨",
-      "Rawr! 🦖",
-      "Focus time? 🧠",
-      "I'm awake! ⚡",
-    ];
+    const pokedThoughts = ["Hehe! 😄", "That tickles!", "Rawr! 🦖", "Focus time? 🧠", "I'm awake! ⚡"];
     setThought(pokedThoughts[Math.floor(Math.random() * pokedThoughts.length)]);
-
     setTimeout(() => setIsPoked(false), 1000);
   };
 
-  // Contextual messages
+  // Contextual thoughts
   React.useEffect(() => {
     const getThought = () => {
       if (mood === "sleeping") return "Zzz... 😴";
       if (health <= 0) return "Wake me up! 💊";
-      if (mood === "focused") {
-        if (focusNote) return `Working on "${focusNote}"... 🧠`;
-        return "Directing focus... 🧠";
-      }
+      if (mood === "focused") return focusNote ? `"${focusNote}" 🧠` : "Directing focus... 🧠";
       if (mood === "happy") {
-        // Weather-based thoughts have priority when happy
         if (weather === "rainy" || weather === "stormy") {
-          const gloomyThoughts = [
-            "It's so gloomy... 🌧️",
-            "A focus session would really cheer me up! 🥺",
-            "I miss the sun... maybe 10 mins of focus? ☔",
-            "Let's clear these clouds together! ✨",
-          ];
-          return gloomyThoughts[
-            Math.floor(Math.random() * gloomyThoughts.length)
-          ];
+          const g = ["It's so gloomy... 🌧️", "Focus would cheer me up! 🥺", "Let's clear these clouds! ✨"];
+          return g[Math.floor(Math.random() * g.length)];
         }
-
-        const happyThoughts = [
-          "You're doing great! 🌟",
-          "Let's focus together! 🦖",
-          "I love this vibe! ✨",
-          "XP feels so good! 💎",
-        ];
-        return happyThoughts[Math.floor(Math.random() * happyThoughts.length)];
+        const h = ["You're doing great! 🌟", "Let's focus together! 🦖", "XP feels so good! 💎"];
+        return h[Math.floor(Math.random() * h.length)];
       }
       if (mood === "sad") {
-        const sadThoughts = [
-          "Hey! Where did you go? 🥺",
-          "Focus lost... I'm sad now. 💔",
-          "I missed you... and my health hurts. 😿",
-          "Stay with me next time? 🥺",
-        ];
-        return sadThoughts[Math.floor(Math.random() * sadThoughts.length)];
+        const s = ["Hey! Where did you go? 🥺", "Stay with me next time? 🥺", "I missed you... 😿"];
+        return s[Math.floor(Math.random() * s.length)];
       }
       return null;
     };
-
-    if (!isPoked) {
-      setThought(getThought());
-    }
-
-    // Cycle thoughts occasionally if happy
+    if (!isPoked) setThought(getThought());
     if (mood === "happy" && !isPoked) {
-      const interval = setInterval(() => {
-        setThought(getThought());
-      }, 8000);
+      const interval = setInterval(() => setThought(getThought()), 8000);
       return () => clearInterval(interval);
     }
-  }, [mood, health, xp, isPoked, focusNote]);
+  }, [mood, health, xp, isPoked, focusNote, weather]);
 
-  // Determine animation based on mood
+  // Pet animation variants
   const variants: Variants = {
-    happy: {
-      y: [0, -12, 0],
-      transition: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
-    },
-    sad: {
-      rotate: [0, -4, 4, 0],
-      y: health <= 0 ? [0, 10, 0] : 0,
-      transition: { repeat: Infinity, duration: 4 },
-    },
-    sleeping: {
-      scale: [1, 1.03, 1],
-      opacity: [0.7, 1, 0.7],
-      transition: { repeat: Infinity, duration: 4 },
-    },
-    focused: {
+    happy:    { y: [0, -12, 0], transition: { repeat: Infinity, duration: 2.5, ease: "easeInOut" } },
+    sad:      { rotate: [0, -4, 4, 0], y: health <= 0 ? [0, 10, 0] : 0, transition: { repeat: Infinity, duration: 4 } },
+    sleeping: { scale: [1, 1.03, 1], opacity: [0.7, 1, 0.7], transition: { repeat: Infinity, duration: 4 } },
+    focused:  {
       scale: [1, 1.05, 1],
-      filter: [
-        "brightness(1) drop-shadow(0 0 0px #6366f1)",
-        "brightness(1.2) drop-shadow(0 0 20px #6366f1)",
-        "brightness(1) drop-shadow(0 0 0px #6366f1)",
-      ],
+      filter: ["brightness(1) drop-shadow(0 0 0px #E05C28)", "brightness(1.15) drop-shadow(0 0 20px #E05C28)", "brightness(1) drop-shadow(0 0 0px #E05C28)"],
       transition: { repeat: Infinity, duration: 2 },
     },
-    poked: {
-      scale: [1, 1.4, 0.9, 1.1, 1],
-      rotate: [0, 15, -15, 10, 0],
-      y: [0, -40, 0],
-      transition: { duration: 0.6, ease: "backOut" },
-    },
+    poked: { scale: [1, 1.4, 0.9, 1.1, 1], rotate: [0, 15, -15, 10, 0], y: [0, -40, 0], transition: { duration: 0.6, ease: "backOut" } },
   };
 
-  // Determine Emoji/SVG/Asset based on Stage
+  // Pet image/emoji
   const getPetContent = () => {
     const assetPath = getPetAsset(stage, weather);
-
     return (
-      <div className="relative w-50 h-50 flex items-center justify-center">
+      <div style={{ position: "relative", width: 200, height: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
         {assetPath ? (
           <Image
             src={assetPath}
             alt={getStageName(stage)}
-            width={256}
-            height={256}
-            className={cn(
-              "object-contain transition-all duration-700",
-              mood === "sleeping" && "brightness-50 grayscale-50",
-              health <= 0 && "grayscale brightness-50 blur-[2px]",
-            )}
+            width={200}
+            height={200}
+            style={{
+              objectFit: "contain",
+              filter: mood === "sleeping" ? "brightness(0.5) grayscale(0.5)" : health <= 0 ? "grayscale(1) brightness(0.5) blur(2px)" : undefined,
+              transition: "filter 0.7s",
+            }}
             priority
           />
         ) : (
-          <span className={cn("text-8xl", health <= 0 && "grayscale opacity-50")}>
+          <span style={{ fontSize: 80, filter: health <= 0 ? "grayscale(1) opacity(0.5)" : undefined }}>
             {getPetEmoji(stage)}
           </span>
         )}
 
-        {/* Death Overlay */}
+        {/* Death overlay */}
         {health <= 0 && (
-          <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, pointerEvents: "none" }}>
             <motion.div
-              initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
-              animate={{
-                opacity: [0.7, 1, 0.7],
-                scale: [1, 1.1, 1],
-                rotate: [-5, 5, -5],
-              }}
+              animate={{ opacity: [0.7, 1, 0.7], scale: [1, 1.1, 1], rotate: [-5, 5, -5] }}
               transition={{ duration: 4, repeat: Infinity }}
-              className="flex flex-col items-center gap-2"
             >
-              <div className="bg-red-500/20 backdrop-blur-md p-6 rounded-full border-2 border-red-500/50 shadow-[0_0_40px_rgba(239,68,68,0.4)]">
-                <ZapOff
-                  size={48}
-                  className="text-red-500 drop-shadow-lg"
-                  strokeWidth={3}
-                />
+              <div style={{ background: "rgba(220,38,38,0.2)", backdropFilter: "blur(4px)", padding: 20, borderRadius: "50%", border: "2px solid rgba(220,38,38,0.5)", boxShadow: "0 0 40px rgba(220,38,38,0.4)" }}>
+                <ZapOff size={40} color="#EF4444" strokeWidth={3} />
               </div>
-              {/* <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
-                Sync & Revive
-              </span> */}
             </motion.div>
           </div>
         )}
 
-        {/* Cosmetic Overlay Layer (Multi-Slot Wardrobe) */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
+        {/* Cosmetics */}
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20 }}>
           <AnimatePresence>
             {equippedCosmetics.sunglasses && (
               <motion.div
                 key="sunglasses"
-                initial={{ opacity: 0, scale: 0.5, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className={`absolute transform transition-all duration-500 ${
-                  stage === "egg"
-                    ? "translate-y-[-20px] scale-[1.5]"
-                    : stage === "baby"
-                      ? "translate-y-[-35px] scale-[1.5]"
-                      : stage === "teen"
-                        ? "translate-y-[-20px] scale-[0.85]"
-                        : stage === "adult"
-                          ? "translate-y-[-57px] translate-x-[-63px] scale-80"
-                          : "translate-y-[-30px] scale-110"
-                }`}
+                style={{
+                  position: "absolute",
+                  transform: stage === "egg" ? "translateY(-20px) scale(1.5)" : stage === "baby" ? "translateY(-35px) scale(1.5)" : stage === "teen" ? "translateY(-20px) scale(0.85)" : stage === "adult" ? "translateY(-57px) translateX(-63px) scale(0.8)" : "translateY(-30px) scale(1.1)",
+                }}
               >
-                <span className="text-6xl drop-shadow-lg">🕶️</span>
+                <span style={{ fontSize: 48, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}>🕶️</span>
               </motion.div>
             )}
             {equippedCosmetics.crown && (
               <motion.div
                 key="crown"
-                initial={{ opacity: 0, scale: 0.5, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className={`absolute transform transition-all duration-500 ${
-                  stage === "egg"
-                    ? "translate-y-[-85px] scale-[1]"
-                    : stage === "baby"
-                      ? "translate-y-[-90px] scale-[0.9]"
-                      : stage === "teen"
-                        ? "translate-y-[-85px] scale-100"
-                        : stage === "adult"
-                          ? "translate-y-[-92px] translate-x-[-50px] scale-75"
-                          : "translate-y-[-110px] scale-120"
-                } ${isNight ? "brightness-[0.7] contrast-[1.1] drop-shadow-[0_0_15px_rgba(165,180,252,0.4)]" : ""}`}
+                style={{
+                  position: "absolute",
+                  transform: stage === "egg" ? "translateY(-85px) scale(1)" : stage === "baby" ? "translateY(-90px) scale(0.9)" : stage === "teen" ? "translateY(-85px)" : stage === "adult" ? "translateY(-92px) translateX(-50px) scale(0.75)" : "translateY(-110px) scale(1.2)",
+                }}
               >
-                <span className="text-6xl drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">
-                  👑
-                </span>
+                <span style={{ fontSize: 48, filter: "drop-shadow(0 0 15px rgba(251,191,36,0.5))" }}>👑</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -312,569 +213,361 @@ export function PetView({
     );
   };
 
-  // Health Color
-  const healthColor = health > 50 ? "text-pink-500" : "text-red-500";
+  // 3D tilt
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const smx = useSpring(mx, { stiffness: 150, damping: 20 });
+  const smy = useSpring(my, { stiffness: 150, damping: 20 });
+  const rotateX = useTransform(smy, [-0.5, 0.5], ["8deg", "-8deg"]);
+  const rotateY = useTransform(smx, [-0.5, 0.5], ["-8deg", "8deg"]);
 
-  // 3D Tilt Logic
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  const mouseX = useSpring(x, { stiffness: 150, damping: 15 });
-  const mouseY = useSpring(y, { stiffness: 150, damping: 15 });
-
-  const rotateX = useTransform(mouseY, [-0.5, 0.5], ["15deg", "-15deg"]);
-  const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-15deg", "15deg"]);
-
-  // Parallax for inner elements
-  const petZ = useTransform(mouseY, [-0.5, 0.5], ["60px", "60px"]);
-  const bgX = useTransform(mouseX, [-0.5, 0.5], ["-20px", "20px"]);
-  const bgY = useTransform(mouseY, [-0.5, 0.5], ["-20px", "20px"]);
-
-  function handleMouseMove(event: React.MouseEvent<HTMLDivElement>) {
-    // Disable hover tilt effect on mobile/touch screens
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (typeof window !== "undefined" && window.innerWidth < 768) return;
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseXPos = event.clientX - rect.left;
-    const mouseYPos = event.clientY - rect.top;
-    const xPct = mouseXPos / width - 0.5;
-    const yPct = mouseYPos / height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
+    const rect = e.currentTarget.getBoundingClientRect();
+    mx.set((e.clientX - rect.left) / rect.width - 0.5);
+    my.set((e.clientY - rect.top) / rect.height - 0.5);
   }
-
   function handleMouseLeave() {
-    if (typeof window !== "undefined" && window.innerWidth < 768) return;
-    x.set(0);
-    y.set(0);
+    mx.set(0);
+    my.set(0);
   }
+
+  // Weather display
+  const weatherIcon = () => {
+    if (weather === "sunny" || weather === "clear") return isNight ? <Moon size={13} color="#818CF8" /> : <Sun size={13} color="#F59E0B" />;
+    if (weather === "cloudy") return <Cloud size={13} color="#94A3B8" />;
+    if (weather === "rainy") return <CloudRain size={13} color="#818CF8" />;
+    if (weather === "stormy") return <CloudLightning size={13} color="#A78BFA" />;
+    return <Sun size={13} color="#F59E0B" />;
+  };
+  const weatherLabel = isNight && (weather === "sunny" || weather === "clear") ? "Moonlight" : (weather || "clear");
+  const weatherTooltip = weather === "sunny" || weather === "clear"
+    ? "Perfect vibe! Your consistent focus is keeping the skies clear."
+    : weather === "cloudy"
+    ? "Getting hazy. A quick session will bring the sun back!"
+    : "Your pet misses you! Focus to clear the clouds.";
+
+  // Supercharge info
+  const monthlyAmount = isStreaming && flowRate ? Number(formatEther(calculateMonthlyAmount(flowRate))) : 0;
+  const isMax = monthlyAmount > 75;
+  const isPower = monthlyAmount > 25 && monthlyAmount <= 75;
+  const streamingAuraColor = isMax ? "rgba(99,102,241,0.5)" : isPower ? "rgba(6,182,212,0.4)" : "rgba(16,185,129,0.3)";
+  const streamingGlow = isMax ? "0 0 60px rgba(99,102,241,0.35)" : isPower ? "0 0 40px rgba(6,182,212,0.25)" : "0 0 20px rgba(16,185,129,0.2)";
+
+  // Health colour
+  const healthColor = health <= 0 ? "#EF4444" : health <= 30 ? "#F97316" : health <= 60 ? "#FB923C" : "#F472B6";
+
+  // Level
+  const level = Math.floor(xp / 3600) + 1;
 
   return (
-    <div className="w-full mb-8 relative perspective-1000">
-      {/* XP Popups */}
-      <AnimatePresence>
-        {popups.map((p) => (
-          <motion.div
-            key={p.id}
-            initial={{ opacity: 0, y: 0, scale: 0.5, z: 100 }}
-            animate={{ opacity: 1, y: -100, scale: 1.2, z: 100 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute left-1/2 -translate-x-1/2 z-100 pointer-events-none"
-            style={{ translateZ: 100 }}
-          >
-            <span className="bg-linear-to-r from-amber-400 to-amber-600 text-white px-3 py-1 rounded-full text-sm font-black shadow-lg border border-white/20">
-              {p.value}
-            </span>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-
-      {/* Main Pet Container (3D Card) */}
-      <motion.div
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        style={{
-          rotateX,
-          rotateY,
-          transformStyle: "preserve-3d",
-        }}
-        className={cn(
-          "w-[90%] mx-auto h-80 md:h-100 bg-white dark:bg-[#0a0a0b] rounded-4xl border flex items-center justify-center relative group transition-colors duration-500 shadow-xl cursor-pointer perspective-origin-center will-change-transform",
-          health <= 0
-            ? "border-red-500/40 shadow-red-500/10"
-            : "border-neutral-100 dark:border-neutral-800 shadow-indigo-500/5",
-        )}
-      >
-        {/* --- Background & Parallax Isolation Layer --- */}
-        <div className="absolute inset-0 rounded-4xl overflow-hidden pointer-events-none">
-          {/* Grid Pattern (Base Layer) */}
-          <div
-            className="absolute inset-0 opacity-15 dark:opacity-30"
-            style={{
-              backgroundImage:
-                "radial-gradient(#6366f1 1.5px, transparent 1.5px)",
-              backgroundSize: "24px 24px",
-              transform: "translateZ(0px)",
-            }}
-          ></div>
-
-          {/* Background Ambient Glow (Parallax Layer 1) */}
-          <motion.div
-            style={{ x: bgX, y: bgY, translateZ: -60, scale: 1.5 }}
-            className={`absolute inset-0 blur-[120px] opacity-40 transition-colors duration-3000 ${
-              stage === "egg"
-                ? "bg-indigo-300/40"
-                : stage === "baby"
-                  ? "bg-sky-400/30"
-                  : stage === "teen"
-                    ? "bg-blue-400/30"
-                    : stage === "adult"
-                      ? "bg-violet-500/20"
-                      : "bg-fuchsia-600/20"
-            }`}
-          />
-        </div>
-
-        {/* Weather Indicator Badge */}
-        <div
-          className="absolute -top-3 sm:top-6 -left-4 sm:left-6 z-50"
-          style={{ transform: "translateZ(100px)" }}
-        >
-          <div className="group/weather relative" tabIndex={0}>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1.5 p-2 bg-white dark:bg-black sm:px-3 sm:py-1.5 rounded-full lg:bg-white/80 lg:dark:bg-black/40 backdrop-blur-md border border-neutral-200 dark:border-white/10 shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer sm:cursor-help"
-            >
-              {weather === "sunny" &&
-                (isNight ? (
-                  <Moon className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-400 fill-indigo-400/20" />
-                ) : (
-                  <Sun className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-500 fill-amber-500/20" />
-                ))}
-              {weather === "clear" &&
-                (isNight ? (
-                  <Moon className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-violet-400" />
-                ) : (
-                  <Sun className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-yellow-400" />
-                ))}
-              {weather === "cloudy" && (
-                <Cloud className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-slate-400 fill-slate-400/20" />
-              )}
-              {weather === "rainy" && (
-                <CloudRain className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-400 fill-indigo-400/20" />
-              )}
-              {weather === "stormy" && (
-                <CloudLightning className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-purple-400 fill-purple-400/20" />
-              )}
-              <div className="hidden sm:flex items-center gap-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
-                  {isNight && (weather === "sunny" || weather === "clear")
-                    ? "Moonlight"
-                    : weather}
-                </span>
-                <Info className="w-3 h-3 text-neutral-400" />
-              </div>
-            </motion.div>
-
-            {/* Tooltip */}
-            <div className="absolute top-full left-0 mt-2 w-48 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover/weather:opacity-100 group-hover/weather:translate-y-0 group-focus/weather:opacity-100 group-focus/weather:translate-y-0 group-active/weather:opacity-100 group-active/weather:translate-y-0 transition-all duration-300 z-[100000]">
-              <div className="text-[11px] leading-relaxed font-medium text-neutral-600 dark:text-neutral-400">
-                {weather === "sunny" || weather === "clear" ? (
-                  <>
-                    <span className="font-bold text-amber-500 dark:text-amber-400 block mb-1">
-                      Perfect Vibe! ✨
-                    </span>
-                    Consistency pays off! Your consistent focus is keeping the
-                    skies clear and your pet happy.
-                  </>
-                ) : weather === "cloudy" ? (
-                  <>
-                    <span className="font-bold text-slate-500 block mb-1">
-                      Getting Hazy... ☁️
-                    </span>
-                    It's been a while since your last session. A quick focus
-                    round will bring the sun back!
-                  </>
-                ) : (
-                  <>
-                    <span className="font-bold text-indigo-500 block mb-1">
-                      Gloomy Days... 🌧️
-                    </span>
-                    Your pet misses you! Start a focus session now to clear the
-                    clouds and stop the rain.
-                  </>
-                )}
-              </div>
-              {/* Tooltip Arrow */}
-              <div className="absolute -top-1 left-4 w-2 h-2 bg-white dark:bg-neutral-900 border-t border-l border-neutral-100 dark:border-neutral-800 rotate-45" />
-            </div>
-          </div>
-        </div>
-
-        <WeatherLayer weather={weather} isNight={isNight} />
-        {/* Night Aura (Moonlight Effect) */}
-        {isNight && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: [0.3, 0.5, 0.3],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="absolute inset-0 rounded-[2.5rem] border-2 border-indigo-400/20 shadow-[inset_0_0_50px_rgba(129,140,248,0.15)] pointer-events-none"
-          />
-        )}
-        {/* Fire Aura (Streak Effect) */}
-        {streak >= 3 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: [0.4, 0.7, 0.4],
-              scale: [1, 1.02, 1],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="absolute inset-0 rounded-[2.5rem] border-4 border-orange-500/30 shadow-[0_0_40px_rgba(249,115,22,0.2)] pointer-events-none"
-          />
-        )}
-
-        {/* Superfluid Aura (Streaming Effect) */}
-        {isStreaming &&
-          (() => {
-            const monthlyAmount = Number(
-              formatEther(calculateMonthlyAmount(flowRate)),
-            );
-            const isMax = monthlyAmount > 75;
-            const isPower = monthlyAmount > 25 && monthlyAmount <= 75;
-
-            return (
-              <>
-                {/* Primary Aura */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{
-                    opacity: isMax
-                      ? [0.6, 0.9, 0.6]
-                      : isPower
-                        ? [0.5, 0.8, 0.5]
-                        : [0.3, 0.5, 0.3],
-                    scale: isMax
-                      ? [1.03, 1.08, 1.03]
-                      : isPower
-                        ? [1.02, 1.05, 1.02]
-                        : [1.01, 1.03, 1.01],
-                    borderColor: isMax
-                      ? [
-                          "rgba(99, 102, 241, 0.5)",
-                          "rgba(168, 85, 247, 0.6)",
-                          "rgba(99, 102, 241, 0.5)",
-                        ]
-                      : isPower
-                        ? [
-                            "rgba(6, 182, 212, 0.4)",
-                            "rgba(99, 102, 241, 0.5)",
-                            "rgba(6, 182, 212, 0.4)",
-                          ]
-                        : [
-                            "rgba(16, 185, 129, 0.3)",
-                            "rgba(6, 182, 212, 0.4)",
-                            "rgba(16, 185, 129, 0.3)",
-                          ],
-                  }}
-                  transition={{
-                    duration: isMax ? 1.5 : isPower ? 2 : 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className={`absolute inset-0 rounded-[2.5rem] border-[6px] pointer-events-none z-10 ${
-                    isMax
-                      ? "shadow-[0_0_60px_rgba(99,102,241,0.4)]"
-                      : isPower
-                        ? "shadow-[0_0_40px_rgba(6,182,212,0.3)]"
-                        : "shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-                  }`}
-                />
-
-                {/* Secondary Outer Ring (Max Only) */}
-                {isMax && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 1 }}
-                    animate={{
-                      opacity: [0, 0.4, 0],
-                      scale: [1, 1.15],
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: "easeOut",
-                    }}
-                    className="absolute inset-0 rounded-[2.5rem] border-2 border-indigo-500/30 pointer-events-none z-0"
-                  />
-                )}
-              </>
-            );
-          })()}
-        {/* Shine / Glare Effect */}
-        <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden pointer-events-none z-50">
-          <motion.div
-            className="absolute inset-0 bg-linear-to-tr from-transparent via-white/10 to-transparent"
-            style={{
-              x: useTransform(mouseX, [-0.5, 0.5], ["-100%", "100%"]),
-              opacity: useTransform(mouseY, [-0.5, 0.5], [0, 0.3]),
-            }}
-          />
-        </div>
-
-        {/* Floating Status Bar */}
-        <motion.div
-          style={{ translateZ: 40, transformStyle: "preserve-3d" }}
-          className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-black/60 backdrop-blur-md border border-white/20 dark:border-white/10 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-lg flex items-center justify-center gap-2 sm:gap-1.5 text-[10px] sm:text-xs font-bold text-neutral-500 z-10 w-fit sm:w-fit max-w-[320px] sm:max-w-none whitespace-nowrap"
-        >
-          <Tooltip
-            content={
-              <div className="flex flex-col gap-0.5">
-                <span className="text-pink-500 uppercase tracking-wider">
-                  Health Status
-                </span>
-                <span className="text-neutral-500">
-                  Keep it above 0 to stay alive!
-                </span>
-              </div>
-            }
-          >
-            <div className="flex items-center gap-1.5 cursor-help">
-              <Heart size={14} className={healthColor} fill="currentColor" />
-              <span className="text-neutral-700 dark:text-neutral-300">
-                {health}%
-              </span>
-            </div>
-          </Tooltip>
-          {isVerified && (
-            <>
-              <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
-              <Tooltip
-                content={
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-indigo-500 uppercase tracking-wider">
-                      Verified Human
-                    </span>
-                    <span className="text-neutral-500">
-                      Identity confirmed via GoodDollar.
-                    </span>
-                  </div>
-                }
-              >
-                <div className="cursor-help flex items-center">
-                  <VerifiedBadge size={14} />
-                </div>
-              </Tooltip>
-            </>
-          )}
-          <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
-          <Tooltip
-            content={
-              <div className="flex flex-col gap-0.5">
-                <span className="text-amber-500 uppercase tracking-wider">
-                  Experience
-                </span>
-                <span className="text-neutral-500">
-                  Focus to earn XP and evolve!
-                </span>
-              </div>
-            }
-          >
-            <div className="flex items-center gap-1 sm:gap-1.5 text-amber-500 cursor-help">
-              <Zap
-                size={14}
-                fill="currentColor"
-                className="w-3.5 h-3.5 sm:w-3.5 sm:h-3.5"
-              />
-              <span className="text-neutral-700 dark:text-neutral-300">
-                {xp} <span className="hidden sm:inline">XP</span>
-              </span>
-            </div>
-          </Tooltip>
-
-          {/* Supercharge Toggle with Guidance Tooltip */}
-          <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
-          <Tooltip
-            content={
-              <div className="flex flex-col gap-0.5 max-w-[150px]">
-                <span className="text-cyan-500 uppercase tracking-wider">
-                  Supercharge ⚡️
-                </span>
-                <span className="text-neutral-500">
-                  Stream G$ to reach "God Mode": 100% Health & XP Multipliers.
-                </span>
-              </div>
-            }
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSuperchargeModalOpen(true);
-              }}
-              className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 rounded-full transition-all active:scale-95 cursor-help ${
-                isStreaming
-                  ? "bg-cyan-500/10 text-cyan-500 border border-cyan-500/20"
-                  : "text-neutral-400 hover:text-cyan-500"
-              }`}
-            >
-              {isStreaming ? (
-                <>
-                  <Waves
-                    size={14}
-                    className="animate-pulse w-3.5 h-3.5 sm:w-3.5 sm:h-3.5"
-                  />
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase">
-                    <span className="hidden sm:inline">Supercharged</span>
-                    <span className="sm:hidden">Active</span>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Zap size={14} className="w-3.5 h-3.5 sm:w-3.5 sm:h-3.5" />
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase">
-                    <span className="hidden sm:inline">Supercharge</span>
-                    <span className="sm:hidden">Boost</span>
-                  </span>
-                </>
-              )}
-            </button>
-          </Tooltip>
-        </motion.div>
-
-        {/* Supercharge Modal */}
-        <SuperchargeModal
-          isOpen={superchargeModalOpen}
-          onClose={() => setSuperchargeModalOpen(false)}
-          isStreaming={isStreaming}
-          onStart={startSupercharge}
-          onStop={stopSupercharge}
-        />
-
-
-        {/* Environmental Elements (Parallax Layer 2) */}
-        <motion.div
-          style={{
-            x: useTransform(mouseX, [-0.5, 0.5], ["-10px", "10px"]),
-            y: useTransform(mouseY, [-0.5, 0.5], ["-10px", "10px"]),
-            translateZ: -20,
-          }}
-          className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none"
-        >
-          {stage === "egg" && (
-            <div className="w-64 h-64 border-8 border-pink-200/20 rounded-full blur-xl animate-pulse" />
-          )}
-          {stage === "baby" && (
-            <div className="grid grid-cols-3 gap-8">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="w-4 h-4 bg-emerald-300 rounded-full blur-sm"
-                />
-              ))}
-            </div>
-          )}
-          {stage === "teen" && (
-            <div className="w-full h-1/2 mt-auto bg-linear-to-t from-blue-300/20 to-transparent blur-lg" />
-          )}
-          {stage === "adult" && (
-            <div className="w-full h-full border-x-4 border-indigo-300/10 blur-md" />
-          )}
-          {stage === "elder" && (
-            <div className="absolute inset-0">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div
-                  key={i}
-                  className="absolute w-1 h-1 bg-white rounded-full animate-ping"
-                  style={{
-                    top: `${Math.random() * 100}%`,
-                    left: `${Math.random() * 100}%`,
-                    animationDelay: `${i * 0.5}s`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </motion.div>
-
-        {/* Grid Pattern removed from here, moved to base line 215 */}
-
-        {/* Thought Bubble (Floating closest) */}
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", perspective: "1000px" }}>
+      {/* XP popups */}
+      <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
         <AnimatePresence>
-          {thought && (
+          {popups.map((p) => (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 10, z: 80 }}
-              animate={{ opacity: 1, scale: 1, y: 0, z: 80 }}
-              exit={{ opacity: 0, scale: 0.8, y: -10, z: 80 }}
-              key={thought}
-              style={{ translateZ: 80 }}
-              className="absolute top-20 bg-white dark:bg-neutral-800 px-4 py-2 rounded-2xl rounded-bl-sm shadow-xl border border-neutral-100 dark:border-neutral-700 z-20"
+              key={p.id}
+              initial={{ opacity: 0, y: 0, scale: 0.6 }}
+              animate={{ opacity: 1, y: -80, scale: 1.2 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", zIndex: 100, pointerEvents: "none", top: 0 }}
             >
-              <p className="text-xs/[100%] font-bold text-neutral-600 dark:text-neutral-200 whitespace-nowrap">
-                {thought}
-              </p>
-              {/* Pointer */}
-              <div className="absolute -bottom-2 left-2 w-4 h-4 bg-white dark:bg-neutral-800 border-r border-b border-neutral-100 dark:border-neutral-700 rotate-45" />
+              <span style={{ background: "linear-gradient(135deg, #F59E0B, #D97706)", color: "#fff", padding: "4px 12px", borderRadius: 99, fontSize: 13, fontWeight: 800, boxShadow: "0 4px 12px rgba(245,158,11,0.4)" }}>
+                {p.value}
+              </span>
             </motion.div>
-          )}
+          ))}
         </AnimatePresence>
 
-        {/* The Pet (Floating) */}
+        {/* 3D Card */}
         <motion.div
-          animate={isPoked ? "poked" : mood}
-          variants={variants}
-          style={{ translateZ: petZ }}
-          className="relative z-10 cursor-pointer drop-shadow-2xl"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={handlePoke}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            rotateX, rotateY,
+            transformStyle: "preserve-3d",
+            background: "#1C1A16",
+            borderRadius: 24,
+            border: health <= 0 ? "1px solid rgba(220,38,38,0.4)" : "1px solid #2C2A26",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            cursor: "pointer",
+            boxShadow: health <= 0 ? "0 0 30px rgba(220,38,38,0.15)" : "none",
+          }}
         >
-          {getPetContent()}
-        </motion.div>
+          {/* Auras */}
+          {isNight && (
+            <motion.div
+              animate={{ opacity: [0.3, 0.5, 0.3] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              style={{ position: "absolute", inset: 0, borderRadius: 24, border: "2px solid rgba(129,140,248,0.2)", boxShadow: "inset 0 0 50px rgba(129,140,248,0.1)", pointerEvents: "none", zIndex: 5 }}
+            />
+          )}
+          {streak >= 3 && (
+            <motion.div
+              animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.02, 1] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              style={{ position: "absolute", inset: 0, borderRadius: 24, border: "3px solid rgba(249,115,22,0.3)", boxShadow: "0 0 40px rgba(249,115,22,0.15)", pointerEvents: "none", zIndex: 5 }}
+            />
+          )}
+          {isStreaming && (
+            <motion.div
+              animate={{ opacity: isMax ? [0.6, 0.9, 0.6] : isPower ? [0.5, 0.8, 0.5] : [0.3, 0.5, 0.3], borderColor: [streamingAuraColor, streamingAuraColor, streamingAuraColor] }}
+              transition={{ duration: isMax ? 1.5 : 2, repeat: Infinity }}
+              style={{ position: "absolute", inset: 0, borderRadius: 24, border: `4px solid ${streamingAuraColor}`, boxShadow: streamingGlow, pointerEvents: "none", zIndex: 5 }}
+            />
+          )}
 
-        {/* Stage Label & Evolution Bar (Floating) */}
-        <motion.div
-          style={{ translateZ: 30 }}
-          className="absolute bottom-8 flex flex-col items-center w-full px-8"
-        >
-          <div
-            className={cn(
-              "flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] px-3 sm:px-4 py-1 sm:py-1.5 rounded-full backdrop-blur-md border transition-all mb-3 shadow-lg",
-              isNight
-                ? "text-indigo-200 bg-black/40 border-white/10 group-hover:bg-black/60"
-                : "text-neutral-400 dark:text-neutral-500 bg-white/50 dark:bg-black/20 border-white/20 dark:border-white/5 group-hover:bg-white/80 dark:group-hover:bg-black/40",
-            )}
-          >
-            {stage !== "egg" && stage !== "baby" && (
-              <Sparkles size={12} className="text-amber-400 animate-pulse" />
-            )}
-            Lvl {Math.floor(xp / 3600) + 1}{" "}
-            <span className="opacity-30">•</span> {getStageName(stage)}
+          {/* Ambient glow behind pet */}
+          <div style={{
+            position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)",
+            width: 260, height: 260, borderRadius: "50%",
+            background: mood === "focused"
+              ? "radial-gradient(circle, rgba(224,92,40,0.12) 0%, transparent 70%)"
+              : stage === "elder"
+                ? "radial-gradient(circle, rgba(168,85,247,0.1) 0%, transparent 70%)"
+                : stage === "adult"
+                  ? "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)"
+                  : "radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)",
+            pointerEvents: "none", zIndex: 1,
+            transition: "background 1s",
+          }} />
+
+          {/* Weather layer */}
+          <WeatherLayer weather={weather} isNight={isNight} />
+
+          {/* ── Header strip ── */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", position: "relative", zIndex: 20, flexShrink: 0 }}>
+            {/* Weather badge with tooltip */}
+            <Tooltip
+              content={
+                <div style={{ maxWidth: 160 }}>
+                  <div style={{ color: isNight ? "#818CF8" : "#F59E0B", fontWeight: 800, textTransform: "uppercase", fontSize: 9, letterSpacing: "0.1em", marginBottom: 3 }}>
+                    {weatherLabel}
+                  </div>
+                  <div style={{ color: "#9CA3AF", fontSize: 10 }}>{weatherTooltip}</div>
+                </div>
+              }
+              position="bottom"
+            >
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 10px", borderRadius: 99,
+                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+                cursor: "help",
+              }}>
+                {weatherIcon()}
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#9CA3AF" }}>
+                  {weatherLabel}
+                </span>
+              </div>
+            </Tooltip>
+
+            {/* Right: verified + supercharge indicator */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {isStreaming && (
+                <Tooltip content={<span style={{ color: "#06B6D4" }}>Supercharge active — boosting XP & health!</span>} position="bottom">
+                  <motion.div
+                    animate={{ opacity: [0.7, 1, 0.7] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 99, background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.3)", cursor: "help" }}
+                  >
+                    <Waves size={11} color="#06B6D4" />
+                    <span style={{ fontSize: 9, fontWeight: 800, color: "#06B6D4", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      {isMax ? "God Mode" : "Supercharged"}
+                    </span>
+                  </motion.div>
+                </Tooltip>
+              )}
+              {isVerified && (
+                <Tooltip content={<span style={{ color: "#818CF8" }}>Verified human via GoodDollar</span>} position="bottom">
+                  <div style={{ cursor: "help" }}>
+                    <VerifiedBadge size={14} />
+                  </div>
+                </Tooltip>
+              )}
+            </div>
           </div>
 
-          {/* XP / Evolution Bar */}
-          {nextStageInfo && nextStageInfo.nextStage !== "none" && (
-            <div className="w-full max-w-[160px] relative group/bar cursor-help">
-              <div
-                className={cn(
-                  "h-2.5 w-full rounded-full overflow-hidden border shadow-inner",
-                  isNight
-                    ? "bg-black/40 border-white/10"
-                    : "bg-neutral-200 dark:bg-neutral-800 border-neutral-100/50 dark:border-neutral-700/50",
-                )}
-              >
+          {/* ── Pet area ── */}
+          <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, minHeight: 0, overflow: "hidden" }}>
+            {/* Thought bubble */}
+            <AnimatePresence>
+              {thought && (
                 <motion.div
-                  className="h-full bg-linear-to-r from-amber-400 to-amber-500 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.5)]"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.max(nextStageInfo.progress, 2)}%` }}
-                  transition={{ type: "spring", stiffness: 50 }}
-                />
-              </div>
+                  key={thought}
+                  initial={{ opacity: 0, scale: 0.8, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.85, y: -8 }}
+                  style={{
+                    position: "absolute", top: 8, zIndex: 30,
+                    background: "#FAF7F2", borderRadius: "16px 16px 16px 4px",
+                    padding: "7px 14px", boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "#1C1A16", whiteSpace: "nowrap" }}>
+                    {thought}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-              {/* Tooltip */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-neutral-900 dark:bg-neutral-800 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl z-50 border border-white/10">
-                {nextStageInfo.remaining >= 60
-                  ? `${Math.ceil(nextStageInfo.remaining / 60)}m`
-                  : `${nextStageInfo.remaining}s`}{" "}
-                more until {getStageName(nextStageInfo.nextStage as PetStage)}{" "}
-                evolution
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
-              </div>
+            {/* The pet */}
+            <motion.div
+              animate={isPoked ? "poked" : mood}
+              variants={variants}
+              style={{ position: "relative", zIndex: 10, filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.4))" }}
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handlePoke}
+            >
+              {getPetContent()}
+            </motion.div>
+          </div>
+
+          {/* ── Stage + XP bar ── */}
+          <div style={{ padding: "12px 18px 10px", position: "relative", zIndex: 20, flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "#FAF7F2" }}>
+                Lvl {level} <span style={{ color: "#3A3530" }}>·</span> {getStageName(stage)}
+              </span>
+              {nextStageInfo && nextStageInfo.nextStage !== "none" && (
+                <Tooltip
+                  content={
+                    <span>
+                      {nextStageInfo.remaining >= 60
+                        ? `${Math.ceil(nextStageInfo.remaining / 60)}m`
+                        : `${nextStageInfo.remaining}s`}{" "}
+                      to {getStageName(nextStageInfo.nextStage as PetStage)}
+                    </span>
+                  }
+                  position="top"
+                >
+                  <span style={{ fontSize: 10, color: "#5A5450", cursor: "help" }}>
+                    {nextStageInfo.progress.toFixed(0)}%
+                  </span>
+                </Tooltip>
+              )}
             </div>
-          )}
+
+            {nextStageInfo && nextStageInfo.nextStage !== "none" && (
+              <Tooltip
+                content={
+                  <span>
+                    {nextStageInfo.remaining >= 60
+                      ? `${Math.ceil(nextStageInfo.remaining / 60)}m`
+                      : `${nextStageInfo.remaining}s`}{" "}
+                    until {getStageName(nextStageInfo.nextStage as PetStage)} evolution
+                  </span>
+                }
+                position="top"
+              >
+                <div style={{ height: 5, background: "#2C2A26", borderRadius: 99, overflow: "hidden", cursor: "help" }}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.max(nextStageInfo.progress, 1.5)}%` }}
+                    transition={{ type: "spring", stiffness: 50 }}
+                    style={{ height: "100%", background: "linear-gradient(to right, #E05C28, #F59E0B)", borderRadius: 99, boxShadow: "0 0 8px rgba(224,92,40,0.4)" }}
+                  />
+                </div>
+              </Tooltip>
+            )}
+          </div>
+
+          {/* ── Stats bar ── */}
+          <div style={{ borderTop: "1px solid #2C2A26", display: "flex", flexShrink: 0, position: "relative", zIndex: 20 }}>
+            {/* Health */}
+            <Tooltip
+              content={
+                <div>
+                  <div style={{ color: healthColor, fontWeight: 800, textTransform: "uppercase", fontSize: 9, letterSpacing: "0.1em", marginBottom: 2 }}>Health</div>
+                  <div style={{ color: "#9CA3AF", fontSize: 10 }}>
+                    {health <= 0 ? "Pet is fainted — revive it from the shop!" : health <= 30 ? "Critical! Feed your pet soon." : "Keep focusing to keep health up."}
+                  </div>
+                </div>
+              }
+              position="top"
+            >
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", cursor: "help", gap: 4 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#5A5450" }}>Health</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <Heart size={13} color={healthColor} fill={healthColor} />
+                  <span style={{ fontFamily: FD, fontWeight: 800, fontSize: 16, color: "#FAF7F2", letterSpacing: "-0.02em" }}>{health}%</span>
+                </div>
+              </div>
+            </Tooltip>
+
+            <div style={{ width: 1, background: "#2C2A26", flexShrink: 0 }} />
+
+            {/* XP */}
+            <Tooltip
+              content={
+                <div>
+                  <div style={{ color: "#F59E0B", fontWeight: 800, textTransform: "uppercase", fontSize: 9, letterSpacing: "0.1em", marginBottom: 2 }}>Experience</div>
+                  <div style={{ color: "#9CA3AF", fontSize: 10 }}>Focus sessions earn XP and evolve your pet!</div>
+                </div>
+              }
+              position="top"
+            >
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", cursor: "help", gap: 4 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#5A5450" }}>XP</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <Zap size={13} color="#F59E0B" fill="#F59E0B" />
+                  <span style={{ fontFamily: FD, fontWeight: 800, fontSize: 16, color: "#FAF7F2", letterSpacing: "-0.02em" }}>{xp}</span>
+                </div>
+              </div>
+            </Tooltip>
+
+            <div style={{ width: 1, background: "#2C2A26", flexShrink: 0 }} />
+
+            {/* Supercharge */}
+            <Tooltip
+              content={
+                <div style={{ maxWidth: 160 }}>
+                  <div style={{ color: "#06B6D4", fontWeight: 800, textTransform: "uppercase", fontSize: 9, letterSpacing: "0.1em", marginBottom: 2 }}>Supercharge ⚡️</div>
+                  <div style={{ color: "#9CA3AF", fontSize: 10 }}>Stream G$ to the UBI pool for 100% Health &amp; XP multipliers.</div>
+                </div>
+              }
+              position="top"
+            >
+              <button
+                onClick={(e) => { e.stopPropagation(); setSuperchargeModalOpen(true); }}
+                style={{
+                  flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+                  padding: "12px 8px", gap: 4,
+                  background: "none", border: "none", cursor: "pointer",
+                }}
+              >
+                <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: isStreaming ? "#06B6D4" : "#5A5450" }}>
+                  Boost
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  {isStreaming
+                    ? <motion.div animate={{ opacity: [0.7, 1, 0.7] }} transition={{ repeat: Infinity, duration: 1.5 }}><Waves size={13} color="#06B6D4" /></motion.div>
+                    : <Zap size={13} color="#3A3530" />
+                  }
+                  <span style={{ fontFamily: FD, fontWeight: 800, fontSize: 16, color: isStreaming ? "#06B6D4" : "#3A3530", letterSpacing: "-0.02em" }}>
+                    {isStreaming ? "ON" : "OFF"}
+                  </span>
+                </div>
+              </button>
+            </Tooltip>
+          </div>
+
+          {/* Supercharge Modal */}
+          <SuperchargeModal
+            isOpen={superchargeModalOpen}
+            onClose={() => setSuperchargeModalOpen(false)}
+            isStreaming={isStreaming}
+            onStart={startSupercharge}
+            onStop={stopSupercharge}
+          />
         </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 }
