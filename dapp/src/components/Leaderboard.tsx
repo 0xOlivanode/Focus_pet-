@@ -156,7 +156,7 @@ export function Leaderboard() {
                         </span>
                         <SocialShare
                           text={`I'm ranked #${entry.rank} on the @FocusPet leaderboard! 🏆 Can you beat me? #FocusPet #Celo`}
-                          url={`https://focus-pet-theta.vercel.app/share/${entry.address}`}
+                          url={`https://focus-pet.xyz/share/${entry.address}`}
                         />
                       </div>
                     )}

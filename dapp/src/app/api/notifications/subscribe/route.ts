@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Use the service role key here — this route is server-side only
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    const { error } = await supabase.from("push_subscriptions").upsert(
+    const { error } = await getSupabase().from("push_subscriptions").upsert(
       { address: address.toLowerCase(), subscription },
       { onConflict: "address" },
     );
@@ -34,7 +35,7 @@ export async function DELETE(req: NextRequest) {
     const { address } = await req.json();
     if (!address) return NextResponse.json({ error: "Missing address" }, { status: 400 });
 
-    await supabase
+    await getSupabase()
       .from("push_subscriptions")
       .delete()
       .eq("address", address.toLowerCase());

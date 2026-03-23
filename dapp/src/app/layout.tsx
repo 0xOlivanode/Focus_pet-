@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://focus-pet-theta.vercel.app"),
+  metadataBase: new URL("https://focus-pet.xyz"),
   manifest: "/manifest.json",
   themeColor: "#6366f1",
   appleWebApp: {
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
       },
     ],
     type: "website",
-    url: "https://focus-pet-theta.vercel.app",
+    url: "https://focus-pet.xyz",
     siteName: "FocusPet",
   },
   twitter: {
@@ -45,19 +45,19 @@ export const metadata: Metadata = {
     title: "FocusPet | Your Gamified Deep Work Companion",
     description:
       "Hatch dinosaurs, earn G$, and climb the leaderboard by staying focused.",
-    images: ["https://focus-pet-theta.vercel.app/api/og"],
+    images: ["https://focus-pet.xyz/api/og"],
     creator: "@FocusPet",
   },
   other: {
     "fc:frame": "vNext",
-    "fc:frame:image": "https://focus-pet-theta.vercel.app/api/og",
+    "fc:frame:image": "https://focus-pet.xyz/api/og",
     "fc:frame:image:aspect_ratio": "1.91:1",
     "fc:frame:button:1": "🥚 Start Focusing",
     "fc:frame:button:1:action": "link",
-    "fc:frame:button:1:target": "https://focus-pet-theta.vercel.app/app",
+    "fc:frame:button:1:target": "https://focus-pet.xyz/app",
     "fc:frame:button:2": "🏆 Leaderboard",
     "fc:frame:button:2:action": "link",
-    "fc:frame:button:2:target": "https://focus-pet-theta.vercel.app/leaderboard",
+    "fc:frame:button:2:target": "https://focus-pet.xyz/leaderboard",
   },
 };
 

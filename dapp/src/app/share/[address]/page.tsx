@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { fetchSubgraphUser } from "@/lib/subgraph";
 import { redirect } from "next/navigation";
 
-const BASE_URL = "https://focus-pet-theta.vercel.app";
+const BASE_URL = "https://focus-pet.xyz";
 
 // XP → pet stage (mirrors utils/pet.ts, kept separate for server-side use)
 function getStage(xp: number): string {

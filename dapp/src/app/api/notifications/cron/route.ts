@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+function initWebPush() {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT!,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+  );
+}
 
 const SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUBGRAPH_URL!;
 
@@ -98,7 +102,7 @@ async function sendBatchNotifications(
 ): Promise<{ sent: number; expiredAddresses: string[] }> {
   if (addresses.length === 0) return { sent: 0, expiredAddresses: [] };
 
-  const { data: subs } = await supabase
+  const { data: subs } = await getSupabase()
     .from("push_subscriptions")
     .select("address, subscription")
     .in("address", addresses);
@@ -128,6 +132,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    initWebPush();
+
     const [atRiskAddresses, lowHealthAddresses] = await Promise.all([
       fetchAtRiskUsers(),
       fetchLowHealthUsers(),
@@ -151,7 +157,7 @@ export async function GET(req: NextRequest) {
     // Clean up all expired subscriptions in one batch
     const allExpired = [...new Set([...streakResult.expiredAddresses, ...healthResult.expiredAddresses])];
     if (allExpired.length > 0) {
-      await supabase.from("push_subscriptions").delete().in("address", allExpired);
+      await getSupabase().from("push_subscriptions").delete().in("address", allExpired);
     }
 
     return NextResponse.json({

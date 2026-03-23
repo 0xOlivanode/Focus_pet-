@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+function initWebPush() {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT!,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+  );
+}
 
 const SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUBGRAPH_URL!;
 
@@ -67,8 +71,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    initWebPush();
+
     // Fetch all push subscriptions
-    const { data: allSubs } = await supabase
+    const { data: allSubs } = await getSupabase()
       .from("push_subscriptions")
       .select("address, subscription");
 
@@ -115,7 +121,7 @@ export async function GET(req: NextRequest) {
 
     // Clean up expired subscriptions
     if (expiredAddresses.length > 0) {
-      await supabase
+      await getSupabase()
         .from("push_subscriptions")
         .delete()
         .in("address", expiredAddresses);
