@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Zap,
   Target,
-  Sparkles,
   Trophy,
   Globe,
   ShieldCheck,

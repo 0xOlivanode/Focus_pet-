@@ -9,7 +9,7 @@ import {
   Loader2,
   ChevronRight,
   TrendingUp,
-  Sparkles,
+  ShieldCheck,
   Info,
   Lock,
 } from "lucide-react";
@@ -198,7 +198,7 @@ export function PetShop({
           )}
           {shieldCount > 0 && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-200/50 dark:border-emerald-800/50 shadow-sm transition-all hover:scale-105">
-              <Sparkles size={12} />
+              <ShieldCheck size={12} />
               <span className="text-[10px] font-black uppercase tracking-widest">
                 {shieldCount}x Shield Protected
               </span>

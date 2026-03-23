@@ -12,6 +12,7 @@ import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { celo } from "wagmi/chains";
 
 import { AudioProvider } from "@/hooks/useAudio";
+import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
 
 const privyAppId = "cmmw8pr3l00lr0cjp282x5v3l";
 
@@ -54,6 +55,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <ThemeProvider attribute="class" defaultTheme="light">
             <GasStationTrigger />
             <AudioProvider>{children}</AudioProvider>
+            <IOSInstallPrompt />
             <Toaster position="bottom-right" />
           </ThemeProvider>
         </WagmiProvider>

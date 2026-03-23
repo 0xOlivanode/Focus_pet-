@@ -34,7 +34,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
   Gift,
-  Sparkles,
   AlertCircle,
   Loader2,
   ExternalLink,
@@ -532,9 +531,7 @@ function AppPageContent() {
                   className="relative group/btn overflow-hidden bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black text-sm shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.5)] transition-all duration-300"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    <Sparkles size={16} className="text-indigo-400" />
                     HATCH NOW
-                    <Sparkles size={16} className="text-indigo-400" />
                   </span>
 
                   {/* Button Sheen */}

@@ -15,7 +15,7 @@ import {
 import {
   Heart,
   Zap,
-  Sparkles,
+  Flame,
   Sun,
   Cloud,
   CloudRain,
@@ -259,6 +259,18 @@ export function PetView({
           </div>
         )}
 
+        {/* Low Health Warning Border */}
+        {health > 0 && health < 30 && (
+          <motion.div
+            className="absolute inset-0 rounded-full pointer-events-none z-25"
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+            style={{
+              boxShadow: "0 0 0 3px rgba(239,68,68,0.7), 0 0 24px 4px rgba(239,68,68,0.3)",
+            }}
+          />
+        )}
+
         {/* Cosmetic Overlay Layer (Multi-Slot Wardrobe) */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
           <AnimatePresence>
@@ -384,7 +396,9 @@ export function PetView({
           "w-[90%] mx-auto h-80 md:h-100 bg-white dark:bg-[#0a0a0b] rounded-4xl border flex items-center justify-center relative group transition-colors duration-500 shadow-xl cursor-pointer perspective-origin-center will-change-transform",
           health <= 0
             ? "border-red-500/40 shadow-red-500/10"
-            : "border-neutral-100 dark:border-neutral-800 shadow-indigo-500/5",
+            : health < 30
+              ? "border-red-400/60 shadow-red-400/15"
+              : "border-neutral-100 dark:border-neutral-800 shadow-indigo-500/5",
         )}
       >
         {/* --- Background & Parallax Isolation Layer --- */}
@@ -837,7 +851,7 @@ export function PetView({
             )}
           >
             {stage !== "egg" && stage !== "baby" && (
-              <Sparkles size={12} className="text-amber-400 animate-pulse" />
+              <Flame size={12} className="text-amber-400" />
             )}
             Lvl {Math.floor(xp / 3600) + 1}{" "}
             <span className="opacity-30">•</span> {getStageName(stage)}
@@ -875,6 +889,30 @@ export function PetView({
           )}
         </motion.div>
       </motion.div>
+
+      {/* Low Health Warning Banner */}
+      {health > 0 && health < 30 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-[90%] mx-auto mt-3 flex items-center justify-between gap-3 px-4 py-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-2xl"
+        >
+          <div className="flex items-center gap-2.5">
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ repeat: Infinity, duration: 1.4 }}
+            >
+              <Heart size={16} className="text-red-500" fill="currentColor" />
+            </motion.div>
+            <span className="text-xs font-black text-red-600 dark:text-red-400">
+              Your pet is struggling! ({health}% health)
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-red-400 dark:text-red-500 uppercase tracking-wide whitespace-nowrap">
+            Feed it now →
+          </span>
+        </motion.div>
+      )}
     </div>
   );
 }

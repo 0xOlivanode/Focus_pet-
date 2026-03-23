@@ -7,7 +7,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Loader2,
-  Sparkles,
+  BadgeCheck,
   ExternalLink,
 } from "lucide-react";
 
@@ -99,7 +99,7 @@ export function IdentityModal({
                   animate={{ scale: 1 }}
                   className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6"
                 >
-                  <Sparkles size={48} />
+                  <BadgeCheck size={48} />
                 </motion.div>
                 <h3 className="text-2xl font-black mb-2 text-neutral-800 dark:text-white">
                   Identity Confirmed! ✨

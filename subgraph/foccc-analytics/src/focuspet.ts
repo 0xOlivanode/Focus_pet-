@@ -5,7 +5,7 @@ import {
   UserDeleted as UserDeletedEvent,
   FocusPet,
 } from "../generated/FocusPet/FocusPet";
-import { User, GlobalStats } from "../generated/schema";
+import { User, GlobalStats, DailyActivity } from "../generated/schema";
 import { BigInt, Address } from "@graphprotocol/graph-ts";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -87,6 +87,28 @@ function syncFromContract(user: User, contractAddress: Address): void {
   user.totalFocusTime = pet.value12;
 }
 
+/**
+ * Upserts a DailyActivity snapshot for the given user at the block's UTC day.
+ * Called after syncFromContract so user.xp / user.totalFocusTime are current.
+ */
+function upsertDailyActivity(user: User, blockTimestamp: BigInt): void {
+  const DAY = BigInt.fromI32(86400);
+  const dayTimestamp = blockTimestamp.div(DAY).times(DAY);
+  const id = user.id + "-" + dayTimestamp.toString();
+
+  let activity = DailyActivity.load(id);
+  if (activity == null) {
+    activity = new DailyActivity(id);
+    activity.user = user.id;
+    activity.date = dayTimestamp;
+  }
+
+  activity.xp = user.xp;
+  activity.focusTime = user.totalFocusTime;
+  activity.lastUpdatedAt = blockTimestamp;
+  activity.save();
+}
+
 // ─── Event Handlers ─────────────────────────────────────────────────────────
 
 export function handlePetBorn(event: PetBornEvent): void {
@@ -116,6 +138,7 @@ export function handlePetFed(event: PetFedEvent): void {
   // syncFromContract will also overwrite xp/health with contract values,
   // which are identical at this block — safe to do.
   syncFromContract(user, event.address);
+  upsertDailyActivity(user, event.block.timestamp);
 
   user.save();
 }

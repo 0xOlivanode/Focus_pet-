@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useAccount } from "wagmi";
-import { HelpCircle, User, Share2, Menu, X } from "lucide-react";
+import { HelpCircle, User, Share2, Menu, X, History } from "lucide-react";
+import Link from "next/link";
 import { ThemeToggle } from "./ThemeToggle";
 import { SoundMenu } from "./SoundMenu";
 import { StreakFlame } from "./StreakFlame";
@@ -12,6 +13,7 @@ import { useAudio } from "@/hooks/useAudio";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { AccountModal } from "./AccountModal";
+import { NotificationBell } from "./NotificationBell";
 
 interface NavbarProps {
   onOpenOnboarding?: () => void;
@@ -43,6 +45,15 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
           <StreakFlame count={streak} />
 
           <div className="hidden sm:flex items-center gap-2">
+            {address && (
+              <Link
+                href="/history"
+                className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                title="Focus History"
+              >
+                <History size={18} />
+              </Link>
+            )}
             {onOpenOnboarding && (
               <button
                 onClick={() => {
@@ -60,6 +71,7 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
                 </span>
               </button>
             )}
+            <NotificationBell />
             <ThemeToggle />
             <SoundMenu />
             {onOpenProfile && (

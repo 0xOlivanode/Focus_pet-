@@ -216,8 +216,17 @@ export function useLeaderboard() {
     }
   }, [publicClient, accountAddress]);
 
+  // Initial fetch
   useEffect(() => {
     fetchLeaderboardData();
+  }, [fetchLeaderboardData]);
+
+  // Poll every 30s for live updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchLeaderboardData();
+    }, 30_000);
+    return () => clearInterval(interval);
   }, [fetchLeaderboardData]);
 
   return {

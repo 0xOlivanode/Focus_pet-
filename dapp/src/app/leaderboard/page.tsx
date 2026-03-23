@@ -182,9 +182,18 @@ export default function LeaderboardPage() {
             >
               ← Back to App
             </Link>
-            <h1 className="text-[24px] lg:text-3xl font-black text-neutral-900 dark:text-white">
-              The <span className="text-indigo-600">Hall of Fame</span>
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-[24px] lg:text-3xl font-black text-neutral-900 dark:text-white">
+                The <span className="text-indigo-600">Hall of Fame</span>
+              </h1>
+              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                </span>
+                Live
+              </span>
+            </div>
           </div>
 
           <div className="relative w-full md:w-72">

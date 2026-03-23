@@ -14,6 +14,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://focus-pet-theta.vercel.app"),
+  manifest: "/manifest.json",
+  themeColor: "#6366f1",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "FocusPet",
+  },
   title: "FocusPet | Your Gamified Deep Work Companion",
   description:
     "Transform your focus into a pet! Hatch dinosaurs, earn G$, and climb the leaderboard by staying away from distractions.",
@@ -44,9 +51,13 @@ export const metadata: Metadata = {
   other: {
     "fc:frame": "vNext",
     "fc:frame:image": "https://focus-pet-theta.vercel.app/api/og",
-    "fc:frame:button:1": "Start Focusing",
+    "fc:frame:image:aspect_ratio": "1.91:1",
+    "fc:frame:button:1": "🥚 Start Focusing",
     "fc:frame:button:1:action": "link",
-    "fc:frame:button:1:target": "https://focus-pet-theta.vercel.app",
+    "fc:frame:button:1:target": "https://focus-pet-theta.vercel.app/app",
+    "fc:frame:button:2": "🏆 Leaderboard",
+    "fc:frame:button:2:action": "link",
+    "fc:frame:button:2:target": "https://focus-pet-theta.vercel.app/leaderboard",
   },
 };
 

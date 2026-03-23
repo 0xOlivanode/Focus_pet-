@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Edit2,
-  Sparkles,
+  PenLine,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -77,7 +77,7 @@ export function NamingModal({
             <div className="p-8 md:p-10">
               <div className="flex flex-col items-center text-center mb-8">
                 <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4">
-                  <Sparkles size={32} />
+                  <PenLine size={32} />
                 </div>
                 <h2 className="text-2xl font-black tracking-tight mb-2">
                   A Legend is Born! 🥚✨

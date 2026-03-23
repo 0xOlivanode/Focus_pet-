@@ -158,3 +158,59 @@ export async function fetchSubgraphUser(
   });
   return data.user;
 }
+
+// ─── History ─────────────────────────────────────────────────────────────────
+
+export type DailyActivity = {
+  date: string;      // Unix timestamp string (start of UTC day)
+  xp: string;
+  focusTime: string;
+};
+
+const HISTORY_QUERY = /* graphql */ `
+  query UserHistory($userId: ID!, $first: Int!) {
+    user(id: $userId) {
+      id
+      username
+      petName
+      xp
+      health
+      streak
+      totalFocusTime
+      totalDonated
+      birthTime
+      isActive
+    }
+    dailyActivities(
+      where: { user: $userId }
+      orderBy: date
+      orderDirection: asc
+      first: $first
+    ) {
+      date
+      xp
+      focusTime
+    }
+  }
+`;
+
+export type UserHistory = {
+  user: SubgraphUser & {
+    petName: string;
+    birthTime: string;
+  };
+  dailyActivities: DailyActivity[];
+};
+
+export async function fetchUserHistory(
+  address: string,
+  days = 60,
+): Promise<UserHistory | null> {
+  const data = await query<{
+    user: UserHistory["user"] | null;
+    dailyActivities: DailyActivity[];
+  }>(HISTORY_QUERY, { userId: address.toLowerCase(), first: days });
+
+  if (!data.user) return null;
+  return { user: data.user, dailyActivities: data.dailyActivities };
+}

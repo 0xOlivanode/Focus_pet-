@@ -42,3 +42,16 @@ type GlobalStats @entity {
   id: ID!
   totalUsers: BigInt!
 }
+
+"""
+One record per user per UTC day — tracks XP and focus time snapshots.
+id = "{userAddress}-{dayTimestamp}" where dayTimestamp = floor(blockTimestamp / 86400) * 86400
+"""
+type DailyActivity @entity {
+  id: ID!
+  user: User!
+  date: BigInt!          # Unix timestamp of the start of the UTC day
+  xp: BigInt!            # XP at the last event of this day
+  focusTime: BigInt!     # Cumulative focus time at the last event of this day
+  lastUpdatedAt: BigInt! # Block timestamp of the last update
+}

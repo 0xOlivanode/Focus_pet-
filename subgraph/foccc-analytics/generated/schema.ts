@@ -339,3 +339,110 @@ export class GlobalStats extends Entity {
     this.set("totalUsers", Value.fromBigInt(value));
   }
 }
+
+export class DailyActivity extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save DailyActivity entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type DailyActivity must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("DailyActivity", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): DailyActivity | null {
+    return changetype<DailyActivity | null>(
+      store.get_in_block("DailyActivity", id),
+    );
+  }
+
+  static load(id: string): DailyActivity | null {
+    return changetype<DailyActivity | null>(store.get("DailyActivity", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get user(): string {
+    let value = this.get("user");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set user(value: string) {
+    this.set("user", Value.fromString(value));
+  }
+
+  get date(): BigInt {
+    let value = this.get("date");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set date(value: BigInt) {
+    this.set("date", Value.fromBigInt(value));
+  }
+
+  get xp(): BigInt {
+    let value = this.get("xp");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set xp(value: BigInt) {
+    this.set("xp", Value.fromBigInt(value));
+  }
+
+  get focusTime(): BigInt {
+    let value = this.get("focusTime");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set focusTime(value: BigInt) {
+    this.set("focusTime", Value.fromBigInt(value));
+  }
+
+  get lastUpdatedAt(): BigInt {
+    let value = this.get("lastUpdatedAt");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set lastUpdatedAt(value: BigInt) {
+    this.set("lastUpdatedAt", Value.fromBigInt(value));
+  }
+}
