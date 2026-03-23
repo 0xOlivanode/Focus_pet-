@@ -1,0 +1,19 @@
+name: Hourly Notifications Cron
+
+on:
+  schedule:
+    # Runs every hour at :00
+    - cron: "0 * * * *"
+  # Allow manual trigger from GitHub UI for testing
+  workflow_dispatch:
+
+jobs:
+  run-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger streak & health notifications
+        run: |
+          curl --fail --silent --show-error \
+            -X GET \
+            "${{ secrets.APP_URL }}/api/notifications/cron" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
