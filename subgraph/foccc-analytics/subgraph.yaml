@@ -1,0 +1,32 @@
+specVersion: 0.0.5
+description: FocusPet — on-chain productivity game on Celo. Indexes pet state, leaderboard, and names.
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: FocusPet
+    network: celo
+    source:
+      address: "0x077AC6fAaE04B64b1CF8586F95D890491Bed04E7"
+      abi: FocusPet
+      startBlock: 59965000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - User
+        - GlobalStats
+      abis:
+        - name: FocusPet
+          file: ./abis/FocusPet.json
+      eventHandlers:
+        - event: PetBorn(indexed address)
+          handler: handlePetBorn
+        - event: PetFed(indexed address,uint256,uint256)
+          handler: handlePetFed
+        - event: NamesUpdated(indexed address,string,string)
+          handler: handleNamesUpdated
+        - event: UserDeleted(indexed address)
+          handler: handleUserDeleted
+      file: ./src/focuspet.ts

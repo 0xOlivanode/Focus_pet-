@@ -6,7 +6,6 @@ import {
   useWaitForTransactionReceipt,
   useAccount,
 } from "wagmi";
-import { useWriteContracts, useCallsStatus } from "wagmi/experimental";
 import { FocusPetABI } from "@/config/abi";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -24,6 +23,8 @@ export function useFocusPet() {
   const [pendingItem, setPendingItem] = useState<{
     id: string;
     price?: number;
+    functionName?: string;
+    args?: any[];
   } | null>(null);
   const [pendingSession, setPendingSession] = useState<{
     minutes: number;
@@ -38,42 +39,14 @@ export function useFocusPet() {
   } = useWriteContract();
 
   const {
-    writeContracts,
-    data: batchId,
-    isPending: isBatchPending,
-    error: batchError,
-  } = useWriteContracts();
-
-  // MetaMask EOA Fallback: writeContracts returns a normal hash for single calls
-  const batchIdStr = batchId as string | undefined;
-  const isFallbackHash =
-    typeof batchIdStr === "string" &&
-    batchIdStr.startsWith("0x") &&
-    batchIdStr.length === 66;
-  const actualHash = isFallbackHash
-    ? (batchIdStr as `0x${string}`)
-    : singleHash;
-
-  const { data: callsStatus } = useCallsStatus({
-    id: isFallbackHash ? undefined : (batchIdStr as any)?.id || batchIdStr,
-    query: {
-      enabled: !!batchIdStr && !isFallbackHash,
-      refetchInterval: (data) =>
-        data.state.status === "pending" ? 1000 : false,
-    },
-  });
-
-  const {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
     error: receiptError,
-  } = useWaitForTransactionReceipt({ hash: actualHash });
+  } = useWaitForTransactionReceipt({ hash: singleHash });
 
-  const finalIsPending = isSinglePending || isBatchPending;
-  const finalIsConfirming =
-    isConfirming || (!isFallbackHash && callsStatus?.status === "pending");
-  const finalIsConfirmed =
-    isConfirmed || (!isFallbackHash && callsStatus?.status === "success");
+  const finalIsPending = isSinglePending;
+  const finalIsConfirming = isConfirming;
+  const finalIsConfirmed = isConfirmed;
 
   // Reset toast guard on new pending transaction
   useEffect(() => {
@@ -100,14 +73,7 @@ export function useFocusPet() {
         console.warn("Insufficient CELO for gas fees.");
       }
     }
-
-    if (batchError) {
-      console.error("Batch Error:", batchError);
-      toast.error(
-        `Transaction Failed\n${batchError.message || "Failed to batch transactions"}`,
-      );
-    }
-  }, [writeError, receiptError, batchError]);
+  }, [writeError, receiptError]);
 
   // --- GoodDollar Integration ---
   const G_DOLLAR_ADDRESS = "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A";
@@ -190,9 +156,11 @@ export function useFocusPet() {
   useEffect(() => {
     if (finalIsConfirmed && !hasToasted) {
       if (lastAction === "shop") {
-        setHasToasted(true);
-        toast.success("Purchase Successful!\nYour items are ready.");
-        refetchAll();
+        if (!pendingItem) {
+          setHasToasted(true);
+          toast.success("Purchase Successful!\nYour items are ready.");
+          refetchAll();
+        }
       } else if (lastAction === "profile") {
         setHasToasted(true);
         toast.success("Profile Updated Successfully!");
@@ -234,6 +202,7 @@ export function useFocusPet() {
     functionName: string,
     price: number,
     args: any[] = [],
+    itemId?: string,
   ) => {
     const amount = BigInt(price) * BigInt(10 ** 18);
     const balance = gBalance ? (gBalance as bigint) : BigInt(0);
@@ -248,36 +217,36 @@ export function useFocusPet() {
 
     setLastAction("shop");
 
-    // EIP-5792: Batched Transactions (Approval + Buy in one click)
-    const contractsToBatch = [];
-
     if (currentAllowance < amount) {
-      contractsToBatch.push({
+      toast.loading("Unlocking G$...", { id: "unlocking" });
+      if (itemId) {
+        setPendingItem({ id: itemId, price, functionName, args });
+      }
+      writeContract({
         address: G_DOLLAR_ADDRESS,
         abi: erc20Abi,
         functionName: "approve",
         args: [CONTRACT_ADDRESS, amount],
-      });
+      } as any);
+    } else {
+      toast.dismiss("unlocking");
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: FocusPetABI,
+        functionName: functionName as any,
+        args: args as any,
+      } as any);
     }
-
-    contractsToBatch.push({
-      address: CONTRACT_ADDRESS,
-      abi: FocusPetABI,
-      functionName,
-      args,
-    });
-
-    writeContracts({
-      contracts: contractsToBatch as any,
-    });
   };
 
-  const buyFood = () => executeBatchedBuy("buyFood", 10);
-  const buySuperFood = () => executeBatchedBuy("buySuperFood", 30);
-  const buyEnergyDrink = () => executeBatchedBuy("buyEnergyDrink", 25);
-  const buyShield = () => executeBatchedBuy("buyShield", 100);
+  const buyFood = () => executeBatchedBuy("buyFood", 10, [], "apple");
+  const buySuperFood = () =>
+    executeBatchedBuy("buySuperFood", 30, [], "golden_apple");
+  const buyEnergyDrink = () =>
+    executeBatchedBuy("buyEnergyDrink", 25, [], "energy_drink");
+  const buyShield = () => executeBatchedBuy("buyShield", 100, [], "shield");
   const buyCosmetic = (id: string, price: number) =>
-    executeBatchedBuy("buyCosmetic", price, [id, BigInt(price)]);
+    executeBatchedBuy("buyCosmetic", price, [id, BigInt(price)], id);
 
   const toggleCosmetic = (id: string) => {
     setLastAction("shop");
@@ -352,18 +321,27 @@ export function useFocusPet() {
         const item = pendingItem;
         setPendingItem(null); // Clear first to prevent loops
 
-        // Allow some time for the RPC to catch up with the allowance change
-        await refetchAllowance();
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // 2s safety buffer for RPC sync
-
         console.log("🚀 Auto-triggering buy for:", item.id);
+        toast.dismiss("unlocking");
 
-        if (item.id === "apple") buyFood();
-        else if (item.id === "golden_apple") buySuperFood();
-        else if (item.id === "energy_drink") buyEnergyDrink();
-        else if (item.id === "shield") buyShield();
-        else if (item.id === "revive") revivePet();
-        else if (item.price) buyCosmetic(item.id, item.price);
+        if (item.functionName) {
+          writeContract({
+            address: CONTRACT_ADDRESS,
+            abi: FocusPetABI,
+            functionName: item.functionName as any,
+            args: item.args as any,
+          } as any);
+        } else {
+          // Fallback for older patterns
+          await refetchAllowance();
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          if (item.id === "apple") buyFood();
+          else if (item.id === "golden_apple") buySuperFood();
+          else if (item.id === "energy_drink") buyEnergyDrink();
+          else if (item.id === "shield") buyShield();
+          else if (item.id === "revive") revivePet();
+          else if (item.price) buyCosmetic(item.id, item.price);
+        }
       };
 
       executeBuy();
@@ -583,7 +561,7 @@ export function useFocusPet() {
     isPending: finalIsPending,
     isConfirming: finalIsConfirming,
     isConfirmed: finalIsConfirmed,
-    hash: actualHash,
+    hash: singleHash,
     writeError,
     receiptError,
     refetch,

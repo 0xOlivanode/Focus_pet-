@@ -1,0 +1,44 @@
+"""
+Represents one FocusPet user — kept up-to-date on every on-chain interaction.
+id = lowercase wallet address.
+"""
+type User @entity {
+  id: ID!
+  address: Bytes!
+
+  # Identity
+  username: String!
+  usernameLower: String!   # Lowercase copy — used for case-insensitive availability checks
+  petName: String!
+  petNameLower: String!    # Lowercase copy — used for case-insensitive availability checks
+
+  # Pet stats (synced from pets() view on every relevant event)
+  xp: BigInt!
+  health: BigInt!
+  streak: BigInt!
+  totalFocusTime: BigInt!  # Raw seconds focused (no multipliers)
+  totalDonated: BigInt!    # Total G$ routed to UBI pool
+
+  # Pet metadata
+  birthTime: BigInt!
+  lastInteraction: BigInt!
+  boostEndTime: BigInt!
+  shieldCount: BigInt!
+  activeCosmetic: String!
+
+  # Soft-delete flag — set false on UserDeleted, true on PetBorn
+  isActive: Boolean!
+
+  # Indexing metadata
+  lastUpdatedBlock: BigInt!
+  lastUpdatedAt: BigInt!
+}
+
+"""
+Singleton entity — id is always "global".
+Tracks protocol-wide counters.
+"""
+type GlobalStats @entity {
+  id: ID!
+  totalUsers: BigInt!
+}

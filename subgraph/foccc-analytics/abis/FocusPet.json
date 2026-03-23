@@ -1,0 +1,95 @@
+[
+  {
+    "type": "function",
+    "name": "pets",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [
+      { "name": "xp", "type": "uint256", "internalType": "uint256" },
+      { "name": "health", "type": "uint256", "internalType": "uint256" },
+      { "name": "lastInteraction", "type": "uint256", "internalType": "uint256" },
+      { "name": "birthTime", "type": "uint256", "internalType": "uint256" },
+      { "name": "username", "type": "string", "internalType": "string" },
+      { "name": "petName", "type": "string", "internalType": "string" },
+      { "name": "streak", "type": "uint256", "internalType": "uint256" },
+      { "name": "lastDailySession", "type": "uint256", "internalType": "uint256" },
+      { "name": "boostEndTime", "type": "uint256", "internalType": "uint256" },
+      { "name": "shieldCount", "type": "uint256", "internalType": "uint256" },
+      { "name": "activeCosmetic", "type": "string", "internalType": "string" },
+      { "name": "totalDonated", "type": "uint256", "internalType": "uint256" },
+      { "name": "totalFocusTime", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "PetBorn",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PetFed",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "newHealth", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "newXp", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "NamesUpdated",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "username", "type": "string", "indexed": false, "internalType": "string" },
+      { "name": "petName", "type": "string", "indexed": false, "internalType": "string" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UserDeleted",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ItemPurchased",
+    "inputs": [
+      { "name": "buyer", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "item", "type": "string", "indexed": false, "internalType": "string" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DonationSent",
+    "inputs": [
+      { "name": "to", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "amount", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BoostActivated",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "endTime", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ShieldAdded",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "newCount", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  }
+]
