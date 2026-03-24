@@ -43,6 +43,20 @@ export function NotificationBell() {
     setPermission(Notification.permission as PermissionState);
   }, []);
 
+  // Auto-prompt once when the user is connected and hasn't been asked yet
+  useEffect(() => {
+    if (!address) return;
+    if (permission !== "default") return;
+    if (localStorage.getItem("notification-prompted")) return;
+
+    const t = setTimeout(() => {
+      localStorage.setItem("notification-prompted", "1");
+      handleClick();
+    }, 4000);
+
+    return () => clearTimeout(t);
+  }, [address, permission]);
+
   if (permission === "unsupported") return null;
 
   const handleClick = async () => {
@@ -85,10 +99,15 @@ export function NotificationBell() {
     setIsLoading(true);
     try {
       const result = await Notification.requestPermission();
-      setPermission(result as PermissionState);
 
       if (result !== "granted") {
-        toast.error("Permission denied.");
+        setPermission(result as PermissionState);
+        toast.error(
+          result === "denied"
+            ? "Notifications blocked. Enable them in your browser settings."
+            : "Permission not granted.",
+          { duration: 4000 },
+        );
         return;
       }
 
@@ -98,19 +117,23 @@ export function NotificationBell() {
       const pushSub = await subscribe(reg);
       if (!pushSub) throw new Error("Failed to create push subscription");
 
-      await fetch("/api/notifications/subscribe", {
+      const res = await fetch("/api/notifications/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address, subscription: pushSub.toJSON() }),
       });
 
+      if (!res.ok) throw new Error("Server failed to save subscription");
+
+      // Only flip the icon once the full flow has succeeded
+      setPermission("granted");
       toast.success("Streak alerts enabled! We'll remind you before your streak breaks. 🔥", {
         duration: 4000,
       });
     } catch (err) {
       console.error("Notification subscribe error:", err);
-      toast.error("Failed to enable notifications.");
-      setPermission("default");
+      toast.error("Failed to enable notifications. Please try again.");
+      // Don't change permission state — leave icon as-is so user can retry
     } finally {
       setIsLoading(false);
     }

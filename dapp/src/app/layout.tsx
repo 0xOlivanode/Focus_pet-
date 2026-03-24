@@ -67,7 +67,6 @@ export const metadata: Metadata = {
 import { Providers } from "./providers";
 import { Suspense } from "react";
 import { ReferralTracker } from "@/components/ReferralTracker";
-import { SplashScreenDismiss } from "@/components/SplashScreen";
 
 export default function RootLayout({
   children,
@@ -76,56 +75,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <style>{`
-          #fp-splash {
-            position: fixed;
-            inset: 0;
-            z-index: 99999;
-            background: #0a0a0b;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            transition: opacity 0.35s ease;
-          }
-          #fp-splash img {
-            width: 80px;
-            height: 80px;
-            border-radius: 20px;
-            animation: fp-pulse 2s ease-in-out infinite;
-          }
-          #fp-splash span {
-            font-size: 22px;
-            font-weight: 900;
-            letter-spacing: -0.03em;
-            color: #fff;
-          }
-          #fp-splash p {
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            color: #6366f1;
-          }
-          @keyframes fp-pulse {
-            0%, 100% { transform: scale(1);   opacity: 1;    }
-            50%       { transform: scale(1.08); opacity: 0.85; }
-          }
-        `}</style>
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
-        {/* Splash — painted before any JS, dismissed on first React mount */}
-        <div id="fp-splash">
-          <img src="/focus-pet.png" alt="FocusPet" />
-          <span>FocusPet</span>
-          <p>Stay Focused</p>
-        </div>
-
-        <SplashScreenDismiss />
         <Suspense fallback={null}>
           <ReferralTracker />
         </Suspense>

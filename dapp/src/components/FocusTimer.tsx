@@ -60,40 +60,26 @@ export function FocusTimer({
   async function scheduleFocusReminder(endTime: number) {
     if (typeof window === "undefined") return;
     if (!("Notification" in window) || Notification.permission !== "granted") return;
+    if (!address) return;
 
-    // SW fallback — works well on Android and desktop
-    if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.ready.catch(() => null);
-      reg?.active?.postMessage({ type: "SCHEDULE_FOCUS_REMINDER", endTime });
-    }
-
-    // QStash — reliable on iOS (server-side push via APNs)
-    if (address) {
-      fetch("/api/notifications/schedule-focus", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, endTime }),
-      }).catch(console.error);
-    }
+    // QStash handles delivery for all platforms including iOS
+    fetch("/api/notifications/schedule-focus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address, endTime }),
+    }).catch(console.error);
   }
 
   async function cancelFocusReminder() {
     if (typeof window === "undefined") return;
+    if (!address) return;
 
-    // Cancel SW timer
-    if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.ready.catch(() => null);
-      reg?.active?.postMessage({ type: "CANCEL_FOCUS_REMINDER" });
-    }
-
-    // Mark cancelled in Supabase so QStash fires a no-op
-    if (address) {
-      fetch("/api/notifications/schedule-focus", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address }),
-      }).catch(console.error);
-    }
+    // Mark cancelled in Supabase so the QStash callback is a no-op
+    fetch("/api/notifications/schedule-focus", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address }),
+    }).catch(console.error);
   }
 
   const progress = ((duration - timeLeft) / duration) * 100;
