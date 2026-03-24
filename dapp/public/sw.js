@@ -1,4 +1,10 @@
-// FocusPet Service Worker — handles background push notifications
+// FocusPet Service Worker
+
+// Activate immediately on install/update
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (e) => e.waitUntil(clients.claim()));
+
+// ── Server push notifications ──────────────────────────────────────────────
 
 self.addEventListener("push", (event) => {
   const data = event.data?.json() ?? {};
@@ -8,13 +14,57 @@ self.addEventListener("push", (event) => {
       body: data.body ?? "Something needs your attention.",
       icon: "/focus-pet.png",
       badge: "/focus-pet.png",
-      tag: data.tag ?? "focuspet",       // Replaces older notification with same tag
+      tag: data.tag ?? "focuspet",
       renotify: true,
       data: { url: data.url ?? "/app" },
       vibrate: [200, 100, 200],
     }),
   );
 });
+
+// ── Local scheduled notifications (focus timer) ────────────────────────────
+
+let focusReminderTimer = null;
+
+self.addEventListener("message", (event) => {
+  const { type, endTime } = event.data ?? {};
+
+  if (type === "SCHEDULE_FOCUS_REMINDER") {
+    // Clear any existing scheduled reminder first
+    if (focusReminderTimer !== null) {
+      clearTimeout(focusReminderTimer);
+      focusReminderTimer = null;
+    }
+
+    // Fire 60 seconds before the session ends
+    const delay = endTime - 60_000 - Date.now();
+
+    // Only schedule if there's actually a minute left
+    if (delay <= 0) return;
+
+    focusReminderTimer = setTimeout(() => {
+      self.registration.showNotification("⏱ 1 minute left!", {
+        body: "Your focus session is almost done — come back to record your session and earn XP.",
+        icon: "/focus-pet.png",
+        badge: "/focus-pet.png",
+        tag: "focus-reminder",
+        renotify: true,
+        data: { url: "/app" },
+        vibrate: [100, 50, 100],
+      });
+      focusReminderTimer = null;
+    }, delay);
+  }
+
+  if (type === "CANCEL_FOCUS_REMINDER") {
+    if (focusReminderTimer !== null) {
+      clearTimeout(focusReminderTimer);
+      focusReminderTimer = null;
+    }
+  }
+});
+
+// ── Notification click ─────────────────────────────────────────────────────
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
@@ -24,7 +74,6 @@ self.addEventListener("notificationclick", (event) => {
     clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((windowClients) => {
-        // If the app is already open, focus it
         const existing = windowClients.find(
           (c) => c.url.includes(self.location.origin) && "focus" in c,
         );

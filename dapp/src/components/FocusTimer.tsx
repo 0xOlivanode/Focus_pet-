@@ -13,7 +13,7 @@ import {
   Moon,
 } from "lucide-react";
 import { useFocusPet } from "@/hooks/useFocusPet";
-import { useBlockNumber } from "wagmi";
+import { useBlockNumber, useAccount } from "wagmi";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -53,6 +53,48 @@ export function FocusTimer({
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const endTimeRef = useRef<number | null>(null);
+  const { address } = useAccount();
+
+  // ── Focus reminder helpers (QStash for iOS + SW fallback for Android/desktop) ──
+
+  async function scheduleFocusReminder(endTime: number) {
+    if (typeof window === "undefined") return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+    // SW fallback — works well on Android and desktop
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.ready.catch(() => null);
+      reg?.active?.postMessage({ type: "SCHEDULE_FOCUS_REMINDER", endTime });
+    }
+
+    // QStash — reliable on iOS (server-side push via APNs)
+    if (address) {
+      fetch("/api/notifications/schedule-focus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address, endTime }),
+      }).catch(console.error);
+    }
+  }
+
+  async function cancelFocusReminder() {
+    if (typeof window === "undefined") return;
+
+    // Cancel SW timer
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.ready.catch(() => null);
+      reg?.active?.postMessage({ type: "CANCEL_FOCUS_REMINDER" });
+    }
+
+    // Mark cancelled in Supabase so QStash fires a no-op
+    if (address) {
+      fetch("/api/notifications/schedule-focus", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      }).catch(console.error);
+    }
+  }
 
   const progress = ((duration - timeLeft) / duration) * 100;
 
@@ -80,6 +122,7 @@ export function FocusTimer({
             setTimeLeft(remaining);
             setStatus("running");
             endTimeRef.current = e;
+            scheduleFocusReminder(e);
           } else {
             // Session finished while away
             setTimeLeft(0);
@@ -120,18 +163,23 @@ export function FocusTimer({
       onPause?.();
       if (timerRef.current) clearInterval(timerRef.current);
       endTimeRef.current = null;
+      cancelFocusReminder();
     } else if (status === "completed") {
       // Restart logic
       const newTimeLeft = duration;
       setTimeLeft(newTimeLeft);
-      endTimeRef.current = Date.now() + newTimeLeft * 1000;
+      const et = Date.now() + newTimeLeft * 1000;
+      endTimeRef.current = et;
       setStatus("running");
       onStart?.(note);
+      scheduleFocusReminder(et);
     } else {
       const newTimeLeft = timeLeft;
-      endTimeRef.current = Date.now() + newTimeLeft * 1000;
+      const et = Date.now() + newTimeLeft * 1000;
+      endTimeRef.current = et;
       setStatus("running");
       onStart?.(note);
+      scheduleFocusReminder(et);
     }
   };
 
@@ -139,6 +187,7 @@ export function FocusTimer({
     setStatus("idle");
     setTimeLeft(duration);
     if (timerRef.current) clearInterval(timerRef.current);
+    cancelFocusReminder();
   };
 
   const handleDurationSelect = (mins: number) => {
@@ -185,6 +234,7 @@ export function FocusTimer({
     if (timeLeft === 0 && status === "running") {
       setStatus("completed");
       if (timerRef.current) clearInterval(timerRef.current);
+      cancelFocusReminder();
       onComplete?.(duration / 60);
     }
   }, [timeLeft, status, onComplete, duration]);

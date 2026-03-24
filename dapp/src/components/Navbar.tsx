@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { useAccount } from "wagmi";
-import { HelpCircle, User, Share2, Menu, X, History } from "lucide-react";
+import {
+  HelpCircle,
+  User,
+  Share2,
+  Menu,
+  X,
+  History,
+  Trophy,
+} from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "./ThemeToggle";
 import { SoundMenu } from "./SoundMenu";
@@ -27,150 +35,158 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
+  function closeMenu() {
+    setIsMobileMenuOpen(false);
+  }
+
+  function copyInvite() {
+    if (address) {
+      const link = `${window.location.origin}/?ref=${address}`;
+      navigator.clipboard.writeText(link);
+      toast.success("Invite link copied!");
+      playSound("click");
+    } else {
+      toast.error("Connect your wallet first.");
+    }
+  }
+
   return (
     <>
-      <header className="p-3 sm:p-4 px-3 sm:px-6 md:px-12 lg:px-20 flex items-center justify-between border-b border-neutral-100 dark:border-neutral-900 w-full max-w-[1400px] mx-auto relative z-50">
-        <div className="flex items-center gap-2 shrink-0">
-          <img
-            src="/focus-pet-logo.jpeg"
-            className="rounded-full h-8 w-8 sm:h-10 sm:w-10 shadow-sm"
-            alt="FocusPet Logo"
-          />
-          <h1 className="font-bold text-base sm:text-lg tracking-tight hidden sm:block">
-            FocusPet
-          </h1>
-        </div>
+      <header className="sticky top-0 z-50 w-full border-b border-neutral-100 dark:border-neutral-900 bg-white/80 dark:bg-[#0a0a0b]/80 backdrop-blur-md">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 md:px-12 lg:px-20 h-14 sm:h-16 flex items-center justify-between gap-2">
 
-        <div className="flex items-center gap-1.5 sm:gap-2 text-sm font-medium">
-          <StreakFlame count={streak} />
+          {/* Left — Logo */}
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <img
+              src="/focus-pet-logo.jpeg"
+              className="rounded-full h-8 w-8 shadow-sm"
+              alt="FocusPet"
+            />
+            <span className="font-black text-base tracking-tight hidden sm:block">
+              FocusPet
+            </span>
+          </Link>
 
-          <div className="hidden sm:flex items-center gap-2">
-            {address && (
-              <Link
-                href="/history"
-                className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                title="Focus History"
-              >
-                <History size={18} />
-              </Link>
-            )}
-            {onOpenOnboarding && (
-              <button
-                onClick={() => {
-                  onOpenOnboarding();
-                  playSound("click");
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all font-bold text-xs group"
-                title="How to Play"
-              >
-                <HelpCircle size={16} />
-                <span>How to Play</span>
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                </span>
-              </button>
-            )}
-            <NotificationBell />
-            <ThemeToggle />
-            <SoundMenu />
-            {onOpenProfile && (
-              <button
-                onClick={() => {
-                  onOpenProfile();
-                  playSound("click");
-                }}
-                className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-                title="Edit Profile"
-              >
-                <User size={18} />
-              </button>
-            )}
-            <button
-              onClick={() => {
-                if (address) {
-                  const link = `${window.location.origin}/?ref=${address}`;
-                  navigator.clipboard.writeText(link);
-                  toast.success("Invite link copied!");
-                  playSound("click");
-                } else {
-                  toast.error("Please connect your wallet first.");
-                }
+          {/* Right — Actions */}
+          <div className="flex items-center gap-1.5">
+
+            {/* Streak — always visible */}
+            <StreakFlame count={streak} />
+
+            {/* Desktop-only actions */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              {address && (
+                <NavIconBtn href="/history" title="History">
+                  <History size={17} />
+                </NavIconBtn>
+              )}
+              <NavIconBtn href="/leaderboard" title="Leaderboard">
+                <Trophy size={17} />
+              </NavIconBtn>
+              {onOpenOnboarding && (
+                <button
+                  onClick={() => { onOpenOnboarding(); playSound("click"); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all font-bold text-xs"
+                  title="How to Play"
+                >
+                  <HelpCircle size={15} />
+                  <span>Guide</span>
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500" />
+                  </span>
+                </button>
+              )}
+              <NotificationBell />
+              <ThemeToggle />
+              <SoundMenu />
+              {onOpenProfile && (
+                <NavBtn onClick={() => { onOpenProfile(); playSound("click"); }} title="Edit Profile">
+                  <User size={17} />
+                </NavBtn>
+              )}
+              <NavBtn onClick={copyInvite} title="Invite Friend" accent>
+                <Share2 size={17} />
+              </NavBtn>
+            </div>
+
+            {/* Mobile — notification bell always visible */}
+            <div className="sm:hidden">
+              <NotificationBell />
+            </div>
+
+            {/* Connect button — always visible */}
+            <PrivyConnectButton
+              onOpenAccount={() => {
+                setIsAccountModalOpen(true);
+                playSound("click");
               }}
-              className="p-2 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex shrink-0 items-center justify-center h-[36px] w-[36px]"
-              title="Copy Invite Link"
+            />
+
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={() => setIsMobileMenuOpen((v) => !v)}
+              className="sm:hidden p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+              aria-label="Menu"
             >
-              <Share2 size={18} />
+              {isMobileMenuOpen
+                ? <X key="close" size={18} />
+                : <Menu key="open" size={18} />}
             </button>
           </div>
-
-          <PrivyConnectButton 
-            onOpenAccount={() => {
-              setIsAccountModalOpen(true);
-              playSound("click");
-            }} 
-          />
-
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="sm:hidden p-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-          >
-            {isMobileMenuOpen ? <X key="nav-close" size={20} /> : <Menu key="nav-open" size={20} />}
-          </button>
         </div>
 
+        {/* Mobile dropdown */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute top-[60px] right-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl p-2 flex flex-col gap-2 sm:hidden backdrop-blur-md z-50"
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15 }}
+              className="sm:hidden border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-[#0a0a0b] px-4 py-3 flex flex-col gap-1"
             >
+              {/* Nav links */}
+              {address && (
+                <MobileMenuItem
+                  icon={<History size={17} />}
+                  label="Focus History"
+                  href="/history"
+                  onClick={closeMenu}
+                />
+              )}
+              <MobileMenuItem
+                icon={<Trophy size={17} />}
+                label="Leaderboard"
+                href="/leaderboard"
+                onClick={closeMenu}
+              />
               {onOpenOnboarding && (
-                <button
-                  onClick={() => {
-                    onOpenOnboarding();
-                    playSound("click");
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-3 px-4 py-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-sm w-full text-left"
-                >
-                  <HelpCircle size={18} />
-                  <span>How to Play</span>
-                </button>
+                <MobileMenuItem
+                  icon={<HelpCircle size={17} />}
+                  label="How to Play"
+                  onClick={() => { onOpenOnboarding(); playSound("click"); closeMenu(); }}
+                  accent
+                />
               )}
               {onOpenProfile && (
-                <button
-                  onClick={() => {
-                    onOpenProfile();
-                    playSound("click");
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-3 px-4 py-2 rounded-xl text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-sm w-full text-left transition-colors"
-                >
-                  <User size={18} />
-                  <span>Edit Profile</span>
-                </button>
+                <MobileMenuItem
+                  icon={<User size={17} />}
+                  label="Edit Profile"
+                  onClick={() => { onOpenProfile(); playSound("click"); closeMenu(); }}
+                />
               )}
-              <button
-                onClick={() => {
-                  if (address) {
-                    const link = `${window.location.origin}/?ref=${address}`;
-                    navigator.clipboard.writeText(link);
-                    toast.success("Invite link copied!");
-                    playSound("click");
-                    setIsMobileMenuOpen(false);
-                  } else {
-                    toast.error("Please connect your wallet first.");
-                  }
-                }}
-                className="flex items-center gap-3 px-4 py-2 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-bold text-sm w-full text-left transition-colors"
-              >
-                <Share2 size={18} />
-                <span>Invite Friend</span>
-              </button>
-              <div className="flex items-center justify-between gap-2 border-t border-neutral-100 dark:border-neutral-800 pt-2 mt-1 px-2">
+              <MobileMenuItem
+                icon={<Share2 size={17} />}
+                label="Invite a Friend"
+                onClick={() => { copyInvite(); closeMenu(); }}
+              />
+
+              {/* Divider + toggles */}
+              <div className="flex items-center gap-2 pt-2 mt-1 border-t border-neutral-100 dark:border-neutral-800">
+                <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mr-auto">
+                  Preferences
+                </span>
                 <ThemeToggle />
                 <SoundMenu />
               </div>
@@ -184,5 +200,88 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
         onClose={() => setIsAccountModalOpen(false)}
       />
     </>
+  );
+}
+
+/* ── small helper components ── */
+
+function NavIconBtn({
+  href,
+  title,
+  children,
+}: {
+  href: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      title={title}
+      className="p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function NavBtn({
+  onClick,
+  title,
+  accent,
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  accent?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`p-2 rounded-xl transition-colors ${
+        accent
+          ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MobileMenuItem({
+  icon,
+  label,
+  href,
+  onClick,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  href?: string;
+  onClick?: () => void;
+  accent?: boolean;
+}) {
+  const cls = `flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-colors w-full text-left ${
+    accent
+      ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
+      : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
+  }`;
+
+  if (href) {
+    return (
+      <Link href={href} onClick={onClick} className={cls}>
+        {icon}
+        {label}
+      </Link>
+    );
+  }
+  return (
+    <button onClick={onClick} className={cls}>
+      {icon}
+      {label}
+    </button>
   );
 }
