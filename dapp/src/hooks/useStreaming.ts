@@ -3,9 +3,9 @@
 import {
   useAccount,
   useReadContract,
+  useWriteContract,
   usePublicClient,
 } from "wagmi";
-import { useSmartWrite } from "@/hooks/useSmartWrite";
 import {
   CFAv1ForwarderAbi,
   G_DOLLAR_CELO,
@@ -24,7 +24,7 @@ const TRUST_FUND_ADDRESS = UBI_POOL_ADDRESS_CELO;
 
 export function useStreaming() {
   const { address } = useAccount();
-  const { writeContractAsync } = useSmartWrite();
+  const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
 
   // Fetch current flow info

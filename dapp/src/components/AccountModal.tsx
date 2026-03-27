@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useBalance } from "wagmi";
+import {
+  useAccount,
+  useBalance,
+  useSendTransaction,
+  useWriteContract,
+} from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
-import { useSmartWrite } from "@/hooks/useSmartWrite";
-import { useSmartWallets } from "@privy-io/react-auth/smart-wallets";
 import {
   X,
   Copy,
@@ -54,9 +57,8 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
     token: GOOD_DOLLAR_ADDRESSES.CELO_MAINNET,
   });
 
-  const { writeContract, isPending: isGSPending, isEmbedded } = useSmartWrite();
-  const { client: smartClient } = useSmartWallets();
-  const [isCeloPending, setIsCeloPending] = useState(false);
+  const { sendTransaction, isPending: isCeloPending } = useSendTransaction();
+  const { writeContract, isPending: isGSPending } = useWriteContract();
 
   const handleSend = async () => {
     if (!recipient || !amount) {
@@ -66,21 +68,21 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
 
     try {
       if (selectedToken === "CELO") {
-        // Embedded wallet users shouldn't be sending gas out — block it
-        if (isEmbedded) {
-          toast.error("CELO is reserved for gas. Use G$ to transact.");
-          return;
-        }
-        setIsCeloPending(true);
-        await smartClient?.sendTransaction({
-          to: recipient as `0x${string}`,
-          value: parseEther(amount),
-        });
-        toast.success("Transaction sent!");
-        setView("overview");
-        setAmount("");
-        setRecipient("");
-        setIsCeloPending(false);
+        sendTransaction(
+          {
+            to: recipient as `0x${string}`,
+            value: parseEther(amount),
+          },
+          {
+            onSuccess: () => {
+              toast.success("Transaction sent!");
+              setView("overview");
+              setAmount("");
+              setRecipient("");
+            },
+            onError: (err) => toast.error(err.message),
+          },
+        );
       } else {
         writeContract(
           {
@@ -101,7 +103,6 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
         );
       }
     } catch (error: any) {
-      setIsCeloPending(false);
       toast.error(error.message);
     }
   };
@@ -321,7 +322,7 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                   {/* Back button is already in header, so we focus on form */}
                   <div className="space-y-4">
                     <div className="flex gap-2 p-1.5 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
-                      {(isEmbedded ? ["G$"] : ["CELO", "G$"]).map((t) => (
+                      {["CELO", "G$"].map((t) => (
                         <button
                           key={t}
                           onClick={() => setSelectedToken(t as any)}
