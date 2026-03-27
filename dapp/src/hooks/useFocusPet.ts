@@ -2,10 +2,10 @@
 
 import {
   useReadContracts,
-  useWriteContract,
   useWaitForTransactionReceipt,
   useAccount,
 } from "wagmi";
+import { useSmartWrite } from "@/hooks/useSmartWrite";
 import { FocusPetABI } from "@/config/abi";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -36,7 +36,7 @@ export function useFocusPet() {
     data: singleHash,
     isPending: isSinglePending,
     error: writeError,
-  } = useWriteContract();
+  } = useSmartWrite();
 
   const {
     isLoading: isConfirming,
@@ -532,7 +532,7 @@ export function useFocusPet() {
 
   // Write: Sync Impact
   const { writeContract: writeSyncImpact, isPending: isSyncImpactLoading } =
-    useWriteContract();
+    useSmartWrite();
 
   const handleSyncImpact = async () => {
     setLastAction("sync");
