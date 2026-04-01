@@ -75,6 +75,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta
+          name="talentapp:project_verification"
+          content="858dc14ac0b79bd7e4c08daf20d423ad06a7b12bf81ec6d1c71d98f4187f74f27684f57b35ba49e566b83f0123302c20e02b1fc3ecd0291277535a34cc8bf4d8"
+        ></meta>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
