@@ -22,6 +22,7 @@ import { useAudio } from "@/hooks/useAudio";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { AccountModal } from "./AccountModal";
+import { MiniPayAccountModal } from "./MiniPayAccountModal";
 import { NotificationBell } from "./NotificationBell";
 
 interface NavbarProps {
@@ -36,6 +37,7 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
   const isMiniPay = useIsMiniPay();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isMiniPayModalOpen, setIsMiniPayModalOpen] = useState(false);
 
   function closeMenu() {
     setIsMobileMenuOpen(false);
@@ -119,13 +121,27 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
               </div>
             )}
 
-            {/* Connect button — hidden in MiniPay */}
-            <PrivyConnectButton
-              onOpenAccount={() => {
-                setIsAccountModalOpen(true);
-                playSound("click");
-              }}
-            />
+            {/* Wallet button — address pill in MiniPay, Privy button otherwise */}
+            {isMiniPay ? (
+              address ? (
+                <button
+                  onClick={() => { setIsMiniPayModalOpen(true); playSound("click"); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-full font-bold text-xs hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors shadow-sm"
+                >
+                  <div className="w-3 h-3 rounded-full bg-linear-to-r from-indigo-500 to-purple-500 shadow-sm shrink-0" />
+                  <span className="font-mono">
+                    {address.slice(0, 4)}…{address.slice(-3)}
+                  </span>
+                </button>
+              ) : null
+            ) : (
+              <PrivyConnectButton
+                onOpenAccount={() => {
+                  setIsAccountModalOpen(true);
+                  playSound("click");
+                }}
+              />
+            )}
 
             {/* Hamburger — mobile only, hidden in MiniPay */}
             {!isMiniPay && (
@@ -204,6 +220,10 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
       <AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
+      />
+      <MiniPayAccountModal
+        isOpen={isMiniPayModalOpen}
+        onClose={() => setIsMiniPayModalOpen(false)}
       />
     </>
   );
