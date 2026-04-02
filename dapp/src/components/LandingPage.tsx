@@ -22,7 +22,7 @@ const FEATURES = [
   {
     icon: <Zap size={20} className="text-indigo-600 dark:text-indigo-400" />,
     title: "Focus Sessions",
-    desc: "Run a 25-minute deep work timer. Every completed session feeds your pet, earns XP, and moves you up the board.",
+    desc: "Pick 10, 25, or 45 minutes — or set your own. Every completed session feeds your pet, earns XP, and moves you up the board.",
   },
   {
     icon: <Coins size={20} className="text-emerald-600 dark:text-emerald-400" />,
@@ -45,7 +45,7 @@ const STEPS = [
   {
     num: "02",
     title: "Start a session",
-    desc: "Pick a task, hit start, commit to 25 minutes. No multitasking. Your pet is watching.",
+    desc: "Pick a task, choose your duration, and commit. No multitasking. Your pet is watching.",
   },
   {
     num: "03",
@@ -142,7 +142,7 @@ export function LandingPage() {
               </h1>
 
               <p className="text-lg sm:text-xl text-neutral-500 dark:text-neutral-400 mb-10 max-w-xl mx-auto leading-relaxed">
-                FocusPet rewards every 25-minute session with XP and{" "}
+                FocusPet rewards every completed session with XP and{" "}
                 <strong className="text-neutral-700 dark:text-neutral-200">GoodDollar (G$)</strong>
                 {" "}— daily crypto earned on Celo. The more you focus, the more your pet evolves.
               </p>
