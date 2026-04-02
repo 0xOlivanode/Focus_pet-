@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import Link from "next/link";
 import { useAccount } from "wagmi";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Copy, Check } from "lucide-react";
 import toast from "react-hot-toast";
@@ -122,8 +123,15 @@ const LeaderboardRow = ({
 };
 
 export default function LeaderboardPage() {
-  const { address: userAddress } = useAccount();
+  const { address: userAddress, isConnected } = useAccount();
   const { leaderboard, userEntry, isLoading } = useLeaderboard();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isConnected) {
+      router.replace("/");
+    }
+  }, [isConnected, router]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 

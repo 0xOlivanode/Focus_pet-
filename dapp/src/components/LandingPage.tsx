@@ -1,246 +1,338 @@
 "use client";
 
-
-import { ArrowRight, Clock, Trophy, Heart } from "lucide-react";
+import { ArrowRight, Zap, Trophy, Coins } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { ThemeToggle } from "./ThemeToggle";
-import { PrivyConnectButton } from "./PrivyConnectButton";
-import { AccountModal } from "./AccountModal";
+import { useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
+import { ThemeToggle } from "./ThemeToggle";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
 
-import toast from "react-hot-toast";
+const STAGES = [
+  { emoji: "🥚", name: "Egg",   threshold: "Start"   },
+  { emoji: "🐣", name: "Baby",  threshold: "1 hr"    },
+  { emoji: "🦖", name: "Teen",  threshold: "31 hrs"  },
+  { emoji: "🐉", name: "Adult", threshold: "100 hrs" },
+  { emoji: "👑", name: "Elder", threshold: "250 hrs" },
+];
+
+const FEATURES = [
+  {
+    icon: <Zap size={20} className="text-indigo-600 dark:text-indigo-400" />,
+    title: "Focus Sessions",
+    desc: "Run a 25-minute deep work timer. Every completed session feeds your pet, earns XP, and moves you up the board.",
+  },
+  {
+    icon: <Coins size={20} className="text-emerald-600 dark:text-emerald-400" />,
+    title: "Earn G$ Daily",
+    desc: "Verified humans earn GoodDollar (G$) every day — real crypto UBI on Celo. Your focus sessions supercharge the flow.",
+  },
+  {
+    icon: <Trophy size={20} className="text-yellow-500" />,
+    title: "Compete Globally",
+    desc: "Your pet's evolution is public proof of your discipline. Climb the leaderboard against focusers worldwide.",
+  },
+];
+
+const STEPS = [
+  {
+    num: "01",
+    title: "Connect your wallet",
+    desc: "Sign in with email or any Celo wallet. MiniPay users connect automatically — no extra steps.",
+  },
+  {
+    num: "02",
+    title: "Start a session",
+    desc: "Pick a task, hit start, commit to 25 minutes. No multitasking. Your pet is watching.",
+  },
+  {
+    num: "03",
+    title: "Watch it grow",
+    desc: "Each session earns XP and G$. Keep showing up and your egg hatches, evolves, and eventually becomes a legend.",
+  },
+];
 
 export function LandingPage() {
   const { isConnected, address } = useAccount();
-  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  } as const;
+  const { login } = usePrivy();
+  const { totalUsers, isLoading: leaderboardLoading } = useLeaderboard();
+  const router = useRouter();
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { type: "spring", stiffness: 100 },
-    },
-  } as const;
+  // If user connects while on this page → take them straight to the app
+  const wasConnected = useRef(isConnected);
+  useEffect(() => {
+    if (!wasConnected.current && isConnected) {
+      router.replace("/app");
+    }
+    wasConnected.current = isConnected;
+  }, [isConnected, router]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-sans selection:bg-indigo-500/30 overflow-x-hidden">
-      {/* Header */}
-      <header className="fixed top-0 w-full z-50 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-900">
-        <div className="px-4 sm:px-8 md:px-12 lg:px-20 mx-auto h-16 flex items-center justify-between w-full max-w-[1400px]">
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <img
-              src="/focus-pet-logo.jpeg"
-              alt="FocusPet Logo"
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shadow-sm"
-            />
-            <h1 className="font-bold text-lg sm:text-xl tracking-tight">
-              FocusPet
-            </h1>
+    <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white selection:bg-indigo-500/30 overflow-x-hidden">
+
+      {/* ── Nav ─────────────────────────────────────────── */}
+      <header className="fixed top-0 w-full z-50 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-100 dark:border-neutral-900">
+        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src="/focus-pet-logo.jpeg" alt="FocusPet" className="w-8 h-8 rounded-full shadow-sm" />
+            <span className="font-black text-base tracking-tight">FocusPet</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="relative group">
-              {/* <div className="absolute -inset-1 bg-linear-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div> */}
-              <div className="relative bg-white dark:bg-black rounded-xl p-1">
-                <PrivyConnectButton onOpenAccount={() => setIsAccountModalOpen(true)} />
-              </div>
-            </div>
             <ThemeToggle />
+            {isConnected ? (
+              <Link
+                href="/app"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors"
+              >
+                Go to App
+                <ArrowRight size={14} />
+              </Link>
+            ) : (
+              <button
+                onClick={login}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors"
+              >
+                Get Started
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main className="pt-32 pb-20 px-6">
+      {/* ── Hero ────────────────────────────────────────── */}
+      <section className="pt-40 pb-24 px-5 text-center">
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="max-w-4xl mx-auto text-center relative"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="max-w-3xl mx-auto"
         >
-          {/* Floating Emojis Background */}
-          <motion.div
-            animate={{ y: [0, -20, 0] }}
-            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-            className="absolute -top-10 left-10 text-6xl opacity-20 pointer-events-none hidden md:block"
-          >
-            🦕
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, 20, 0] }}
-            transition={{
-              repeat: Infinity,
-              duration: 5,
-              ease: "easeInOut",
-              delay: 1,
-            }}
-            className="absolute top-20 right-10 text-6xl opacity-20 pointer-events-none hidden md:block"
-          >
-            🥚
-          </motion.div>
+          {isConnected ? (
+            /* ── Connected state ── */
+            <div className="flex flex-col items-center gap-6">
+              <div className="text-6xl">🥚</div>
+              <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
+                Welcome back.
+              </h1>
+              <p className="text-neutral-500 dark:text-neutral-400 max-w-sm">
+                Your pet missed you. Head back to the app and keep the streak going.
+              </p>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="font-mono text-sm text-neutral-500 dark:text-neutral-400">
+                  {address?.slice(0, 6)}...{address?.slice(-4)}
+                </span>
+              </div>
+              <Link
+                href="/app"
+                className="group flex items-center gap-2 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base transition-all shadow-lg shadow-indigo-500/20"
+              >
+                Back to App
+                <ArrowRight size={17} className="group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+          ) : (
+            /* ── Default hero ── */
+            <>
+              <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.05] mb-6">
+                Raise a pet by <br className="hidden sm:block" />
+                doing the work.
+              </h1>
 
-          <motion.div variants={itemVariants} className="mb-6 inline-block">
-            <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-              Live on Celo Mainnet
-            </span>
-          </motion.div>
+              <p className="text-lg sm:text-xl text-neutral-500 dark:text-neutral-400 mb-10 max-w-xl mx-auto leading-relaxed">
+                FocusPet rewards every 25-minute session with XP and{" "}
+                <strong className="text-neutral-700 dark:text-neutral-200">GoodDollar (G$)</strong>
+                {" "}— daily crypto earned on Celo. The more you focus, the more your pet evolves.
+              </p>
 
-          <motion.h1
-            variants={itemVariants}
-            className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-linear-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400"
-          >
-            Turn Your Focus <br /> Into A Pet.
-          </motion.h1>
-
-          <motion.p
-            variants={itemVariants}
-            className="text-lg md:text-xl text-neutral-600 dark:text-neutral-400 mb-10 max-w-2xl mx-auto leading-relaxed"
-          >
-            A gamified productivity companion that rewards your deep work
-            sessions with <strong>XP & GoodDollar (G$)</strong>. Stay focused,
-            hatch your pet, and climb the global leaderboard.
-          </motion.p>
-
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
-            {isConnected && (
-              <>
-                <Link
-                  href="/app"
-                  className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-all active:scale-95"
-                >
-                  Enter App
-                  <ArrowRight
-                    size={18}
-                    className="group-hover:translate-x-1 transition-transform"
-                  />
-                </Link>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
                 <button
-                  onClick={() => {
-                    const link = `${window.location.origin}/?ref=${address}`;
-                    navigator.clipboard.writeText(link);
-                    toast.success("Referral link copied to clipboard!");
-                  }}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all border border-indigo-200 dark:border-indigo-800 active:scale-95"
+                  onClick={login}
+                  className="group flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
                 >
-                  Copy Invite Link
+                  Start for Free
+                  <ArrowRight size={17} className="group-hover:translate-x-0.5 transition-transform" />
                 </button>
-              </>
-            )}
-          </motion.div>
-        </motion.div>
+              </div>
 
-        {/* Features Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="max-w-5xl mx-auto mt-32 grid md:grid-cols-3 gap-8"
-        >
-          <FeatureCard
-            icon={<Clock className="text-indigo-500" size={32} />}
-            title="Focus to Earn"
-            description="Start a 25-minute timer. Complete it to feed your pet and earn XP."
-          />
-          <FeatureCard
-            icon={<Heart className="text-red-500" size={32} />}
-            title="Raise Your Pet"
-            description="Your pet evolves from an Egg to a Dragon as you build consistent habits."
-          />
-          <FeatureCard
-            icon={<Trophy className="text-yellow-500" size={32} />}
-            title="Compete & Win"
-            description="Climb the weekly leaderboard and earn GoodDollar (G$) rewards."
-          />
+              {/* Pet evolution strip */}
+              <div className="relative flex items-end justify-center">
+                <div className="absolute top-7 left-1/2 -translate-x-1/2 w-[72%] h-px bg-neutral-100 dark:bg-neutral-800" />
+                {STAGES.map((s, i) => (
+                  <motion.div
+                    key={s.name}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 + i * 0.07 }}
+                    className="relative flex flex-col items-center gap-2 px-3 sm:px-5"
+                  >
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl z-10
+                      ${i === 0
+                        ? "bg-white dark:bg-neutral-900 border-2 border-indigo-200 dark:border-indigo-800 shadow-sm"
+                        : "bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800"
+                      }`}
+                    >
+                      {s.emoji}
+                    </div>
+                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">{s.name}</span>
+                    <span className="text-[9px] font-medium text-neutral-300 dark:text-neutral-600">{s.threshold}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          )}
         </motion.div>
+      </section>
 
-        {/* How it Works / Steps */}
-        <div className="mt-32 max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-16">How it Works</h2>
-          <div className="space-y-12">
-            <Step
-              num={1}
-              title="Connect & Mint"
-              desc="Connect your Celo wallet to receive your unique Soulbound Pet Egg."
+      {/* ── Stats bar ───────────────────────────────────── */}
+      {!isConnected && (
+        <section className="bg-neutral-950 dark:bg-neutral-900 border-y border-neutral-900">
+          <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-5 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
+            <Stat
+              value={leaderboardLoading ? "—" : `${totalUsers.toLocaleString()}+`}
+              label="Focusers"
             />
-            <Step
-              num={2}
-              title="Start a Session"
-              desc="Choose a focus task and start the timer. No distractions allowed!"
-            />
-            <Step
-              num={3}
-              title="Claim Rewards"
-              desc="Sign your session to verify it, grow your pet, and earn tokens."
-            />
+            <div className="w-px h-6 bg-neutral-800 hidden sm:block" />
+            <Stat value="Celo Mainnet" label="Network" />
+            <div className="w-px h-6 bg-neutral-800 hidden sm:block" />
+            <Stat value="GoodDollar" label="Daily Reward" />
+            <div className="w-px h-6 bg-neutral-800 hidden sm:block" />
+            <Stat value="MiniPay" label="Mini App" />
           </div>
-        </div>
-      </main>
+        </section>
+      )}
 
-      <footer className="py-8 text-center text-sm text-neutral-500 border-t border-neutral-100 dark:border-neutral-900">
-        <p>Built with ❤️ on Celo • Powered by GoodDollar</p>
+      {/* ── Features ────────────────────────────────────── */}
+      {!isConnected && (
+        <section className="py-24 px-5">
+          <div className="max-w-[1200px] mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.45 }}
+              className="text-center mb-14"
+            >
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-3">
+                Why FocusPet?
+              </h2>
+              <p className="text-neutral-500 dark:text-neutral-400 max-w-md mx-auto text-sm sm:text-base">
+                Productivity apps fail because they give you nothing to come back for. FocusPet fixes that.
+              </p>
+            </motion.div>
+
+            <div className="grid sm:grid-cols-3 gap-5">
+              {FEATURES.map((f, i) => (
+                <motion.div
+                  key={f.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 hover:border-indigo-200 dark:hover:border-indigo-800/50 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-white dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 flex items-center justify-center mb-5 shadow-sm">
+                    {f.icon}
+                  </div>
+                  <h3 className="font-black text-base mb-2">{f.title}</h3>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">{f.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── How it works ────────────────────────────────── */}
+      {!isConnected && (
+        <section className="py-24 px-5 bg-neutral-50/60 dark:bg-neutral-900/40 border-y border-neutral-100 dark:border-neutral-800/50">
+          <div className="max-w-[680px] mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.45 }}
+              className="text-center mb-14"
+            >
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight">
+                Three steps to your first XP
+              </h2>
+            </motion.div>
+
+            <div className="space-y-5">
+              {STEPS.map((s, i) => (
+                <motion.div
+                  key={s.num}
+                  initial={{ opacity: 0, x: -16 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="flex items-start gap-5 p-5 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800"
+                >
+                  <span className="shrink-0 font-black text-2xl text-neutral-200 dark:text-neutral-700 tabular-nums leading-none pt-0.5">
+                    {s.num}
+                  </span>
+                  <div>
+                    <h3 className="font-black text-base mb-1">{s.title}</h3>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">{s.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Final CTA ───────────────────────────────────── */}
+      {!isConnected && (
+        <section className="py-28 px-5 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.45 }}
+            className="max-w-xl mx-auto"
+          >
+            <div className="text-5xl mb-6">🥚</div>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+              Your pet is waiting to hatch.
+            </h2>
+            <p className="text-neutral-500 dark:text-neutral-400 mb-8 leading-relaxed">
+              Every minute you focus, your egg is growing. What are you waiting for?
+            </p>
+            <button
+              onClick={login}
+              className="group inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+            >
+              Hatch Your Pet
+              <ArrowRight size={17} className="group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </motion.div>
+        </section>
+      )}
+
+      {/* ── Footer ──────────────────────────────────────── */}
+      <footer className="border-t border-neutral-100 dark:border-neutral-800/50 py-8 px-5">
+        <div className="max-w-[1200px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <img src="/focus-pet-logo.jpeg" alt="FocusPet" className="w-6 h-6 rounded-full" />
+            <span className="font-black text-sm text-neutral-500">FocusPet</span>
+          </div>
+          <p className="text-xs text-neutral-400">Built on Celo · Powered by GoodDollar</p>
+        </div>
       </footer>
 
-      <AccountModal 
-        isOpen={isAccountModalOpen} 
-        onClose={() => setIsAccountModalOpen(false)} 
-      />
     </div>
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
+function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 hover:border-indigo-500/30 transition-colors">
-      <div className="mb-4">{icon}</div>
-      <h3 className="font-bold text-lg mb-2">{title}</h3>
-      <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
-        {description}
-      </p>
-    </div>
-  );
-}
-
-function Step({
-  num,
-  title,
-  desc,
-}: {
-  num: number;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <div className="flex items-start gap-4 md:gap-6">
-      <div className="shrink-0 w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-lg">
-        {num}
-      </div>
-      <div>
-        <h3 className="font-bold text-xl mb-1">{title}</h3>
-        <p className="text-neutral-600 dark:text-neutral-400">{desc}</p>
-      </div>
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="font-black text-base text-white">{value}</span>
+      <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">{label}</span>
     </div>
   );
 }
