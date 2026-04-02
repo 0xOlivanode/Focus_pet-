@@ -66,19 +66,13 @@ export function useFocusPet() {
   useEffect(() => {
     if (writeError) {
       console.error("Contract Write Error:", writeError);
-
-      // Check for specific cryptic errors
-      if (
-        writeError.message?.includes("gasLimit") ||
-        writeError.message?.includes("null")
-      ) {
-        console.warn(
-          "Possible gas estimation failure. Ensure you have CELO for gas fees and that your pet is initialized.",
-        );
-      }
-
-      if (writeError.message?.includes("insufficient funds")) {
-        console.warn("Insufficient CELO for gas fees.");
+      // Use error name/code — not message text (fragile across providers)
+      const name = (writeError as any)?.name ?? "";
+      const code = (writeError as any)?.code ?? 0;
+      if (name === "EstimateGasExecutionError" || code === -32000) {
+        console.warn("Gas estimation failed — pet may not be initialized or stablecoin balance too low.");
+      } else if (name === "InsufficientFundsError" || code === -32603) {
+        console.warn("Insufficient funds for network fee.");
       }
     }
   }, [writeError, receiptError]);

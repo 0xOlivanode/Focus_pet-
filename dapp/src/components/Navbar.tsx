@@ -44,14 +44,19 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
   }
 
   function copyInvite() {
-    if (address) {
-      const link = `${window.location.origin}/?ref=${address}`;
-      navigator.clipboard.writeText(link);
-      toast.success("Invite link copied!");
-      playSound("click");
-    } else {
+    if (!address) {
       toast.error("Connect your wallet first.");
+      return;
     }
+    // In MiniPay: use the native share sheet — it's a full invite flow
+    if (isMiniPay) {
+      window.location.href = "https://link.minipay.xyz/invite_friends";
+      return;
+    }
+    const link = `${window.location.origin}/?ref=${address}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Invite link copied!");
+    playSound("click");
   }
 
   return (
