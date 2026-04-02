@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
+import { useIsMiniPay } from "@/hooks/useMiniPay";
 import {
   HelpCircle,
   User,
@@ -32,6 +33,7 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
   const { address } = useAccount();
   const { streak } = useFocusPet();
   const { playSound } = useAudio();
+  const isMiniPay = useIsMiniPay();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
@@ -97,9 +99,9 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
                   </span>
                 </button>
               )}
-              <NotificationBell />
-              <ThemeToggle />
-              <SoundMenu />
+              {!isMiniPay && <NotificationBell />}
+              {!isMiniPay && <ThemeToggle />}
+              {!isMiniPay && <SoundMenu />}
               {onOpenProfile && (
                 <NavBtn onClick={() => { onOpenProfile(); playSound("click"); }} title="Edit Profile">
                   <User size={17} />
@@ -110,12 +112,14 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
               </NavBtn>
             </div>
 
-            {/* Mobile — notification bell always visible */}
-            <div className="sm:hidden">
-              <NotificationBell />
-            </div>
+            {/* Mobile — notification bell only outside MiniPay */}
+            {!isMiniPay && (
+              <div className="sm:hidden">
+                <NotificationBell />
+              </div>
+            )}
 
-            {/* Connect button — always visible */}
+            {/* Connect button — hidden in MiniPay */}
             <PrivyConnectButton
               onOpenAccount={() => {
                 setIsAccountModalOpen(true);
@@ -123,16 +127,18 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
               }}
             />
 
-            {/* Hamburger — mobile only */}
-            <button
-              onClick={() => setIsMobileMenuOpen((v) => !v)}
-              className="sm:hidden p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-              aria-label="Menu"
-            >
-              {isMobileMenuOpen
-                ? <X key="close" size={18} />
-                : <Menu key="open" size={18} />}
-            </button>
+            {/* Hamburger — mobile only, hidden in MiniPay */}
+            {!isMiniPay && (
+              <button
+                onClick={() => setIsMobileMenuOpen((v) => !v)}
+                className="sm:hidden p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                aria-label="Menu"
+              >
+                {isMobileMenuOpen
+                  ? <X key="close" size={18} />
+                  : <Menu key="open" size={18} />}
+              </button>
+            )}
           </div>
         </div>
 

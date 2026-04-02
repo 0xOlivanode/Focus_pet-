@@ -5,8 +5,6 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import Link from "next/link";
 import { useAccount } from "wagmi";
-import { formatEther } from "viem";
-import { calculateMonthlyAmount } from "@/lib/superfluid";
 import { Navbar } from "@/components/Navbar";
 import { Copy, Check } from "lucide-react";
 import toast from "react-hot-toast";
@@ -48,21 +46,6 @@ const LeaderboardRow = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const getFlowBadge = (rate?: bigint) => {
-    if (!rate || rate === 0n) return null;
-    const monthlyAmount = Number(formatEther(calculateMonthlyAmount(rate)));
-    if (monthlyAmount >= 90)
-      return { class: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" };
-    if (monthlyAmount >= 45)
-      return { class: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20" };
-    if (monthlyAmount >= 9)
-      return {
-        class: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-      };
-    return null;
-  };
-
-  const flowBadge = getFlowBadge(flowRate);
 
   return (
     <tr
@@ -103,16 +86,6 @@ const LeaderboardRow = ({
                   <Copy size={10} />
                 )}
               </button>
-              {entry.flowRate !== undefined &&
-                entry.flowRate > 0n &&
-                flowBadge && (
-                  <span
-                    title="Supercharged"
-                    className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border ${flowBadge.class}`}
-                  >
-                    Supercharged
-                  </span>
-                )}
               {userAddress &&
                 entry.address.toLowerCase() === userAddress.toLowerCase() && (
                   <span className="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">
@@ -182,18 +155,9 @@ export default function LeaderboardPage() {
             >
               ← Back to App
             </Link>
-            <div className="flex items-center gap-3">
-              <h1 className="text-[24px] lg:text-3xl font-black text-neutral-900 dark:text-white">
-                The <span className="text-indigo-600">Hall of Fame</span>
-              </h1>
-              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                </span>
-                Live
-              </span>
-            </div>
+            <h1 className="text-[24px] lg:text-3xl font-black text-neutral-900 dark:text-white">
+              The <span className="text-indigo-600">Hall of Fame</span>
+            </h1>
           </div>
 
           <div className="relative w-full md:w-72">
@@ -226,12 +190,6 @@ export default function LeaderboardPage() {
                     #{userEntry.rank}
                   </span>
                   <span className="font-bold">You</span>
-                  {userEntry.flowRate !== undefined &&
-                    userEntry.flowRate > 0n && (
-                      <span className="text-[8px] bg-white text-indigo-600 px-1.5 py-0.5 rounded-full font-black uppercase">
-                        Supercharged ⚡
-                      </span>
-                    )}
                 </div>
                 <div className="flex items-center gap-2 text-indigo-100 text-xs font-medium">
                   <span>{userEntry.xp.toLocaleString()} XP</span>

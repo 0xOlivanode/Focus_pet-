@@ -15,6 +15,14 @@ import { formatEther, erc20Abi } from "viem";
 
 export function useFocusPet() {
   const { address } = useAccount();
+
+  // MiniPay only accepts legacy (non-EIP-1559) transactions
+  const [isMiniPay, setIsMiniPay] = useState(false);
+  useEffect(() => {
+    setIsMiniPay(!!(window.ethereum as any)?.isMiniPay);
+  }, []);
+  const txOverrides = isMiniPay ? ({ type: "legacy" } as const) : {};
+
   const [isSigning, setIsSigning] = useState(false);
   const [lastAction, setLastAction] = useState<
     "focus" | "shop" | "profile" | "sync" | null
@@ -190,6 +198,7 @@ export function useFocusPet() {
       setPendingItem({ id: itemId, price });
     }
     writeContract({
+      ...txOverrides,
       address: G_DOLLAR_ADDRESS,
       abi: erc20Abi,
       functionName: "approve",
@@ -223,6 +232,7 @@ export function useFocusPet() {
         setPendingItem({ id: itemId, price, functionName, args });
       }
       writeContract({
+        ...txOverrides,
         address: G_DOLLAR_ADDRESS,
         abi: erc20Abi,
         functionName: "approve",
@@ -231,6 +241,7 @@ export function useFocusPet() {
     } else {
       toast.dismiss("unlocking");
       writeContract({
+        ...txOverrides,
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: functionName as any,
@@ -251,6 +262,7 @@ export function useFocusPet() {
   const toggleCosmetic = (id: string) => {
     setLastAction("shop");
     writeContract({
+      ...txOverrides,
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
       functionName: "toggleCosmetic",
@@ -267,6 +279,7 @@ export function useFocusPet() {
     }
     setLastAction("profile");
     writeContract({
+      ...txOverrides,
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
       functionName: "setNames",
@@ -278,6 +291,7 @@ export function useFocusPet() {
   const deleteUser = () => {
     setLastAction("profile");
     writeContract({
+      ...txOverrides,
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
       functionName: "deleteUser",
@@ -298,6 +312,7 @@ export function useFocusPet() {
       // Send Transaction
       writeContract(
         {
+          ...txOverrides,
           address: CONTRACT_ADDRESS,
           abi: FocusPetABI,
           functionName: "focusSession",
@@ -326,6 +341,7 @@ export function useFocusPet() {
 
         if (item.functionName) {
           writeContract({
+            ...txOverrides,
             address: CONTRACT_ADDRESS,
             abi: FocusPetABI,
             functionName: item.functionName as any,

@@ -27,6 +27,11 @@ export function PrivyConnectButton({ onOpenAccount }: PrivyConnectButtonProps) {
     );
   }
 
+  // Inside MiniPay the wallet is injected automatically — no connect UI needed
+  if ((window.ethereum as any)?.isMiniPay) {
+    return null;
+  }
+
   if (authenticated) {
     return (
       <button

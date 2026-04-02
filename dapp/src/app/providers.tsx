@@ -5,7 +5,8 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAccount, fallback, http } from "wagmi";
+import { useAccount, useConnect, fallback, http } from "wagmi";
+import { injected } from "wagmi/connectors";
 
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider, createConfig } from "@privy-io/wagmi";
@@ -14,10 +15,22 @@ import { celo } from "wagmi/chains";
 import { AudioProvider } from "@/hooks/useAudio";
 import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
 
+// React Query uses JSON.stringify internally to hash query/mutation keys.
+// Transaction receipts and contract args contain BigInt (blockNumber, gasUsed, etc.).
+// @privy-io/wagmi's createConfig does NOT apply wagmi's BigInt-safe query key hasher,
+// so we patch BigInt.prototype.toJSON — the approach recommended by both wagmi v2 and
+// React Query docs for this exact scenario.
+if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
+  (BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+  };
+}
+
 const privyAppId = "cmmw8pr3l00lr0cjp282x5v3l";
 
 export const wagmiConfig = createConfig({
   chains: [celo],
+  connectors: [injected()],
   transports: {
     [celo.id]: fallback([
       http("https://rpc.ankr.com/celo"),
@@ -53,6 +66,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
           <ThemeProvider attribute="class" defaultTheme="light">
+            <MiniPayConnector />
             <GasStationTrigger />
             <AudioProvider>{children}</AudioProvider>
             <IOSInstallPrompt />
@@ -64,10 +78,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
+function MiniPayConnector() {
+  const { connect } = useConnect();
+  const { isConnected } = useAccount();
+
+  React.useEffect(() => {
+    if ((window.ethereum as any)?.isMiniPay && !isConnected) {
+      connect({ connector: injected({ target: "metaMask" }) });
+    }
+  }, []);
+
+  return null;
+}
+
 function GasStationTrigger() {
   const { address, isConnected } = useAccount();
 
   React.useEffect(() => {
+    // MiniPay users pay gas in USDm — skip the CELO faucet
+    if ((window.ethereum as any)?.isMiniPay) return;
+
     // Invisible Faucet: Automatically drop gas to new users
     if (isConnected && address) {
       fetch("/api/faucet", {

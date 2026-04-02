@@ -3,13 +3,22 @@ import { useAccount } from "wagmi";
 import { SocialShare } from "./SocialShare";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import { VerifiedBadge } from "./VerifiedBadge";
-import { calculateMonthlyAmount } from "@/lib/superfluid";
-import { formatEther } from "viem";
-import { Tooltip } from "./Tooltip";
 import Link from "next/link";
 import { Copy, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { useState } from "react";
+
+function formatXP(xp: number): string {
+  if (xp >= 1_000_000) {
+    const val = xp / 1_000_000;
+    return `${parseFloat(val.toFixed(2))}M`;
+  }
+  if (xp >= 1_000) {
+    const val = xp / 1_000;
+    return `${parseFloat(val.toFixed(1))}K`;
+  }
+  return xp.toString();
+}
 
 export function Leaderboard() {
   const { address } = useAccount();
@@ -31,159 +40,125 @@ export function Leaderboard() {
     setTimeout(() => setCopiedAddress(null), 2000);
   };
 
-  const getAvatar = (xp: number) => {
-    return getPetEmoji(getPetStage(xp));
-  };
+  const getAvatar = (xp: number) => getPetEmoji(getPetStage(xp));
 
-  const formatAddress = (addr: string) => {
-    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
-  };
+  const formatAddress = (addr: string) =>
+    `@${addr.substring(0, 4)}...${addr.substring(addr.length - 3)}`;
 
-  const getFlowBadge = (flowRate?: bigint) => {
-    if (!flowRate || flowRate === 0n) return null;
-    const monthlyAmount = Number(formatEther(calculateMonthlyAmount(flowRate)));
-
-    if (monthlyAmount >= 90)
-      return {
-        icon: "🔥",
-        label: "Overdrive (1.7x XP Boost)",
-        class: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
-      };
-    if (monthlyAmount >= 45)
-      return {
-        icon: "⚡️",
-        label: "Surge (1.4x XP Boost)",
-        class: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
-      };
-    if (monthlyAmount >= 9)
-      return {
-        icon: "🌱",
-        label: "Seed (1.2x XP Boost)",
-        class: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-      };
-    return null;
-  };
 
   return (
-    <div className="w-full mt-8 bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-neutral-100 dark:border-neutral-800 shadow-sm">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <span className="text-xl md:text-2xl">🏆</span>
-          <div className="flex flex-col">
-            <h2 className="font-bold text-lg md:text-lg">Top Focusers</h2>
-            {!isLoading && totalUsers > 0 && (
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">
-                Join {totalUsers.toLocaleString()} players in the arena
-              </p>
-            )}
-          </div>
+    <div className="w-full mt-8 bg-white dark:bg-neutral-900 rounded-2xl p-4 md:p-6 border border-neutral-100 dark:border-neutral-800 shadow-sm">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 mb-5">
+        <span className="text-xl">🏆</span>
+        <div>
+          <h2 className="font-black text-base leading-tight">Top Focusers</h2>
+          {!isLoading && totalUsers > 0 && (
+            <p className="text-[10px] text-neutral-400 font-semibold uppercase tracking-widest mt-0.5">
+              {totalUsers.toLocaleString()} players in the arena
+            </p>
+          )}
         </div>
-        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-500">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
-          Live
-        </span>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-1.5">
         {isLoading && (
-          <div className="text-center py-8 text-neutral-500 animate-pulse">
+          <div className="text-center py-8 text-neutral-400 text-sm animate-pulse">
             Loading leaderboard...
           </div>
         )}
 
         {!isLoading && topTen.length === 0 && (
-          <div className="text-center py-8 text-neutral-500">
-            No focus sessions recorded yet. Be the first!
+          <div className="text-center py-8 text-neutral-400 text-sm">
+            No sessions yet. Be first.
           </div>
         )}
 
-        {topTen.map((entry) => (
-          <div
-            key={entry.rank}
-            className={`flex items-center justify-between p-2 md:p-3 rounded-xl ${"bg-neutral-50 dark:bg-neutral-800/50"}`}
-          >
-            <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+        {topTen.map((entry) => {
+          const isMe = address && entry.address.toLowerCase() === address.toLowerCase();
+          const focusHrs = entry.totalFocusTime && entry.totalFocusTime >= 3600
+            ? `${(entry.totalFocusTime / 3600).toFixed(1)}h`
+            : `${((entry.totalFocusTime || 0) / 60).toFixed(0)}m`;
+          const streak = entry.streak || 0;
+
+          return (
+            <div
+              key={entry.rank}
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors ${
+                isMe
+                  ? "bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30"
+                  : "bg-neutral-50 dark:bg-neutral-800/40"
+              }`}
+            >
+              {/* Rank */}
               <span
-                className={`w-5 md:w-6 text-center font-bold text-xs md:text-sm ${
+                className={`w-5 shrink-0 text-center font-black text-xs ${
                   entry.rank <= 3 ? "text-yellow-500" : "text-neutral-400"
                 }`}
               >
-                #{entry.rank}
+                {entry.rank <= 3 ? ["🥇","🥈","🥉"][entry.rank - 1] : `#${entry.rank}`}
               </span>
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center text-base md:text-lg shrink-0 relative">
+
+              {/* Avatar */}
+              <div className="w-8 h-8 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center text-sm shrink-0">
                 {getAvatar(entry.xp)}
-                {getFlowBadge(entry.flowRate) && (
-                  <div className="absolute -bottom-1 -right-1 text-[10px] bg-white dark:bg-neutral-900 rounded-full w-4 h-4 flex items-center justify-center shadow-xs border border-neutral-100 dark:border-neutral-800">
-                    {getFlowBadge(entry.flowRate)?.icon}
-                  </div>
-                )}
               </div>
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-1.5 md:gap-2">
-                    <span className="font-bold text-xs md:text-sm truncate max-w-[80px] md:max-w-none">
-                      {entry.username
-                        ? `@${entry.username}`
-                        : formatAddress(entry.address)}
+
+              {/* Name + meta */}
+              <div className="flex flex-col min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-bold text-xs truncate">
+                    {entry.username ? `@${entry.username}` : formatAddress(entry.address)}
+                  </span>
+                  <button
+                    onClick={() => handleCopy(entry.address)}
+                    className="text-neutral-300 hover:text-indigo-500 transition-colors shrink-0"
+                  >
+                    {copiedAddress === entry.address
+                      ? <Check size={9} className="text-emerald-500" />
+                      : <Copy size={9} />}
+                  </button>
+                  {entry.isVerified && <VerifiedBadge size={11} />}
+                  {isMe && (
+                    <span className="text-[8px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tight shrink-0">
+                      YOU
                     </span>
-                    <button
-                      onClick={() => handleCopy(entry.address)}
-                      className="text-neutral-400 hover:text-indigo-500 transition-colors p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                    >
-                      {copiedAddress === entry.address ? (
-                        <Check size={10} className="text-emerald-500" />
-                      ) : (
-                        <Copy size={10} />
-                      )}
-                    </button>
-                  {entry.isVerified && <VerifiedBadge size={12} />}
-                  {getFlowBadge(entry.flowRate) && (
-                    <Tooltip content={getFlowBadge(entry.flowRate)?.label}>
-                      <span
-                        className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border ${getFlowBadge(entry.flowRate)?.class}`}
-                      >
-                        Supercharged
-                      </span>
-                    </Tooltip>
                   )}
-                  {address &&
-                    entry.address.toLowerCase() === address.toLowerCase() && (
-                      <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                        <span className="text-[8px] md:text-[10px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter shadow-sm border border-indigo-200/50 dark:border-indigo-800/50">
-                          YOU
-                        </span>
-                        <SocialShare
-                          text={`I'm ranked #${entry.rank} on the @FocusPet leaderboard! 🏆 Can you beat me? #FocusPet #Celo`}
-                          url={`https://focus-pet.xyz/share/${entry.address}`}
-                        />
-                      </div>
-                    )}
                 </div>
-                <span className="text-[9px] md:text-[10px] text-neutral-500 font-medium">
-                  {entry.totalFocusTime && entry.totalFocusTime >= 3600
-                    ? `${(entry.totalFocusTime / 3600).toFixed(1)} hrs`
-                    : `${((entry.totalFocusTime || 0) / 60).toFixed(1)} mins`}{" "}
-                  focus record
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] text-neutral-400 font-medium">
+                    {focusHrs} focused
+                  </span>
+                  {streak > 0 && (
+                    <>
+                      <span className="text-neutral-300 dark:text-neutral-600">·</span>
+                      <span className="text-[10px] font-bold text-amber-500">
+                        🔥 {streak}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* XP */}
+              <div className="shrink-0 text-right">
+                <span className="font-black text-sm text-indigo-600 dark:text-indigo-400 tabular-nums">
+                  {formatXP(entry.xp)}
+                </span>
+                <span className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider">
+                  XP
                 </span>
               </div>
             </div>
-
-            <div className="text-right shrink-0 ml-2">
-              <span className="block font-mono font-black text-indigo-600 dark:text-indigo-400 text-xs md:text-sm whitespace-nowrap">
-                {entry.xp} XP
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {!isLoading && topTen.length > 0 && (
           <Link
             href="/leaderboard"
-            className="block w-full text-center py-3 text-sm font-bold text-neutral-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors bg-neutral-50 dark:bg-neutral-800/30 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-700 mt-2"
+            className="block w-full text-center py-3 text-xs font-bold text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors mt-1"
           >
-            View Full Leaderboard
+            Full leaderboard →
           </Link>
         )}
       </div>

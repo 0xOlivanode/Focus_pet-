@@ -414,11 +414,15 @@ function AppPageContent() {
   }
 
   if (!isConnected) {
-    if (isConnecting || isReconnecting) {
+    const miniPay =
+      typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+    if (isConnecting || isReconnecting || miniPay) {
       return (
         <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-500">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
-          <p className="animate-pulse">Connecting to Celo...</p>
+          <p className="animate-pulse">
+            {miniPay ? "Opening in MiniPay..." : "Connecting to Celo..."}
+          </p>
         </div>
       );
     }
