@@ -554,7 +554,7 @@ export function useFocusPet() {
           functionName: "syncImpact",
         },
         {
-          onError: (error) => {
+          onError: (error: any) => {
             console.error("Sync impact failed:", error);
             toast.error("Sync failed\nPlease try again later.");
           },
