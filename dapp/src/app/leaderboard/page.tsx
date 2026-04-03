@@ -5,6 +5,7 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import Link from "next/link";
 import { useAccount } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Copy, Check } from "lucide-react";
@@ -123,15 +124,16 @@ const LeaderboardRow = ({
 };
 
 export default function LeaderboardPage() {
-  const { address: userAddress, isConnected } = useAccount();
+  const { address: userAddress } = useAccount();
+  const { authenticated } = usePrivy();
   const { leaderboard, userEntry, isLoading } = useLeaderboard();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isConnected) {
-      router.replace("/");
+    if (!authenticated) {
+      router.replace("/app");
     }
-  }, [isConnected, router]);
+  }, [authenticated, router]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 

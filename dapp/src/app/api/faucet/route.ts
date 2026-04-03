@@ -16,6 +16,15 @@ const AMOUNT        = parseEther("0.01");  // enough for ~20-80 txns on Celo
 const THRESHOLD     = parseEther("0.002"); // only fund if wallet is nearly empty
 const REGRANT_DAYS  = 3;                   // days between top-ups for returning users
 const IP_DAILY_CAP  = 1;                   // 1 wallet per IP per 24 h
+
+// Admin test accounts — bypass all checks, get gas on demand.
+// Comma-separated lowercase addresses in FAUCET_ADMIN_BYPASS env var.
+const ADMIN_BYPASS = new Set(
+  (process.env.FAUCET_ADMIN_BYPASS || "")
+    .split(",")
+    .map((a) => a.trim().toLowerCase())
+    .filter(Boolean),
+);
 // ────────────────────────────────────────────────────────────────────────────
 
 // Minimal ABI — only what we need to verify on-chain pet ownership
@@ -31,7 +40,8 @@ const PETS_ABI = [
       { name: "birthTime",       type: "uint256" as const },
       { name: "username",        type: "string"  as const },
       { name: "petName",         type: "string"  as const },
-      { name: "streak",          type: "uint256" as const },
+      { name: "streak",           type: "uint256" as const },
+      { name: "lastDailySession", type: "uint256" as const },
       { name: "boostEndTime",    type: "uint256" as const },
       { name: "shieldCount",     type: "uint256" as const },
       { name: "activeCosmetic",  type: "string"  as const },
@@ -67,6 +77,27 @@ export async function POST(req: NextRequest) {
     }
 
     const normalized   = address.toLowerCase();
+
+    // ── Admin bypass — test accounts skip all checks ───────────────────────
+    if (ADMIN_BYPASS.has(normalized)) {
+      const safeKeyAdmin = (process.env.TREASURY_PRIVATE_KEY || process.env.APP_PRIVATE_KEY) as `0x${string}`;
+      const accountAdmin = privateKeyToAccount(
+        safeKeyAdmin.startsWith("0x") ? safeKeyAdmin : `0x${safeKeyAdmin}`,
+      );
+      const balanceAdmin = await createPublicClient({ chain: celo, transport: http() })
+        .getBalance({ address: accountAdmin.address });
+      if (balanceAdmin < parseEther("0.01") * BigInt(5)) {
+        return NextResponse.json({ error: "Faucet critically low." }, { status: 503 });
+      }
+      const walletAdmin = createWalletClient({ account: accountAdmin, chain: celo, transport: http() });
+      const hashAdmin   = await walletAdmin.sendTransaction({
+        to: address as `0x${string}`,
+        value: parseEther("0.01"),
+      });
+      console.log(`Faucet [ADMIN BYPASS]: sent 0.01 CELO to ${normalized} (tx: ${hashAdmin})`);
+      return NextResponse.json({ success: true, funded: true, hash: hashAdmin });
+    }
+
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
       req.headers.get("x-real-ip") ||
@@ -97,15 +128,49 @@ export async function POST(req: NextRequest) {
       .eq("address", normalized)
       .maybeSingle();
 
-    if (!existing) {
-      // ── FIRST-TIME GRANT ─────────────────────────────────────────────────
-      // Only fund brand-new wallets (nonce = 0). If they've already sent
-      // transactions they had gas from somewhere else.
-      if (nonce > 0) {
-        return NextResponse.json({
-          success: true, funded: false,
-          message: "Wallet already has transaction history.",
+    // ── Shared on-chain pet lookup (used in multiple paths below) ─────────
+    const fetchPetData = async () => {
+      try {
+        return await publicClient.readContract({
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: PETS_ABI,
+          functionName: "pets",
+          args: [address as `0x${string}`],
         });
+      } catch {
+        return null;
+      }
+    };
+
+    if (!existing) {
+      if (nonce === 0) {
+        // ── FIRST-TIME GRANT ───────────────────────────────────────────────
+        // Brand-new wallet, never sent a tx → needs gas to hatch. Grant immediately.
+
+      } else {
+        // ── PRE-FAUCET EXISTING USER ───────────────────────────────────────
+        // Wallet has tx history but no faucet record. Two cases:
+        //   A) Legitimate user who used the app before the faucet existed.
+        //   B) Wallet that sent txns elsewhere (not our app).
+        // Distinguish via on-chain pet: only case A will have birthTime > 0
+        // AND totalFocusTime > 0.
+        const petData = await fetchPetData();
+        if (!petData) {
+          return NextResponse.json({
+            success: true, funded: false,
+            message: "Could not verify on-chain pet status.",
+          });
+        }
+        const p = petData as readonly any[];
+        const hasPet     = BigInt(p[3]  ?? 0) > 0n; // birthTime      at index 3
+        const hasUsedApp = BigInt(p[12] ?? 0) > 0n; // totalFocusTime at index 12
+        if (!hasPet || !hasUsedApp) {
+          return NextResponse.json({
+            success: true, funded: false,
+            message: "Wallet already has transaction history.",
+          });
+        }
+        // Legitimate pre-faucet user — fall through to grant.
       }
     } else {
       // ── RE-GRANT (returning user who ran dry) ────────────────────────────
@@ -117,38 +182,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // ── On-chain verification: must have a hatched pet ──────────────────
-      // This is the bot-killer. Hatching costs gas, so no bot will spend
-      // gas just to qualify for a 0.005 CELO top-up.
-      // `birthTime > 0` means they've done at least the hatch transaction.
-      // `totalFocusTime > 0` means they've completed at least one session.
-      // We check totalFocusTime so we know they've genuinely used the app.
-      let petData: any;
-      try {
-        petData = await publicClient.readContract({
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: PETS_ABI,
-          functionName: "pets",
-          args: [address as `0x${string}`],
-        });
-      } catch {
-        return NextResponse.json({
-          success: true, funded: false,
-          message: "Could not verify on-chain pet status.",
-        });
-      }
-
-      const hasPet       = (petData as any).birthTime > 0n;
-      const hasUsedApp   = (petData as any).totalFocusTime > 0n;
-
-      if (!hasPet || !hasUsedApp) {
-        return NextResponse.json({
-          success: true, funded: false,
-          message: "Complete at least one focus session to qualify for a top-up.",
-        });
-      }
-
-      // Must wait REGRANT_DAYS between top-ups
+      // Cooldown check first — cheaper than an RPC call
       const daysSince = (Date.now() - new Date(existing.last_funded_at).getTime())
         / (1000 * 60 * 60 * 24);
 
@@ -159,6 +193,31 @@ export async function POST(req: NextRequest) {
           message: `Next top-up in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`,
         });
       }
+
+      // ── On-chain verification ───────────────────────────────────────────
+      const petData = await fetchPetData();
+      if (!petData) {
+        return NextResponse.json({
+          success: true, funded: false,
+          message: "Could not verify on-chain pet status.",
+        });
+      }
+
+      const rp = petData as readonly any[];
+      const hasPet     = BigInt(rp[3]  ?? 0) > 0n; // birthTime      at index 3
+      const hasUsedApp = BigInt(rp[12] ?? 0) > 0n; // totalFocusTime at index 12
+
+      if (hasPet && !hasUsedApp) {
+        // Hatched but hasn't completed a session yet
+        return NextResponse.json({
+          success: true, funded: false,
+          message: "Complete at least one focus session to qualify for a top-up.",
+        });
+      }
+
+      // hasPet && hasUsedApp → active user, grant ✓
+      // !hasPet (birthTime = 0) → admin-deleted or self-deleted user who needs
+      // gas to re-hatch. Cooldown already passed above, so allow the re-grant.
     }
 
     // ── 5. IP rate limiting — max 2 wallets per IP per 24 h ──────────────

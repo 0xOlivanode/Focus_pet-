@@ -65,7 +65,7 @@ const TIMERS = {
 
 function AppPageContent() {
   const { isConnected, isConnecting, isReconnecting, address } = useAccount();
-  const { login } = usePrivy();
+  const { login, authenticated } = usePrivy();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -222,43 +222,9 @@ function AppPageContent() {
     hasAutoOpened,
   ]);
 
-  useEffect(() => {
-    let redirectTimer: NodeJS.Timeout;
-
-    // Only redirect if fully mounted and not in the middle of a critical process
-    if (
-      hasMounted &&
-      !isConnected &&
-      !isConnecting &&
-      !isReconnecting &&
-      !isProcessing &&
-      !isSyncing
-    ) {
-      // Mobile Resilience: Add a generous 10-second buffer (15s if in a session) 
-      // to let mobile wallets/Privy re-sync after returning from the background.
-      const hasActiveSession = localStorage.getItem("focus-session");
-      const bufferTime = hasActiveSession ? 15000 : 10000;
-
-      redirectTimer = setTimeout(() => {
-        // Double check state before final redirect
-        if (!isConnected && !isConnecting && !isReconnecting) {
-          router.push("/");
-        }
-      }, bufferTime);
-    }
-
-    return () => {
-      if (redirectTimer) clearTimeout(redirectTimer);
-    };
-  }, [
-    isConnected,
-    isConnecting,
-    isReconnecting,
-    isProcessing,
-    isSyncing,
-    router,
-    hasMounted,
-  ]);
+  // No redirect on logout or connection drop — /app handles its own disconnected state.
+  // The "Your pet is waiting" screen is the correct destination for returning users.
+  // / is only for direct navigation (marketing page for new visitors).
 
   // Verification Success Listener
   useEffect(() => {
