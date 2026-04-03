@@ -254,28 +254,59 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── 7. Send gas ────────────────────────────────────────────────────────
+    // ── 7. Reserve the grant slot before sending ──────────────────────────
+    // Insert/update FIRST with a placeholder tx_hash. If two concurrent
+    // requests race, the DB unique constraint on `address` ensures only one
+    // wins — the loser gets a duplicate-key error and never sends CELO.
+    const nextCount = (existing?.grant_count ?? 0) + 1;
+    const reserveResult = existing
+      ? await supabase.from("faucet_grants").update({
+          ip,
+          tx_hash:        "pending",
+          amount:         "0.01",
+          last_funded_at: new Date().toISOString(),
+          grant_count:    nextCount,
+        }).eq("address", normalized)
+      : await supabase.from("faucet_grants").insert({
+          address:        normalized,
+          ip,
+          tx_hash:        "pending",
+          amount:         "0.01",
+          last_funded_at: new Date().toISOString(),
+          grant_count:    nextCount,
+        });
+
+    if (reserveResult.error) {
+      console.error("Faucet reserve failed (possible race):", reserveResult.error);
+      return NextResponse.json(
+        { error: "Faucet temporarily unavailable. Try again." },
+        { status: 503 },
+      );
+    }
+
+    // ── 8. Send gas ────────────────────────────────────────────────────────
     const walletClient = createWalletClient({
       account, chain: celo, transport: http(),
     });
 
-    const hash = await walletClient.sendTransaction({
-      to: address as `0x${string}`,
-      value: AMOUNT,
-    });
+    let hash: `0x${string}`;
+    try {
+      hash = await walletClient.sendTransaction({
+        to: address as `0x${string}`,
+        value: AMOUNT,
+      });
+    } catch (sendError) {
+      // Transaction failed — roll back the reservation so user can retry
+      await supabase.from("faucet_grants")
+        .update({ tx_hash: "failed", grant_count: existing?.grant_count ?? 0 })
+        .eq("address", normalized);
+      throw sendError;
+    }
 
-    // ── 8. Upsert grant record ─────────────────────────────────────────────
-    await supabase.from("faucet_grants").upsert(
-      {
-        address:        normalized,
-        ip,
-        tx_hash:        hash,
-        amount:         "0.01",
-        last_funded_at: new Date().toISOString(),
-        grant_count:    (existing?.grant_count ?? 0) + 1,
-      },
-      { onConflict: "address" },
-    );
+    // ── 9. Write confirmed tx hash ─────────────────────────────────────────
+    await supabase.from("faucet_grants")
+      .update({ tx_hash: hash })
+      .eq("address", normalized);
 
     console.log(
       `Faucet: sent 0.01 CELO to ${normalized} ` +
