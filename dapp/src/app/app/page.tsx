@@ -16,7 +16,7 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
 import { useIdentity } from "@/hooks/useIdentity";
 
-import { useAccount } from "wagmi";
+import { useAccount, useReconnect } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -66,6 +66,7 @@ const TIMERS = {
 function AppPageContent() {
   const { isConnected, isConnecting, isReconnecting, address } = useAccount();
   const { login, authenticated } = usePrivy();
+  const { reconnect } = useReconnect();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -415,7 +416,16 @@ function AppPageContent() {
             </p>
           </div>
           <button
-            onClick={login}
+            onClick={() => {
+              if (authenticated) {
+                // Privy session is alive but wagmi lost connection (common on mobile
+                // when app is backgrounded). Re-establish the wagmi connection.
+                reconnect();
+              } else {
+                // Truly logged out — open Privy login modal.
+                login();
+              }
+            }}
             className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors shadow-lg shadow-indigo-500/20"
           >
             Connect Wallet
