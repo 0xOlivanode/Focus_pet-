@@ -93,24 +93,40 @@ function MiniPayConnector() {
 
 function GasStationTrigger() {
   const { address, isConnected } = useAccount();
+  const hasFiredRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    // MiniPay users pay gas in USDm — skip the CELO faucet
+    // MiniPay users pay gas via USDm — no CELO faucet needed
     if ((window.ethereum as any)?.isMiniPay) return;
+    if (!isConnected || !address) return;
+    // Deduplicate: only fire once per address per page session
+    if (hasFiredRef.current === address) return;
+    hasFiredRef.current = address;
 
-    // Invisible Faucet: Automatically drop gas to new users
-    if (isConnected && address) {
+    const callFaucet = () =>
       fetch("/api/faucet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address }),
+      }).then((res) => res.json());
+
+    // Fire immediately, then retry once after 3 s in case the embedded
+    // wallet was just created and the RPC hasn't indexed it yet.
+    callFaucet()
+      .then((data) => {
+        console.log("Faucet:", data);
+        if (!data.funded) {
+          // Not funded on first try — retry once after a short delay.
+          // Covers the race where Privy finishes wallet creation slightly
+          // after wagmi fires isConnected=true.
+          setTimeout(() => {
+            callFaucet()
+              .then((d) => console.log("Faucet retry:", d))
+              .catch(() => {});
+          }, 3000);
+        }
       })
-        .then((res) => res.json())
-        .then((data) => console.log("Invisible Faucet Response:", data))
-        .catch((err) => {
-          console.error("Invisible Gas Station failed:", err);
-        });
-    }
+      .catch((err) => console.error("Faucet error:", err));
   }, [isConnected, address]);
 
   return null;
