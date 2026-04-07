@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useReconnect } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { ThemeToggle } from "./ThemeToggle";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
@@ -56,7 +56,18 @@ const STEPS = [
 
 export function LandingPage() {
   const { isConnected, address } = useAccount();
-  const { login } = usePrivy();
+  const { login, authenticated } = usePrivy();
+  const { reconnect } = useReconnect();
+
+  // If authenticated but wagmi dropped (common on mobile), reconnect.
+  // If truly logged out, open Privy login modal.
+  const handleConnect = () => {
+    if (authenticated) {
+      reconnect();
+    } else {
+      login();
+    }
+  };
   const { totalUsers, isLoading: leaderboardLoading } = useLeaderboard();
   const router = useRouter();
 
@@ -91,7 +102,7 @@ export function LandingPage() {
               </Link>
             ) : (
               <button
-                onClick={login}
+                onClick={handleConnect}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors"
               >
                 Get Started
@@ -149,7 +160,7 @@ export function LandingPage() {
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
                 <button
-                  onClick={login}
+                  onClick={handleConnect}
                   className="group flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
                 >
                   Start for Free
@@ -303,7 +314,7 @@ export function LandingPage() {
               Every minute you focus, your egg is growing. What are you waiting for?
             </p>
             <button
-              onClick={login}
+              onClick={handleConnect}
               className="group inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
             >
               Hatch Your Pet

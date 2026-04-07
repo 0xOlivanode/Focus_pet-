@@ -11,10 +11,10 @@ import { celo } from "viem/chains";
 import { createClient } from "@supabase/supabase-js";
 
 // ── Tunables ────────────────────────────────────────────────────────────────
-const AMOUNT       = parseEther("0.01");   // enough for ~20-80 txns on Celo
-const THRESHOLD    = parseEther("0.002");  // only fund if wallet is nearly empty
+const AMOUNT       = parseEther("0.1");    // enough for ~200-800 txns on Celo
+const THRESHOLD    = parseEther("0.01");   // only fund if wallet is running low
 const COOLDOWN_H   = 48;                   // hours between top-ups per address
-const IP_DAILY_CAP = 2;                    // wallets per IP per 24 h
+const IP_DAILY_CAP = 5;                    // wallets per IP per 24 h
 
 // Admin test accounts — bypass all checks, get gas on demand.
 // Comma-separated lowercase addresses in FAUCET_ADMIN_BYPASS env var.
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
           .update({
             ip,
             tx_hash:        "pending",
-            amount:         "0.01",
+            amount:         "0.1",
             last_funded_at: new Date().toISOString(),
             grant_count:    nextCount,
           })
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
           address:        normalized,
           ip,
           tx_hash:        "pending",
-          amount:         "0.01",
+          amount:         "0.1",
           last_funded_at: new Date().toISOString(),
           grant_count:    nextCount,
         });
@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
     await supabase.from("faucet_grants").update({ tx_hash: hash }).eq("address", normalized);
 
     console.log(
-      `Faucet: sent 0.01 CELO to ${normalized} (grant #${nextCount}, tx: ${hash})`,
+      `Faucet: sent 0.1 CELO to ${normalized} (grant #${nextCount}, tx: ${hash})`,
     );
 
     return NextResponse.json({ success: true, funded: true, hash });

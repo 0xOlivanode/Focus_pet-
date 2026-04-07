@@ -16,11 +16,11 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
 import { useIdentity } from "@/hooks/useIdentity";
 
-import { useAccount, useReconnect } from "wagmi";
+import { useAccount, useReconnect, useBalance } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { formatEther } from "viem";
+import { formatEther, parseEther } from "viem";
 import { PrivyConnectButton } from "@/components/PrivyConnectButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SocialShare } from "@/components/SocialShare";
@@ -67,6 +67,8 @@ function AppPageContent() {
   const { isConnected, isConnecting, isReconnecting, address } = useAccount();
   const { login, authenticated } = usePrivy();
   const { reconnect } = useReconnect();
+  // Poll balance every 3 s so new users auto-unlock the hatch button when gas arrives
+  const { data: celoBalance } = useBalance({ address, query: { refetchInterval: 3000 } });
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -196,6 +198,7 @@ function AppPageContent() {
   };
 
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
+  const [gasTimedOut, setGasTimedOut] = useState(false);
 
   useEffect(() => {
     if (username) setTempUsername(username);
@@ -222,6 +225,16 @@ function AppPageContent() {
     isSyncing,
     hasAutoOpened,
   ]);
+
+  // If the user has no pet and no gas arrives within 40 s, stop spinning and
+  // show a fallback message so they're never stuck forever.
+  useEffect(() => {
+    if (hasPet) return;
+    const hasGas = (celoBalance?.value ?? 0n) >= parseEther("0.003");
+    if (hasGas) { setGasTimedOut(false); return; }
+    const t = setTimeout(() => setGasTimedOut(true), 40_000);
+    return () => clearTimeout(t);
+  }, [hasPet, celoBalance]);
 
   // No redirect on logout or connection drop — /app handles its own disconnected state.
   // The "Your pet is waiting" screen is the correct destination for returning users.
@@ -521,43 +534,66 @@ function AppPageContent() {
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[40px] shadow-2xl relative overflow-hidden group">
               <div className="absolute inset-0 bg-linear-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-              <div className="relative z-10 flex flex-col items-center text-center">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-6 block">
-                  Step 1: Introduction
-                </span>
+              {(() => {
+                // Gate: user needs at least 0.003 CELO to cover the hatch tx.
+                // Faucet sends 0.1 CELO in the background — poll until it lands.
+                const hasGas = (celoBalance?.value ?? 0n) >= parseEther("0.003");
+                return (
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-6 block">
+                      Step 1: Introduction
+                    </span>
 
-                <h2 className="text-2xl font-black text-white mb-2">
-                  Ready to Meet?
-                </h2>
-                <p className="text-neutral-400 text-sm mb-8 max-w-[260px] leading-relaxed">
-                  Your new companion is waiting to hatch. No waiting
-                  required—let's begin your journey now.
-                </p>
+                    <h2 className="text-2xl font-black text-white mb-2">
+                      {hasGas ? "Ready to Meet?" : gasTimedOut ? "Gas Top-Up Delayed" : "Preparing Your Gas…"}
+                    </h2>
+                    <p className="text-neutral-400 text-sm mb-8 max-w-[260px] leading-relaxed">
+                      {hasGas
+                        ? "Your new companion is waiting to hatch. No waiting required—let's begin your journey now."
+                        : gasTimedOut
+                          ? "We couldn't automatically top up your wallet. Please try refreshing, or contact us for help."
+                          : "We're topping up your wallet with a small amount of CELO so you can hatch for free. This only takes a moment."}
+                    </p>
 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={async () => {
-                    playSound("hatch");
-                    // Trigger immediate hatch logic
-                    await handleSessionComplete(0);
-                  }}
-                  disabled={isProcessing}
-                  onMouseEnter={() => playSound("hover")}
-                  className="relative group/btn overflow-hidden bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black text-sm shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.5)] transition-all duration-300"
-                >
-                  <span className="relative z-10 flex items-center gap-2">
-                    HATCH NOW
-                  </span>
+                    {hasGas ? (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={async () => {
+                          playSound("hatch");
+                          await handleSessionComplete(0);
+                        }}
+                        disabled={isProcessing}
+                        onMouseEnter={() => playSound("hover")}
+                        className="relative group/btn overflow-hidden bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black text-sm shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.5)] transition-all duration-300"
+                      >
+                        <span className="relative z-10 flex items-center gap-2">
+                          HATCH NOW
+                        </span>
+                        <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 ease-in-out" />
+                      </motion.button>
+                    ) : gasTimedOut ? (
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="px-8 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all border border-white/20"
+                      >
+                        Refresh & Retry
+                      </button>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+                        <p className="text-[11px] font-bold text-indigo-400 uppercase tracking-widest animate-pulse">
+                          Getting you gas…
+                        </p>
+                      </div>
+                    )}
 
-                  {/* Button Sheen */}
-                  <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 ease-in-out" />
-                </motion.button>
-
-                <p className="text-[10px] text-neutral-600 mt-6 font-medium italic">
-                  Completing this action initializes your pet on-chain.
-                </p>
-              </div>
+                    <p className="text-[10px] text-neutral-600 mt-6 font-medium italic">
+                      Completing this action initializes your pet on-chain.
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             <button
