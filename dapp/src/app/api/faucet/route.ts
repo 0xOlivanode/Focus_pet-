@@ -9,15 +9,15 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { celo } from "viem/chains";
 import { createClient } from "@supabase/supabase-js";
+import { PrivyClient } from "@privy-io/server-auth";
 
 // ── Tunables ────────────────────────────────────────────────────────────────
-const AMOUNT       = parseEther("0.1");    // enough for ~200-800 txns on Celo
-const THRESHOLD    = parseEther("0.01");   // only fund if wallet is running low
-const COOLDOWN_H   = 48;                   // hours between top-ups per address
-const IP_DAILY_CAP = 5;                    // wallets per IP per 24 h
+const AMOUNT       = parseEther("0.1");  // enough for ~200-800 txns on Celo
+const THRESHOLD    = parseEther("0.01"); // only fund if wallet is running low
+const COOLDOWN_H   = 48;                 // hours between top-ups per address
+const IP_DAILY_CAP = 5;                  // wallets per IP per 24 h
 
-// Admin test accounts — bypass all checks, get gas on demand.
-// Comma-separated lowercase addresses in FAUCET_ADMIN_BYPASS env var.
+// Admin test accounts — bypass all checks.
 const ADMIN_BYPASS = new Set(
   (process.env.FAUCET_ADMIN_BYPASS || "")
     .split(",")
@@ -42,19 +42,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid address" }, { status: 400 });
     }
 
+    // ── 2. Privy auth — blocks all bots calling the API directly ──────────
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let privyUserId: string;
+    try {
+      const privy = new PrivyClient(
+        process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "cmmw8pr3l00lr0cjp282x5v3l",
+        process.env.PRIVY_APP_SECRET!,
+      );
+      const claims = await privy.verifyAuthToken(token);
+      privyUserId = claims.userId;
+
+      // Address must actually belong to this Privy user
+      const user = await privy.getUser(privyUserId);
+      const ownedAddresses = (user.linkedAccounts ?? [])
+        .filter((a: any) => a.type === "wallet" || a.type === "smart_wallet")
+        .map((a: any) => (a.address as string).toLowerCase());
+      if (!ownedAddresses.includes(address.toLowerCase())) {
+        return NextResponse.json(
+          { error: "Address not associated with your account" },
+          { status: 403 },
+        );
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid auth token" }, { status: 401 });
+    }
+
     const TREASURY_PRIVATE_KEY = (
       process.env.TREASURY_PRIVATE_KEY || process.env.APP_PRIVATE_KEY
     ) as `0x${string}`;
-
     if (!TREASURY_PRIVATE_KEY) {
       return NextResponse.json({ error: "Faucet not configured" }, { status: 500 });
     }
 
     const normalized = address.toLowerCase();
-    const safeKey    = TREASURY_PRIVATE_KEY.startsWith("0x")
+    const safeKey = TREASURY_PRIVATE_KEY.startsWith("0x")
       ? TREASURY_PRIVATE_KEY
       : (`0x${TREASURY_PRIVATE_KEY}` as `0x${string}`);
-    const account    = privateKeyToAccount(safeKey);
+    const account = privateKeyToAccount(safeKey);
 
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
@@ -62,7 +92,7 @@ export async function POST(req: NextRequest) {
       "unknown";
 
     const publicClient = createPublicClient({ chain: celo, transport: http() });
-    const supabase     = getSupabase();
+    const supabase = getSupabase();
 
     // ── Admin bypass ───────────────────────────────────────────────────────
     if (ADMIN_BYPASS.has(normalized)) {
@@ -75,17 +105,17 @@ export async function POST(req: NextRequest) {
         to: address as `0x${string}`,
         value: AMOUNT,
       });
-      console.log(`Faucet [ADMIN BYPASS]: sent 0.01 CELO to ${normalized} (tx: ${hash})`);
+      console.log(`Faucet [ADMIN BYPASS]: sent 0.1 CELO to ${normalized} (tx: ${hash})`);
       return NextResponse.json({ success: true, funded: true, hash });
     }
 
-    // ── 2. Balance check — skip wallets that already have gas ─────────────
+    // ── 3. Balance check ───────────────────────────────────────────────────
     const balance = await publicClient.getBalance({ address: address as `0x${string}` });
     if (balance >= THRESHOLD) {
       return NextResponse.json({ success: true, funded: false, message: "Sufficient balance." });
     }
 
-    // ── 3. Per-address cooldown ────────────────────────────────────────────
+    // ── 4. Per-address cooldown ────────────────────────────────────────────
     const { data: existing } = await supabase
       .from("faucet_grants")
       .select("last_funded_at, grant_count")
@@ -98,14 +128,13 @@ export async function POST(req: NextRequest) {
       if (hoursSince < COOLDOWN_H) {
         const hoursLeft = Math.ceil(COOLDOWN_H - hoursSince);
         return NextResponse.json({
-          success: true,
-          funded: false,
+          success: true, funded: false,
           message: `Next top-up available in ${hoursLeft}h.`,
         });
       }
     }
 
-    // ── 4. IP rate limiting ────────────────────────────────────────────────
+    // ── 5. IP rate limiting ────────────────────────────────────────────────
     if (ip !== "unknown") {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { count } = await supabase
@@ -113,7 +142,6 @@ export async function POST(req: NextRequest) {
         .select("*", { count: "exact", head: true })
         .eq("ip", ip)
         .gte("last_funded_at", since);
-
       if ((count ?? 0) >= IP_DAILY_CAP) {
         return NextResponse.json(
           { error: "Too many requests from this network. Try again tomorrow." },
@@ -122,7 +150,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── 5. Faucet self-protection — keep a reserve ─────────────────────────
+    // ── 6. Faucet self-protection ──────────────────────────────────────────
     const faucetBalance = await publicClient.getBalance({ address: account.address });
     if (faucetBalance < AMOUNT * 5n) {
       console.warn("Faucet wallet critically low:", faucetBalance.toString());
@@ -132,26 +160,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── 6. Reserve slot before sending (prevents race-condition double-send) ─
-    const nextCount    = (existing?.grant_count ?? 0) + 1;
+    // ── 7. Reserve slot (race-condition protection) ────────────────────────
+    const nextCount = (existing?.grant_count ?? 0) + 1;
     const reserveResult = existing
-      ? await supabase
-          .from("faucet_grants")
-          .update({
-            ip,
-            tx_hash:        "pending",
-            amount:         "0.1",
-            last_funded_at: new Date().toISOString(),
-            grant_count:    nextCount,
-          })
-          .eq("address", normalized)
+      ? await supabase.from("faucet_grants").update({
+          ip, tx_hash: "pending", amount: "0.1",
+          last_funded_at: new Date().toISOString(), grant_count: nextCount,
+        }).eq("address", normalized)
       : await supabase.from("faucet_grants").insert({
-          address:        normalized,
-          ip,
-          tx_hash:        "pending",
-          amount:         "0.1",
-          last_funded_at: new Date().toISOString(),
-          grant_count:    nextCount,
+          address: normalized, ip, tx_hash: "pending", amount: "0.1",
+          last_funded_at: new Date().toISOString(), grant_count: nextCount,
         });
 
     if (reserveResult.error) {
@@ -162,17 +180,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── 7. Send gas ────────────────────────────────────────────────────────
+    // ── 8. Send gas ────────────────────────────────────────────────────────
     const walletClient = createWalletClient({ account, chain: celo, transport: http() });
-
     let hash: `0x${string}`;
     try {
       hash = await walletClient.sendTransaction({
-        to:    address as `0x${string}`,
+        to: address as `0x${string}`,
         value: AMOUNT,
       });
     } catch (sendError) {
-      // Roll back reservation so user can retry
       await supabase
         .from("faucet_grants")
         .update({ tx_hash: "failed", grant_count: existing?.grant_count ?? 0 })
@@ -180,11 +196,10 @@ export async function POST(req: NextRequest) {
       throw sendError;
     }
 
-    // ── 8. Confirm tx hash in DB ───────────────────────────────────────────
     await supabase.from("faucet_grants").update({ tx_hash: hash }).eq("address", normalized);
 
     console.log(
-      `Faucet: sent 0.1 CELO to ${normalized} (grant #${nextCount}, tx: ${hash})`,
+      `Faucet: sent 0.1 CELO to ${normalized} (privy: ${privyUserId}, grant #${nextCount}, tx: ${hash})`,
     );
 
     return NextResponse.json({ success: true, funded: true, hash });

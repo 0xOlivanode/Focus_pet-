@@ -12,6 +12,7 @@
     "@goodsdks/citizen-sdk": "^1.2.3",
     "@goodsdks/identity-sdk": "^1.0.5",
     "@privy-io/react-auth": "^3.17.0",
+    "@privy-io/server-auth": "^1.32.5",
     "@privy-io/wagmi": "^4.0.2",
     "@rainbow-me/rainbowkit": "^2",
     "@supabase/supabase-js": "^2.99.0",

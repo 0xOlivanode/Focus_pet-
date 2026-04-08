@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAccount, useConnect, fallback, http } from "wagmi";
 import { injected } from "wagmi/connectors";
 
-import { PrivyProvider } from "@privy-io/react-auth";
+import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { celo } from "wagmi/chains";
 
@@ -93,6 +93,7 @@ function MiniPayConnector() {
 
 function GasStationTrigger() {
   const { address, isConnected } = useAccount();
+  const { getAccessToken } = usePrivy();
   const hasFiredRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -103,22 +104,23 @@ function GasStationTrigger() {
     if (hasFiredRef.current === address) return;
     hasFiredRef.current = address;
 
-    const callFaucet = () =>
-      fetch("/api/faucet", {
+    const callFaucet = async () => {
+      const token = await getAccessToken();
+      if (!token) return { funded: false, error: "Not authenticated" };
+      return fetch("/api/faucet", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
         body: JSON.stringify({ address }),
       }).then((res) => res.json());
+    };
 
-    // Fire immediately, then retry once after 3 s in case the embedded
-    // wallet was just created and the RPC hasn't indexed it yet.
     callFaucet()
       .then((data) => {
         console.log("Faucet:", data);
         if (!data.funded) {
-          // Not funded on first try — retry once after a short delay.
-          // Covers the race where Privy finishes wallet creation slightly
-          // after wagmi fires isConnected=true.
           setTimeout(() => {
             callFaucet()
               .then((d) => console.log("Faucet retry:", d))

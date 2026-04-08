@@ -67,8 +67,6 @@ function AppPageContent() {
   const { isConnected, isConnecting, isReconnecting, address } = useAccount();
   const { login, authenticated } = usePrivy();
   const { reconnect } = useReconnect();
-  // Poll balance every 3 s so new users auto-unlock the hatch button when gas arrives
-  const { data: celoBalance } = useBalance({ address, query: { refetchInterval: 3000 } });
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -118,6 +116,13 @@ function AppPageContent() {
     equippedCosmetics,
     isNight,
   } = useFocusPet();
+
+  // Poll aggressively only while waiting for faucet gas on the hatch screen.
+  // Once user has a pet, drop back to default (no continuous polling).
+  const { data: celoBalance } = useBalance({
+    address,
+    query: { refetchInterval: !hasPet ? 3000 : false },
+  });
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
   const { isVerifying, setIsVerifying, isVerified } = useIdentity();
