@@ -1,0 +1,333 @@
+[
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      { "name": "_goodDollar", "type": "address", "internalType": "address" },
+      { "name": "_ubiPool", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "DECAY_RATE_PER_DAY",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_HEALTH",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalCommunityImpact",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalUsers",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PRICE_SUPER_FOOD",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PRICE_ENERGY_DRINK",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PRICE_SHIELD",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PRICE_REVIVE",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "buyFood",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "buySuperFood",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "buyEnergyDrink",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "buyShield",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "buyCosmetic",
+    "inputs": [
+      { "name": "cosmeticId", "type": "string", "internalType": "string" },
+      { "name": "price", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "toggleCosmetic",
+    "inputs": [{ "name": "cosmeticId", "type": "string", "internalType": "string" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "ownedCosmetics",
+    "inputs": [
+      { "name": "", "type": "address", "internalType": "address" },
+      { "name": "", "type": "string", "internalType": "string" }
+    ],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isCosmeticEquipped",
+    "inputs": [
+      { "name": "", "type": "address", "internalType": "address" },
+      { "name": "", "type": "string", "internalType": "string" }
+    ],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "focusSession",
+    "inputs": [
+      { "name": "sessionDurationSeconds", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getPet",
+    "inputs": [{ "name": "owner", "type": "address", "internalType": "address" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct FocusPet.Pet",
+        "components": [
+          { "name": "xp", "type": "uint256", "internalType": "uint256" },
+          { "name": "health", "type": "uint256", "internalType": "uint256" },
+          { "name": "lastInteraction", "type": "uint256", "internalType": "uint256" },
+          { "name": "birthTime", "type": "uint256", "internalType": "uint256" },
+          { "name": "username", "type": "string", "internalType": "string" },
+          { "name": "petName", "type": "string", "internalType": "string" },
+          { "name": "streak", "type": "uint256", "internalType": "uint256" },
+          { "name": "lastDailySession", "type": "uint256", "internalType": "uint256" },
+          { "name": "boostEndTime", "type": "uint256", "internalType": "uint256" },
+          { "name": "shieldCount", "type": "uint256", "internalType": "uint256" },
+          { "name": "activeCosmetic", "type": "string", "internalType": "string" },
+          { "name": "totalDonated", "type": "uint256", "internalType": "uint256" },
+          { "name": "totalFocusTime", "type": "uint256", "internalType": "uint256" }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "goodDollar",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "contract IERC20" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pets",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [
+      { "name": "xp", "type": "uint256", "internalType": "uint256" },
+      { "name": "health", "type": "uint256", "internalType": "uint256" },
+      { "name": "lastInteraction", "type": "uint256", "internalType": "uint256" },
+      { "name": "birthTime", "type": "uint256", "internalType": "uint256" },
+      { "name": "username", "type": "string", "internalType": "string" },
+      { "name": "petName", "type": "string", "internalType": "string" },
+      { "name": "streak", "type": "uint256", "internalType": "uint256" },
+      { "name": "lastDailySession", "type": "uint256", "internalType": "uint256" },
+      { "name": "boostEndTime", "type": "uint256", "internalType": "uint256" },
+      { "name": "shieldCount", "type": "uint256", "internalType": "uint256" },
+      { "name": "activeCosmetic", "type": "string", "internalType": "string" },
+      { "name": "totalDonated", "type": "uint256", "internalType": "uint256" },
+      { "name": "totalFocusTime", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "syncImpact",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "usernameToAddress",
+    "inputs": [{ "name": "", "type": "string", "internalType": "string" }],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "revivePet",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setNames",
+    "inputs": [
+      { "name": "_username", "type": "string", "internalType": "string" },
+      { "name": "_petName", "type": "string", "internalType": "string" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [{ "name": "newOwner", "type": "address", "internalType": "address" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "deleteUser",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "adminDeleteUser",
+    "inputs": [{ "name": "_user", "type": "address", "internalType": "address" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "FocusSessionRecorded",
+    "inputs": [
+      { "name": "owner",             "type": "address", "indexed": true,  "internalType": "address" },
+      { "name": "duration",          "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "xpEarned",          "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "newTotalFocusTime", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "streak",            "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "newHealth",         "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UserDeleted",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ItemPurchased",
+    "inputs": [
+      { "name": "buyer", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "item", "type": "string", "indexed": false, "internalType": "string" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      { "name": "previousOwner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "newOwner", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PetBorn",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "NamesUpdated",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "username", "type": "string", "indexed": false, "internalType": "string" },
+      { "name": "petName", "type": "string", "indexed": false, "internalType": "string" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PetFed",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "newHealth", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "newXp", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DonationSent",
+    "inputs": [
+      { "name": "to", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "amount", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  }
+]

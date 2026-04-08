@@ -54,6 +54,14 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     event ShieldAdded(address indexed owner, uint256 newCount);
     event DonationSent(address indexed to, uint256 amount);
     event UserDeleted(address indexed owner);
+    event FocusSessionRecorded(
+        address indexed owner,
+        uint256 duration,
+        uint256 xpEarned,
+        uint256 newTotalFocusTime,
+        uint256 streak,
+        uint256 newHealth
+    );
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -291,7 +299,8 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function focusSession(uint256 sessionDurationSeconds) public {
         Pet storage pet = pets[msg.sender];
         if (pet.birthTime == 0) _initPet(msg.sender);
-        
+
+        uint256 xpBefore = pet.xp;
         uint256 flowRate = _getFlowRate(msg.sender);
         _settlePet(pet, flowRate);
         _updateStreak(pet);
@@ -299,6 +308,14 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         totalFocusSessions += 1;
 
+        emit FocusSessionRecorded(
+            msg.sender,
+            sessionDurationSeconds,
+            pet.xp - xpBefore,
+            pet.totalFocusTime,
+            pet.streak,
+            pet.health
+        );
         emit PetFed(msg.sender, pet.health, pet.xp);
     }
 
