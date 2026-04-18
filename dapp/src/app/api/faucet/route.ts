@@ -3,6 +3,7 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  fallback,
   parseEther,
   isAddress,
 } from "viem";
@@ -15,7 +16,7 @@ import { PrivyClient } from "@privy-io/server-auth";
 const AMOUNT       = parseEther("0.1");  // enough for ~200-800 txns on Celo
 const THRESHOLD    = parseEther("0.01"); // only fund if wallet is running low
 const COOLDOWN_H   = 48;                 // hours between top-ups per address
-const IP_DAILY_CAP = 5;                  // wallets per IP per 24 h
+const IP_DAILY_CAP = 1;                  // addresses per IP per 24 h (when IP is available)
 
 // Admin test accounts — bypass all checks.
 const ADMIN_BYPASS = new Set(
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     let privyUserId: string;
+    let privyLinkedAccounts: any[] = [];
     try {
       const privy = new PrivyClient(
         process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "cmmw8pr3l00lr0cjp282x5v3l",
@@ -58,9 +60,12 @@ export async function POST(req: NextRequest) {
       const claims = await privy.verifyAuthToken(token);
       privyUserId = claims.userId;
 
-      // Address must actually belong to this Privy user
+      // Fetch user once — reused for ownership check + identity check below
       const user = await privy.getUser(privyUserId);
-      const ownedAddresses = (user.linkedAccounts ?? [])
+      privyLinkedAccounts = user.linkedAccounts ?? [];
+
+      // Address must actually belong to this Privy user
+      const ownedAddresses = privyLinkedAccounts
         .filter((a: any) => a.type === "wallet" || a.type === "smart_wallet")
         .map((a: any) => (a.address as string).toLowerCase());
       if (!ownedAddresses.includes(address.toLowerCase())) {
@@ -71,6 +76,23 @@ export async function POST(req: NextRequest) {
       }
     } catch {
       return NextResponse.json({ error: "Invalid auth token" }, { status: 401 });
+    }
+
+    // ── 2b. Require a real social/email identity ───────────────────────────
+    // Rejects pure embedded-wallet-only Privy accounts (what bots auto-create).
+    // To pass, the user must have linked Google, Twitter, email, etc.
+    if (!ADMIN_BYPASS.has(address.toLowerCase())) {
+      const SOCIAL_TYPES = new Set([
+        "email", "phone", "google_oauth", "twitter_oauth", "discord_oauth",
+        "github_oauth", "linkedin_oauth", "apple_oauth", "farcaster",
+      ]);
+      const hasSocialOrEmail = privyLinkedAccounts.some((a: any) => SOCIAL_TYPES.has(a.type));
+      if (!hasSocialOrEmail) {
+        return NextResponse.json(
+          { error: "Please link an email or social account to your profile first." },
+          { status: 403 },
+        );
+      }
     }
 
     const TREASURY_PRIVATE_KEY = (
@@ -91,7 +113,12 @@ export async function POST(req: NextRequest) {
       req.headers.get("x-real-ip") ||
       "unknown";
 
-    const publicClient = createPublicClient({ chain: celo, transport: http() });
+    const celoTransport = fallback([
+      http("https://rpc.ankr.com/celo"),
+      http("https://forno.celo.org"),
+      http("https://1rpc.io/celo"),
+    ]);
+    const publicClient = createPublicClient({ chain: celo, transport: celoTransport });
     const supabase = getSupabase();
 
     // ── Admin bypass ───────────────────────────────────────────────────────
@@ -100,7 +127,7 @@ export async function POST(req: NextRequest) {
       if (faucetBal < AMOUNT * 5n) {
         return NextResponse.json({ error: "Faucet critically low." }, { status: 503 });
       }
-      const walletClient = createWalletClient({ account, chain: celo, transport: http() });
+      const walletClient = createWalletClient({ account, chain: celo, transport: celoTransport });
       const hash = await walletClient.sendTransaction({
         to: address as `0x${string}`,
         value: AMOUNT,
@@ -115,14 +142,51 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, funded: false, message: "Sufficient balance." });
     }
 
-    // ── 4. Per-address cooldown ────────────────────────────────────────────
-    const { data: existing } = await supabase
+    // ── 4. Per-Privy-user lifetime limit ──────────────────────────────────
+    // One Privy account = one funded address, ever. The bot creates fresh
+    // Privy accounts each time, but this is the check that makes that costly.
+    if (!ADMIN_BYPASS.has(normalized)) {
+      const { data: privyGrant, error: privyErr } = await supabase
+        .from("faucet_grants")
+        .select("address")
+        .eq("privy_user_id", privyUserId)
+        .neq("tx_hash", "failed")
+        .maybeSingle();
+
+      if (privyErr) {
+        console.error("Faucet privy_user_id check error:", privyErr);
+        return NextResponse.json({ error: "Faucet temporarily unavailable." }, { status: 503 });
+      }
+
+      if (privyGrant && privyGrant.address !== normalized) {
+        return NextResponse.json(
+          { error: "This account has already received a faucet grant." },
+          { status: 429 },
+        );
+      }
+    }
+
+    // ── 5. Per-address cooldown ────────────────────────────────────────────
+    // Fetch tx_hash too — failed/pending rows must NOT trigger a cooldown.
+    // If the previous tx failed, the user should be able to retry immediately.
+    // Balance check (step 3) already handles the case where a pending tx landed.
+    const { data: existing, error: selectError } = await supabase
       .from("faucet_grants")
-      .select("last_funded_at, grant_count")
+      .select("last_funded_at, grant_count, tx_hash")
       .eq("address", normalized)
       .maybeSingle();
 
-    if (existing) {
+    if (selectError) {
+      console.error("Faucet Supabase SELECT error:", selectError);
+      return NextResponse.json({ error: "Faucet temporarily unavailable." }, { status: 503 });
+    }
+
+    const lastTxSucceeded =
+      existing &&
+      existing.tx_hash !== "failed" &&
+      existing.tx_hash !== "pending";
+
+    if (lastTxSucceeded) {
       const hoursSince =
         (Date.now() - new Date(existing.last_funded_at).getTime()) / (1000 * 60 * 60);
       if (hoursSince < COOLDOWN_H) {
@@ -134,7 +198,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── 5. IP rate limiting ────────────────────────────────────────────────
+    // ── 6. IP rate limiting ────────────────────────────────────────────────
     if (ip !== "unknown") {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { count } = await supabase
@@ -150,7 +214,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── 6. Faucet self-protection ──────────────────────────────────────────
+    // ── 7. Faucet self-protection ──────────────────────────────────────────
     const faucetBalance = await publicClient.getBalance({ address: account.address });
     if (faucetBalance < AMOUNT * 5n) {
       console.warn("Faucet wallet critically low:", faucetBalance.toString());
@@ -160,15 +224,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── 7. Reserve slot (race-condition protection) ────────────────────────
+    // ── 8. Reserve slot (race-condition protection) ────────────────────────
     const nextCount = (existing?.grant_count ?? 0) + 1;
     const reserveResult = existing
       ? await supabase.from("faucet_grants").update({
-          ip, tx_hash: "pending", amount: "0.1",
+          ip, privy_user_id: privyUserId, tx_hash: "pending", amount: "0.1",
           last_funded_at: new Date().toISOString(), grant_count: nextCount,
         }).eq("address", normalized)
       : await supabase.from("faucet_grants").insert({
-          address: normalized, ip, tx_hash: "pending", amount: "0.1",
+          address: normalized, ip, privy_user_id: privyUserId,
+          tx_hash: "pending", amount: "0.1",
           last_funded_at: new Date().toISOString(), grant_count: nextCount,
         });
 
@@ -181,7 +246,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 8. Send gas ────────────────────────────────────────────────────────
-    const walletClient = createWalletClient({ account, chain: celo, transport: http() });
+    const walletClient = createWalletClient({ account, chain: celo, transport: celoTransport });
     let hash: `0x${string}`;
     try {
       hash = await walletClient.sendTransaction({

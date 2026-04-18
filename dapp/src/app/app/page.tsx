@@ -28,10 +28,16 @@ import { OnboardingModal } from "@/components/OnboardingModal";
 import dynamic from "next/dynamic";
 const ClaimReward = dynamic(
   () => import("@/components/ClaimReward").then((mod) => mod.ClaimReward),
-  {
-    ssr: false,
-  },
+  { ssr: false },
 );
+// TODO: Engagement rewards — uncomment when cleared for launch
+// const EngagementRewardBanner = dynamic(
+//   () =>
+//     import("@/components/EngagementRewardBanner").then(
+//       (mod) => mod.EngagementRewardBanner,
+//     ),
+//   { ssr: false },
+// );
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
@@ -65,7 +71,7 @@ const TIMERS = {
 
 function AppPageContent() {
   const { isConnected, isConnecting, isReconnecting, address } = useAccount();
-  const { login, authenticated } = usePrivy();
+  const { login, authenticated, ready: privyReady } = usePrivy();
   const { reconnect } = useReconnect();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -151,6 +157,14 @@ function AppPageContent() {
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // Redirect to home after logout — Privy clears `authenticated` before wagmi
+  // drops the connection, so we gate on privyReady to avoid a false redirect on load.
+  useEffect(() => {
+    if (privyReady && !authenticated) {
+      router.replace("/");
+    }
+  }, [privyReady, authenticated]);
 
   const showToast = (
     title: string,
@@ -394,26 +408,22 @@ function AppPageContent() {
 
   // --- Conditional Rendering Blocks ---
   if (!hasMounted) {
-    return (
-      <div className="min-h-screen bg-[#fafafa] dark:bg-[#050505] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-      </div>
-    );
+    return <AppLoadingScreen />;
   }
 
   if (!isConnected) {
     const miniPay =
       typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
 
-    if (isConnecting || isReconnecting || miniPay) {
-      return (
-        <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-500">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
-          <p className="animate-pulse">
-            {miniPay ? "Opening in MiniPay..." : "Connecting to Celo..."}
-          </p>
-        </div>
-      );
+    const isAutoConnecting =
+      isConnecting ||
+      isReconnecting ||
+      miniPay ||
+      !privyReady ||
+      (privyReady && authenticated);
+
+    if (isAutoConnecting) {
+      return <AppLoadingScreen miniPay={miniPay} />;
     }
 
     return (
@@ -430,20 +440,11 @@ function AppPageContent() {
               Your pet is waiting
             </h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Connect your wallet to pick up where you left off.
+              Sign in to pick up where you left off.
             </p>
           </div>
           <button
-            onClick={() => {
-              if (authenticated) {
-                // Privy session is alive but wagmi lost connection (common on mobile
-                // when app is backgrounded). Re-establish the wagmi connection.
-                reconnect();
-              } else {
-                // Truly logged out — open Privy login modal.
-                login();
-              }
-            }}
+            onClick={login}
             className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors shadow-lg shadow-indigo-500/20"
           >
             Connect Wallet
@@ -460,14 +461,7 @@ function AppPageContent() {
   }
 
   if (isLoadingPet) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center text-neutral-500">
-        <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
-        <p className="animate-pulse font-bold text-sm uppercase tracking-widest text-neutral-400">
-          Syncing with Celo...
-        </p>
-      </div>
-    );
+    return <AppLoadingScreen />;
   }
 
   if (!hasPet) {
@@ -751,6 +745,9 @@ function AppPageContent() {
         {/* GoodDollar Daily Reward */}
         <ClaimReward />
 
+        {/* GoodDollar Engagement Reward — disabled until cleared for launch */}
+        {/* <EngagementRewardBanner /> */}
+
         {/* Social Impact Dashboard */}
         <ImpactDashboard
           totalDonated={totalDonated}
@@ -830,6 +827,27 @@ function AppPageContent() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function AppLoadingScreen({ miniPay = false }: { miniPay?: boolean }) {
+  return (
+    <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center gap-5">
+      <div className="relative w-16 h-16">
+        <div className="w-16 h-16 rounded-full border-2 border-indigo-100 dark:border-indigo-900 flex items-center justify-center">
+          <span className="text-2xl select-none">🥚</span>
+        </div>
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-500 animate-spin" />
+      </div>
+      <div className="text-center">
+        <p className="font-bold text-sm text-neutral-900 dark:text-white">
+          {miniPay ? "Opening in MiniPay…" : "Loading your pet…"}
+        </p>
+        <p className="text-xs text-neutral-400 mt-1">
+          {miniPay ? "" : "Syncing with Celo"}
+        </p>
+      </div>
     </div>
   );
 }

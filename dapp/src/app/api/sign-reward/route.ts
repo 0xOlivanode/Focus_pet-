@@ -1,95 +1,121 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createWalletClient, http, toHex, keccak256, encodePacked } from "viem";
+import { createWalletClient, createPublicClient, http, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { celo, celoSepolia } from "viem/chains";
+import { celo } from "viem/chains";
+import { EngagementRewardsSDK } from "@goodsdks/engagement-sdk";
+import { PrivyClient } from "@privy-io/server-auth";
+import { fetchUserHistory } from "@/lib/subgraph";
 
-// 1. Setup Signer (APP_PRIVATE_KEY from .env)
+// ── Config ───────────────────────────────────────────────────────────────────
+const REWARDS_CONTRACT = (
+  process.env.NEXT_PUBLIC_ENGAGEMENT_REWARDS_CONTRACT ||
+  "0x25db74CF4E7BA120526fd87e159CF656d94bAE43"
+) as `0x${string}`;
+
+const MIN_SESSION_DAYS = 2;
+
 const pkRaw = process.env.APP_PRIVATE_KEY;
 const PRIVATE_KEY = pkRaw
-  ? pkRaw.startsWith("0x")
-    ? pkRaw
-    : `0x${pkRaw}`
+  ? pkRaw.startsWith("0x") ? pkRaw : `0x${pkRaw}`
   : undefined;
-const TARGET_CHAIN =
-  process.env.NEXT_PUBLIC_CHAIN_ID === "42220" ? celo : celoSepolia;
 
+// ── Handler ──────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
+    // ── 1. Require app private key ──────────────────────────────────────────
     if (!PRIVATE_KEY) {
-      console.error("Missing APP_PRIVATE_KEY");
-      return NextResponse.json(
-        { error: "Server Configuration Error" },
-        { status: 500 },
-      );
+      console.error("APP_PRIVATE_KEY not configured");
+      return NextResponse.json({ error: "Server not configured" }, { status: 500 });
     }
 
-    const body = await req.json();
-    const { userAddress, minutes } = body;
-
-    if (!userAddress || minutes === undefined) {
-      return NextResponse.json(
-        { error: "Missing parameters" },
-        { status: 400 },
-      );
+    // ── 2. Privy auth — must be a logged-in user ────────────────────────────
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Define Reward Logic (Server-Side Validation)
-    // Here we trust the client's "seconds" for now, but in a real app,
-    // you'd verify a session ID or WebSocket connection.
-    const validUntilBlock = BigInt(Math.floor(Date.now() / 1000) + 300); // Valid for 5 mins (using timestamp as block/time proxy if contract supports)
-    // NOTE: Contract expects block number usually, but for simplicity let's use a large future block
-    // OR fetch current block. For Celo (5s block time), 5 mins = 60 blocks.
+    let privyUserId: string;
+    let claimerAddress: string;
+    try {
+      const privy = new PrivyClient(
+        process.env.NEXT_PUBLIC_PRIVY_APP_ID!,
+        process.env.PRIVY_APP_SECRET!,
+      );
+      const claims = await privy.verifyAuthToken(token);
+      privyUserId = claims.userId;
 
-    // Changing validUntilBlock to a fixed large number for simplicity in this MVP,
-    // or you can fetch public client block number.
-    // Let's use a standard "valid for 1 hour" approach approximately.
-    const currentBlockApprox = BigInt(Math.floor(Date.now() / 5000)); // Rough approximation since 1970
-    const expiryBlock = BigInt(99999999999); // Simpler for MVP: Just expire far in future or use a fetched block.
+      // Fetch user to cross-check the address belongs to this Privy account
+      const user = await privy.getUser(privyUserId);
+      const ownedAddresses = (user.linkedAccounts ?? [])
+        .filter((a: any) => a.type === "wallet" || a.type === "smart_wallet")
+        .map((a: any) => (a.address as string).toLowerCase());
 
-    // 3. Create Signature
-    const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
+      const body = await req.json();
+      const { user: userAddress, validUntilBlock, inviter } = body;
 
-    // Message Construction must match Smart Contract `recover` logic:
-    // keccak256(abi.encodePacked(user, inviter, validUntilBlock))
-    // Note: The specific contract implementation of `CommonSimpleReward` might vary.
-    // Let's assume standard: (address user, uint256 validUntilBlock) or similar.
+      if (!userAddress || !validUntilBlock || !isAddress(userAddress)) {
+        return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
+      }
 
-    // WAIT: I need to verify EXACTLY what the contract expects to sign.
-    // Looking at FocusPet.sol -> imports IEngagementRewards.sol
-    // Usually it's: keccak256(abi.encodePacked(address user, uint256 validUntilBlock))
+      if (!ownedAddresses.includes(userAddress.toLowerCase())) {
+        return NextResponse.json(
+          { error: "Address not associated with your account" },
+          { status: 403 },
+        );
+      }
 
-    // Let's assuming standard GoodDollar SimpleReward pattern for now.
-    // actually, let's use the simplest signature scheme that matches the "inviter" args too if needed.
-    // In `recordSession` hook: args: [minutes, inviter, validUntilBlock, signature]
+      claimerAddress = userAddress;
 
-    const inviter = "0x0000000000000000000000000000000000000000";
+      // ── 3. Verify minimum session days via subgraph ─────────────────────
+      try {
+        const history = await fetchUserHistory(claimerAddress, 30);
+        const sessionDays = history?.dailyActivities?.length ?? 0;
+        if (sessionDays < MIN_SESSION_DAYS) {
+          return NextResponse.json(
+            { error: `Need at least ${MIN_SESSION_DAYS} days of focus sessions.` },
+            { status: 403 },
+          );
+        }
+      } catch (subgraphErr) {
+        // Non-blocking: if subgraph is down, let the contract enforce it
+        console.warn("Subgraph check failed, proceeding:", subgraphErr);
+      }
 
-    // PACKED verify:
-    // User Address (address)
-    // Inviter (address)
-    // ValidUntilBlock (uint256)
+      // ── 4. Sign the claim with app private key ──────────────────────────
+      const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
+      const publicClient = createPublicClient({ chain: celo, transport: http() });
+      const walletClient = createWalletClient({ account, chain: celo, transport: http() });
 
-    const messageHash = keccak256(
-      encodePacked(
-        ["address", "address", "uint256"],
-        [userAddress as `0x${string}`, inviter, expiryBlock],
-      ),
-    );
+      const sdk = new EngagementRewardsSDK(publicClient as any, walletClient as any, REWARDS_CONTRACT);
 
-    const signature = await account.signMessage({
-      message: { raw: messageHash },
-    });
+      const { domain, types, message } = await sdk.prepareAppSignature(
+        account.address,
+        claimerAddress as `0x${string}`,
+        BigInt(validUntilBlock),
+      );
 
-    return NextResponse.json({
-      signature,
-      validUntilBlock: expiryBlock.toString(), // JSON needs string for BigInt
-      inviter,
-    });
-  } catch (error) {
-    console.error("Signing error:", error);
-    return NextResponse.json(
-      { error: "Failed to sign reward" },
-      { status: 500 },
-    );
+      const signature = await walletClient.signTypedData({
+        domain,
+        types,
+        primaryType: "AppClaim",
+        message,
+      });
+
+      console.log(`Engagement reward signed for ${claimerAddress} (privy: ${privyUserId})`);
+
+      return NextResponse.json({
+        signature,
+        appAddress: account.address,
+      });
+    } catch (authErr: any) {
+      if (authErr?.status === 400 || authErr?.status === 401) {
+        return NextResponse.json({ error: "Invalid auth token" }, { status: 401 });
+      }
+      throw authErr;
+    }
+  } catch (error: any) {
+    console.error("Sign reward error:", error);
+    return NextResponse.json({ error: "Failed to sign reward" }, { status: 500 });
   }
 }

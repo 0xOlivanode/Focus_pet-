@@ -7,12 +7,24 @@ export function ReferralTracker() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // ── FocusPet referral (?ref=address) ─────────────────────────────────
     const ref = searchParams.get("ref");
     if (ref) {
-      // Store the referrer in localStorage if not already present,
-      // or overwrite if you prefer latest click wins. We will overwrite here.
       localStorage.setItem("focuspet_referrer", ref);
-      console.log("Referrer saved:", ref);
+    }
+
+    // ── GoodDollar engagement reward inviter (?invite=base64Json) ─────────
+    // Format: btoa(JSON.stringify({ inviter: "0x..." }))
+    const invite = searchParams.get("invite");
+    if (invite) {
+      try {
+        const { inviter } = JSON.parse(atob(invite));
+        if (inviter && typeof inviter === "string" && inviter.startsWith("0x")) {
+          localStorage.setItem("focuspet_gd_inviter", inviter);
+        }
+      } catch {
+        // Malformed invite code — ignore silently
+      }
     }
   }, [searchParams]);
 

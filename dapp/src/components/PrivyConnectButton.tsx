@@ -14,7 +14,7 @@ interface PrivyConnectButtonProps {
 export function PrivyConnectButton({ onOpenAccount }: PrivyConnectButtonProps) {
   const { login, logout, authenticated, ready } = usePrivy();
   const { address } = useAccount();
-  
+
   // Hydration safety
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -41,8 +41,8 @@ export function PrivyConnectButton({ onOpenAccount }: PrivyConnectButtonProps) {
       >
         <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-linear-to-r from-indigo-500 to-purple-500 shadow-sm shrink-0" />
         <span className="shrink-0">
-          {address 
-            ? `${address.slice(0, 4)}...${address.slice(-3)}` 
+          {address
+            ? `${address.slice(0, 4)}...${address.slice(-3)}`
             : "Connected"}
         </span>
         <ChevronDown size={16} className="ml-0.5 opacity-50 hidden sm:block" />

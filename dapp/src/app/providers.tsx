@@ -60,17 +60,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
             createOnLogin: "users-without-wallets",
           },
         },
-        loginMethods: ["email", "wallet"],
+        loginMethods: ["email"],
       }}
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
           <ThemeProvider attribute="class" defaultTheme="light">
-            <MiniPayConnector />
-            <GasStationTrigger />
-            <AudioProvider>{children}</AudioProvider>
-            <IOSInstallPrompt />
-            <Toaster position="bottom-right" />
+            <>
+              <MiniPayConnector />
+              <GasStationTrigger />
+              <AudioProvider>{children}</AudioProvider>
+              <IOSInstallPrompt />
+              <Toaster position="bottom-right" />
+            </>
           </ThemeProvider>
         </WagmiProvider>
       </QueryClientProvider>

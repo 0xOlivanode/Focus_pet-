@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useBalance, useWriteContract } from "wagmi";
+import { useAccount, useBalance, useWriteContract, useDisconnect } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { X, Copy, ArrowDownLeft, ArrowUpRight, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,14 +20,17 @@ type ViewState = "overview" | "send" | "receive";
 export function AccountModal({ isOpen, onClose }: AccountModalProps) {
   const { address } = useAccount();
   const { user, logout } = usePrivy();
+  const { disconnect } = useDisconnect();
+
+  const handleLogout = async () => {
+    onClose();
+    disconnect(); // drop wagmi connection immediately so isConnected goes false
+    await logout();
+  };
   const [view, setView] = useState<ViewState>("overview");
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
 
-  const handleLogout = async () => {
-    onClose();
-    await logout();
-  };
 
   const { data: celoBalance } = useBalance({ address });
   const { data: gBalance } = useBalance({

@@ -3,9 +3,9 @@
 import { ArrowRight, Zap, Trophy, Coins } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useRef, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useReconnect } from "wagmi";
+import { useAccount } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { ThemeToggle } from "./ThemeToggle";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
@@ -56,29 +56,19 @@ const STEPS = [
 
 export function LandingPage() {
   const { isConnected, address } = useAccount();
-  const { login, authenticated } = usePrivy();
-  const { reconnect } = useReconnect();
-
-  // If authenticated but wagmi dropped (common on mobile), reconnect.
-  // If truly logged out, open Privy login modal.
-  const handleConnect = () => {
-    if (authenticated) {
-      reconnect();
-    } else {
-      login();
-    }
-  };
+  const { login, authenticated, ready: privyReady } = usePrivy();
+  const handleConnect = () => login();
   const { totalUsers, isLoading: leaderboardLoading } = useLeaderboard();
   const router = useRouter();
 
-  // If user connects while on this page → take them straight to the app
-  const wasConnected = useRef(isConnected);
+  // Privy `authenticated` is the sole routing signal.
+  // wagmi `isConnected` can be stale (persisted across sessions) and causes
+  // contradictory state when used alongside Privy — don't route on it.
   useEffect(() => {
-    if (!wasConnected.current && isConnected) {
+    if (privyReady && authenticated) {
       router.replace("/app");
     }
-    wasConnected.current = isConnected;
-  }, [isConnected, router]);
+  }, [privyReady, authenticated, router]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white selection:bg-indigo-500/30 overflow-x-hidden">
@@ -92,7 +82,7 @@ export function LandingPage() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            {isConnected ? (
+            {isConnected && authenticated ? (
               <Link
                 href="/app"
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors"
@@ -120,7 +110,7 @@ export function LandingPage() {
           transition={{ duration: 0.45 }}
           className="max-w-3xl mx-auto"
         >
-          {isConnected ? (
+          {isConnected && authenticated ? (
             /* ── Connected state ── */
             <div className="flex flex-col items-center gap-6">
               <div className="text-6xl">🥚</div>
