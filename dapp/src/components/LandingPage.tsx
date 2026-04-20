@@ -3,8 +3,6 @@
 import { ArrowRight, Zap, Trophy, Coins } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { ThemeToggle } from "./ThemeToggle";
@@ -56,21 +54,9 @@ const STEPS = [
 
 export function LandingPage() {
   const { isConnected, address } = useAccount();
-  const { login, authenticated, ready: privyReady } = usePrivy();
+  const { login, authenticated } = usePrivy();
   const handleConnect = () => login();
   const { totalUsers, isLoading: leaderboardLoading } = useLeaderboard();
-  const router = useRouter();
-
-  // Privy `authenticated` is the sole routing signal.
-  // wagmi `isConnected` can be stale (persisted across sessions) and causes
-  // contradictory state when used alongside Privy — don't route on it.
-  // MiniPay users are never Privy-authenticated, so check isMiniPay first.
-  useEffect(() => {
-    const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-    if (isMiniPay || (privyReady && authenticated)) {
-      router.replace("/app");
-    }
-  }, [privyReady, authenticated, router]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white selection:bg-indigo-500/30 overflow-x-hidden">
