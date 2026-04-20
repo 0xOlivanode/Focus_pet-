@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
             JSON.stringify({
               title: "📅 Your Weekly Focus Recap",
               body,
-              url: "/history",
+              url: "/app/history",
               tag: "weekly-recap",
             }),
           );

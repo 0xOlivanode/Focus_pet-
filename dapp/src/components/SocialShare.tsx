@@ -12,7 +12,7 @@ interface SocialShareProps {
 
 export function SocialShare({
   text,
-  url = "https://focus-pet.xyz", // Updated to correct domain
+  url = "https://app.focus-pet.xyz", // Updated to correct domain
   className = "",
 }: SocialShareProps) {
   const [isOpen, setIsOpen] = useState(false);
