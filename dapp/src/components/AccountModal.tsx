@@ -19,8 +19,17 @@ type ViewState = "overview" | "send" | "receive";
 
 export function AccountModal({ isOpen, onClose }: AccountModalProps) {
   const { address } = useAccount();
-  const { user, logout } = usePrivy();
+  const { user, logout, linkEmail } = usePrivy();
   const { disconnect } = useDisconnect();
+
+  const handleLinkEmail = async () => {
+    try {
+      await linkEmail();
+      toast.success("Email linked! You can now sign in with email.");
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to link email");
+    }
+  };
 
   const handleLogout = async () => {
     onClose();
@@ -134,7 +143,7 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                       />
                     </button>
 
-                    {user?.email && (
+                    {user?.email ? (
                       <div className="w-full flex items-center justify-between p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900">
                         <div className="flex items-center gap-3">
                           <div className="text-left">
@@ -147,6 +156,21 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                           </div>
                         </div>
                       </div>
+                    ) : (
+                      <button
+                        onClick={handleLinkEmail}
+                        className="w-full flex items-center justify-between p-3 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all"
+                      >
+                        <div className="text-left">
+                          <div className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                            Action Required
+                          </div>
+                          <div className="text-sm text-amber-700 dark:text-amber-300 font-medium mt-0.5">
+                            Link an email to keep access to your account
+                          </div>
+                        </div>
+                        <ArrowUpRight size={16} className="text-amber-500 shrink-0" />
+                      </button>
                     )}
                   </div>
 

@@ -137,6 +137,8 @@ export function useFocusPet() {
     query: {
       enabled: !!address,
       refetchInterval: 60000,
+      retry: 2,
+      retryDelay: 2000,
     },
   });
 

@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { FocusTimer } from "@/components/FocusTimer";
 import { PetView } from "@/components/PetView";
 import { ImpactDashboard } from "@/components/ImpactDashboard";
@@ -16,7 +17,7 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
 import { useIdentity } from "@/hooks/useIdentity";
 
-import { useAccount, useReconnect, useBalance } from "wagmi";
+import { useAccount, useReconnect, useBalance, useDisconnect } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -71,8 +72,9 @@ const TIMERS = {
 
 function AppPageContent() {
   const { isConnected, isConnecting, isReconnecting, address } = useAccount();
-  const { login, authenticated, ready: privyReady } = usePrivy();
+  const { login, logout, authenticated, ready: privyReady } = usePrivy();
   const { reconnect } = useReconnect();
+  const { disconnect } = useDisconnect();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -153,6 +155,8 @@ function AppPageContent() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncedHash, setSyncedHash] = useState<string | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
+  const [walletConnectTimedOut, setWalletConnectTimedOut] = useState(false);
+  const [petLoadTimedOut, setPetLoadTimedOut] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
@@ -165,6 +169,28 @@ function AppPageContent() {
       router.replace("/");
     }
   }, [privyReady, authenticated]);
+
+  // Safety timeout: if authenticated but wagmi never connects after 15s, the user
+  // likely has an external wallet or their iOS Safari cleared Privy's IndexedDB key shares.
+  useEffect(() => {
+    if (!authenticated || isConnected) {
+      setWalletConnectTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setWalletConnectTimedOut(true), 15000);
+    return () => clearTimeout(t);
+  }, [authenticated, isConnected]);
+
+  // Safety timeout: if connected but contract reads never resolve after 15s,
+  // the RPC is down or unreachable. Force-proceed so the user isn't stuck forever.
+  useEffect(() => {
+    if (!isConnected || !isLoadingPet) {
+      setPetLoadTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setPetLoadTimedOut(true), 15000);
+    return () => clearTimeout(t);
+  }, [isConnected, isLoadingPet]);
 
   const showToast = (
     title: string,
@@ -416,14 +442,53 @@ function AppPageContent() {
       typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
 
     const isAutoConnecting =
-      isConnecting ||
-      isReconnecting ||
-      miniPay ||
-      !privyReady ||
-      (privyReady && authenticated);
+      !walletConnectTimedOut && (
+        isConnecting ||
+        isReconnecting ||
+        miniPay ||
+        !privyReady ||
+        (privyReady && authenticated)
+      );
 
     if (isAutoConnecting) {
       return <AppLoadingScreen miniPay={miniPay} />;
+    }
+
+    // Authenticated but wallet never connected — external wallet user with no
+    // embedded wallet. They need to manually connect their wallet.
+    if (authenticated && walletConnectTimedOut) {
+      return (
+        <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center px-6 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex flex-col items-center gap-5 max-w-xs"
+          >
+            <div className="text-6xl">🔌</div>
+            <div>
+              <h2 className="text-xl font-black text-neutral-900 dark:text-white mb-1">
+                Connect your wallet
+              </h2>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                Your account uses an external wallet. Open it in your browser extension and connect to continue.
+              </p>
+            </div>
+            <button
+              onClick={() => reconnect()}
+              className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors shadow-lg shadow-indigo-500/20"
+            >
+              Try Reconnecting
+            </button>
+            <button
+              onClick={() => { disconnect(); logout(); }}
+              className="text-xs font-bold text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors uppercase tracking-widest"
+            >
+              Sign Out
+            </button>
+          </motion.div>
+        </div>
+      );
     }
 
     return (
@@ -460,7 +525,7 @@ function AppPageContent() {
     );
   }
 
-  if (isLoadingPet) {
+  if (isLoadingPet && !petLoadTimedOut) {
     return <AppLoadingScreen />;
   }
 
@@ -832,6 +897,13 @@ function AppPageContent() {
 }
 
 function AppLoadingScreen({ miniPay = false }: { miniPay?: boolean }) {
+  const [slow, setSlow] = React.useState(false);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 8000);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center gap-5">
       <div className="relative w-16 h-16">
@@ -848,6 +920,17 @@ function AppLoadingScreen({ miniPay = false }: { miniPay?: boolean }) {
           {miniPay ? "" : "Syncing with Celo"}
         </p>
       </div>
+      {slow && !miniPay && (
+        <div className="flex flex-col items-center gap-2 mt-2">
+          <p className="text-xs text-neutral-400">Taking longer than usual</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs font-bold text-indigo-500 hover:text-indigo-600 uppercase tracking-widest transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+      )}
     </div>
   );
 }
