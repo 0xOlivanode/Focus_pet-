@@ -11,6 +11,8 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
+
+const G_DOLLAR_ADDRESS = GOOD_DOLLAR_ADDRESSES.CELO_MAINNET;
 import { formatEther, erc20Abi } from "viem";
 
 export function useFocusPet() {
@@ -73,7 +75,6 @@ export function useFocusPet() {
   }, [writeError, receiptError]);
 
   // --- GoodDollar Integration ---
-  const G_DOLLAR_ADDRESS = "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A";
 
   const {
     data: multicallData,
@@ -265,7 +266,7 @@ export function useFocusPet() {
 
   const setNames = (username: string, petName: string) => {
     if (!hasPet) {
-      alert("Hatch your pet first before setting names!");
+      toast.error("Hatch your pet first before setting names!");
       return;
     }
     setLastAction("profile");
@@ -275,7 +276,6 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "setNames",
       args: [username, petName],
-      gas: BigInt(300000), // Manual gas limit to bypass estimation errors
     });
   };
 
@@ -308,7 +308,6 @@ export function useFocusPet() {
           abi: FocusPetABI,
           functionName: "focusSession",
           args: [BigInt(Math.max(1, Math.round(minutes * 60)))],
-          gas: BigInt(500000), // Manual gas limit to bypass estimation errors
         },
         {
           onSettled: () => setIsSigning(false), // Stop signing state when wallet opens/fails

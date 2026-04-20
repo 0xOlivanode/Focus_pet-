@@ -4,7 +4,7 @@ require("dotenv").config();
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
-    version: "0.8.22",
+    version: "0.8.34",
     settings: {
       optimizer: {
         enabled: true,
@@ -12,6 +12,9 @@ module.exports = {
       },
       viaIR: true,
     },
+  },
+  sourcify: {
+    enabled: true,
   },
   networks: {
     alfajores: {
@@ -24,5 +27,26 @@ module.exports = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 42220,
     },
+  },
+  etherscan: {
+    apiKey: "7A81UN3AKCJG4NBXCZTU4H5IEPS112BTBX",
+    customChains: [
+      {
+        network: "celo",
+        chainId: 42220,
+        urls: {
+          apiURL: "https://api.celoscan.io/api",
+          browserURL: "https://celoscan.io",
+        },
+      },
+      {
+        network: "alfajores",
+        chainId: 44787,
+        urls: {
+          apiURL: "https://api-alfajores.celoscan.io/api",
+          browserURL: "https://alfajores.celoscan.io",
+        },
+      },
+    ],
   },
 };
