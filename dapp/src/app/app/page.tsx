@@ -53,6 +53,7 @@ import {
   Clock,
   Share2,
   Menu,
+  Copy,
 } from "lucide-react";
 import toast, { Toast } from "react-hot-toast";
 import { useAudio } from "@/hooks/useAudio";
@@ -126,10 +127,12 @@ function AppPageContent() {
   } = useFocusPet();
 
   // Poll aggressively only while waiting for faucet gas on the hatch screen.
+  // MiniPay users pay gas via cUSD — no need to poll CELO balance for them.
   // Once user has a pet, drop back to default (no continuous polling).
+  const isMiniPayEnv = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
   const { data: celoBalance } = useBalance({
     address,
-    query: { refetchInterval: !hasPet ? 3000 : false },
+    query: { refetchInterval: !hasPet && !isMiniPayEnv ? 3000 : false },
   });
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
@@ -275,8 +278,11 @@ function AppPageContent() {
 
   // If the user has no pet and no gas arrives within 40 s, stop spinning and
   // show a fallback message so they're never stuck forever.
+  // MiniPay users pay gas via cUSD — skip this timer entirely.
   useEffect(() => {
     if (hasPet) return;
+    const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+    if (isMiniPay) { setGasTimedOut(false); return; }
     const hasGas = (celoBalance?.value ?? 0n) >= parseEther("0.003");
     if (hasGas) { setGasTimedOut(false); return; }
     const t = setTimeout(() => setGasTimedOut(true), 40_000);
@@ -567,15 +573,14 @@ function AppPageContent() {
             transition={{ delay: 0.5, duration: 0.8 }}
             className="w-full flex flex-col gap-6"
           >
-            {/* Glassmorphism Timer Card */}
             {/* Glassmorphism Hatch Card */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[40px] shadow-2xl relative overflow-hidden group">
               <div className="absolute inset-0 bg-linear-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
               {(() => {
-                // Gate: user needs at least 0.003 CELO to cover the hatch tx.
-                // Faucet sends 0.1 CELO in the background — poll until it lands.
-                const hasGas = (celoBalance?.value ?? 0n) >= parseEther("0.003");
+                const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+                // MiniPay pays gas via cUSD — no CELO needed. Skip the gas gate.
+                const hasGas = isMiniPay || (celoBalance?.value ?? 0n) >= parseEther("0.003");
                 return (
                   <div className="relative z-10 flex flex-col items-center text-center">
                     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-6 block">
@@ -589,7 +594,7 @@ function AppPageContent() {
                       {hasGas
                         ? "Your new companion is waiting to hatch. No waiting required—let's begin your journey now."
                         : gasTimedOut
-                          ? "We couldn't automatically top up your wallet. Please try refreshing, or contact us for help."
+                          ? "We couldn't automatically top up your wallet. Send a small amount of CELO to your address below, or contact us for help."
                           : "We're topping up your wallet with a small amount of CELO so you can hatch for free. This only takes a moment."}
                     </p>
 
@@ -611,12 +616,26 @@ function AppPageContent() {
                         <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 ease-in-out" />
                       </motion.button>
                     ) : gasTimedOut ? (
-                      <button
-                        onClick={() => window.location.reload()}
-                        className="px-8 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all border border-white/20"
-                      >
-                        Refresh & Retry
-                      </button>
+                      <div className="flex flex-col items-center gap-3 w-full">
+                        <button
+                          onClick={() => {
+                            if (address) {
+                              navigator.clipboard.writeText(address);
+                              toast.success("Address copied!");
+                            }
+                          }}
+                          className="w-full px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-mono text-xs transition-all border border-white/20 text-left flex items-center justify-between gap-2"
+                        >
+                          <span className="truncate">{address}</span>
+                          <Copy size={14} className="shrink-0 text-indigo-400" />
+                        </button>
+                        <button
+                          onClick={() => window.location.reload()}
+                          className="px-8 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all border border-white/20"
+                        >
+                          Refresh & Retry
+                        </button>
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center gap-3">
                         <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
@@ -894,9 +913,11 @@ function AppLoadingScreen({ miniPay = false }: { miniPay?: boolean }) {
           {miniPay ? "" : "Syncing with Celo"}
         </p>
       </div>
-      {slow && !miniPay && (
+      {slow && (
         <div className="flex flex-col items-center gap-2 mt-2">
-          <p className="text-xs text-neutral-400">Taking longer than usual</p>
+          <p className="text-xs text-neutral-400">
+            {miniPay ? "MiniPay connection is slow" : "Taking longer than usual"}
+          </p>
           <button
             onClick={() => window.location.reload()}
             className="text-xs font-bold text-indigo-500 hover:text-indigo-600 uppercase tracking-widest transition-colors"
