@@ -131,7 +131,7 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     if (!authenticated) {
-      router.replace("/app");
+      router.replace("/");
     }
   }, [authenticated, router]);
   const [search, setSearch] = useState("");

@@ -155,7 +155,7 @@ export function Leaderboard() {
 
         {!isLoading && topTen.length > 0 && (
           <Link
-            href="/leaderboard"
+            href="/app/leaderboard"
             className="block w-full text-center py-3 text-xs font-bold text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors mt-1"
           >
             Full leaderboard →

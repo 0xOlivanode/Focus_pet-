@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const APP_URL = "https://focus-pet.xyz";
+const APP_URL = "https://app.focus-pet.xyz";
 
 function getSupabase() {
   return createClient(

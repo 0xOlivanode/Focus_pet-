@@ -5,6 +5,7 @@ import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
+import { usePrivy } from "@privy-io/react-auth";
 import { fetchUserHistory, UserHistory, DailyActivity } from "@/lib/subgraph";
 import { getPetEmoji, getPetStage, STAGE_THRESHOLD } from "@/utils/pet";
 
@@ -116,14 +117,16 @@ function StageProgress({ xp }: { xp: number }) {
 
 export default function HistoryPage() {
   const { address, isConnected } = useAccount();
+  const { authenticated } = usePrivy();
   const router = useRouter();
   const [history, setHistory] = useState<UserHistory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isConnected) {
-      router.push("/");
+    const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+    if (!authenticated && !isMiniPay) {
+      router.replace("/");
       return;
     }
     if (!address) return;

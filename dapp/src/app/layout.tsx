@@ -57,10 +57,10 @@ export const metadata: Metadata = {
     "fc:frame:image:aspect_ratio": "1.91:1",
     "fc:frame:button:1": "🥚 Start Focusing",
     "fc:frame:button:1:action": "link",
-    "fc:frame:button:1:target": "https://focus-pet.xyz/app",
+    "fc:frame:button:1:target": "https://app.focus-pet.xyz",
     "fc:frame:button:2": "🏆 Leaderboard",
     "fc:frame:button:2:action": "link",
-    "fc:frame:button:2:target": "https://focus-pet.xyz/leaderboard",
+    "fc:frame:button:2:target": "https://app.focus-pet.xyz/leaderboard",
   },
 };
 

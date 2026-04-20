@@ -85,11 +85,11 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
             {/* Desktop-only actions */}
             <div className="hidden sm:flex items-center gap-1.5">
               {address && (
-                <NavIconBtn href="/history" title="History">
+                <NavIconBtn href="/app/history" title="History">
                   <History size={17} />
                 </NavIconBtn>
               )}
-              <NavIconBtn href="/leaderboard" title="Leaderboard">
+              <NavIconBtn href="/app/leaderboard" title="Leaderboard">
                 <Trophy size={17} />
               </NavIconBtn>
               {onOpenOnboarding && (
@@ -178,14 +178,14 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
                 <MobileMenuItem
                   icon={<History size={17} />}
                   label="Focus History"
-                  href="/history"
+                  href="/app/history"
                   onClick={closeMenu}
                 />
               )}
               <MobileMenuItem
                 icon={<Trophy size={17} />}
                 label="Leaderboard"
-                href="/leaderboard"
+                href="/app/leaderboard"
                 onClick={closeMenu}
               />
               {onOpenOnboarding && (
