@@ -171,7 +171,13 @@ function AppPageContent() {
   useEffect(() => {
     const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
     if (privyReady && !authenticated && !isMiniPay) {
-      router.replace("/");
+      // On app.focus-pet.xyz, "/" proxies back to /app — redirect to root domain instead
+      const isAppSubdomain = typeof window !== "undefined" && window.location.hostname.startsWith("app.");
+      if (isAppSubdomain) {
+        window.location.href = window.location.origin.replace("app.", "");
+      } else {
+        router.replace("/");
+      }
     }
   }, [privyReady, authenticated]);
 
