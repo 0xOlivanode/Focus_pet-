@@ -454,41 +454,13 @@ function AppPageContent() {
       return <AppLoadingScreen miniPay={miniPay} />;
     }
 
-    // Authenticated but wallet never connected — external wallet user with no
-    // embedded wallet. They need to manually connect their wallet.
+    // Wallet never connected after timeout — silently sign out and send them
+    // back to the login screen. This is the actual recovery path and avoids
+    // showing technical jargon about browser extensions to mobile users.
     if (authenticated && walletConnectTimedOut) {
-      return (
-        <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col items-center justify-center px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col items-center gap-5 max-w-xs"
-          >
-            <div className="text-6xl">🔌</div>
-            <div>
-              <h2 className="text-xl font-black text-neutral-900 dark:text-white mb-1">
-                Connect your wallet
-              </h2>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Your account uses an external wallet. Open it in your browser extension and connect to continue.
-              </p>
-            </div>
-            <button
-              onClick={() => reconnect()}
-              className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors shadow-lg shadow-indigo-500/20"
-            >
-              Try Reconnecting
-            </button>
-            <button
-              onClick={() => { disconnect(); logout(); }}
-              className="text-xs font-bold text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors uppercase tracking-widest"
-            >
-              Sign Out
-            </button>
-          </motion.div>
-        </div>
-      );
+      disconnect();
+      logout();
+      return <AppLoadingScreen />;
     }
 
     return (
