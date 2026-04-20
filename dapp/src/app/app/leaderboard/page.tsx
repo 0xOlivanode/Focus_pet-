@@ -125,17 +125,20 @@ const LeaderboardRow = ({
 
 export default function LeaderboardPage() {
   const { address: userAddress } = useAccount();
-  const { authenticated } = usePrivy();
+  const { authenticated, ready: privyReady } = usePrivy();
   const { leaderboard, userEntry, isLoading } = useLeaderboard();
   const router = useRouter();
-
-  useEffect(() => {
-    if (!authenticated) {
-      router.replace("/");
-    }
-  }, [authenticated, router]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+
+  // All hooks above — safe to return early now
+  if (!privyReady) return null;
+  if (!authenticated && !isMiniPay) {
+    router.replace("/");
+    return null;
+  }
 
   const filteredLeaderboard = useMemo(() => {
     return leaderboard.filter((entry) => {

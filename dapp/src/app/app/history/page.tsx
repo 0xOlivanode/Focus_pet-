@@ -117,27 +117,30 @@ function StageProgress({ xp }: { xp: number }) {
 
 export default function HistoryPage() {
   const { address, isConnected } = useAccount();
-  const { authenticated } = usePrivy();
+  const { authenticated, ready: privyReady } = usePrivy();
   const router = useRouter();
   const [history, setHistory] = useState<UserHistory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+
   useEffect(() => {
-    const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-    if (!authenticated && !isMiniPay) {
-      router.replace("/");
-      return;
-    }
+    if (!privyReady || (!authenticated && !isMiniPay)) return;
     if (!address) return;
 
     fetchUserHistory(address, 60)
-      .then((data) => {
-        setHistory(data);
-      })
+      .then((data) => setHistory(data))
       .catch(() => setError("Failed to load history. Try again later."))
       .finally(() => setIsLoading(false));
-  }, [address, isConnected, router]);
+  }, [address, isConnected, privyReady, authenticated]);
+
+  // All hooks above — safe to return early now
+  if (!privyReady) return null;
+  if (!authenticated && !isMiniPay) {
+    router.replace("/");
+    return null;
+  }
 
   const user = history?.user;
   const activities = history?.dailyActivities ?? [];
