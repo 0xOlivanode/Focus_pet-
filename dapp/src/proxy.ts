@@ -16,6 +16,11 @@ export function proxy(request: NextRequest) {
     if (pathname === "/") {
       return NextResponse.rewrite(new URL("/app", request.url));
     }
+    // /app is a localhost-only path — redirect to clean root on subdomain
+    if (pathname === "/app" || pathname.startsWith("/app/")) {
+      const subpath = pathname.slice(4) || "/";
+      return NextResponse.redirect(new URL(subpath, request.url), 301);
+    }
     // Rewrite clean subdomain paths to /app/* equivalents
     for (const [from, to] of Object.entries(SUBDOMAIN_REWRITES)) {
       if (pathname === from || pathname.startsWith(from + "/")) {
