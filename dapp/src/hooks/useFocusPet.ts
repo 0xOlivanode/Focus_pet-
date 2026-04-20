@@ -16,12 +16,7 @@ import { formatEther, erc20Abi } from "viem";
 export function useFocusPet() {
   const { address } = useAccount();
 
-  // MiniPay only accepts legacy (non-EIP-1559) transactions
-  const [isMiniPay, setIsMiniPay] = useState(false);
-  useEffect(() => {
-    setIsMiniPay(!!(window.ethereum as any)?.isMiniPay);
-  }, []);
-  const txOverrides = isMiniPay ? ({ type: "legacy" } as const) : {};
+  const txOverrides = {};
 
   const [isSigning, setIsSigning] = useState(false);
   const [lastAction, setLastAction] = useState<

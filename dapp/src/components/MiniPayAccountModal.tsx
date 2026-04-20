@@ -230,7 +230,6 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
       abi: ERC20_TRANSFER_ABI,
       functionName: "transfer",
       args: [recipient as `0x${string}`, parseUnits(sendAmount, gDollarBalance?.decimals ?? 2)],
-      type: "legacy",
     });
   };
 

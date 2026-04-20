@@ -5,7 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAccount, useConnect, fallback, http } from "wagmi";
+import { useAccount, useConnect, useConnectors, fallback, http } from "wagmi";
 import { injected } from "wagmi/connectors";
 
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
@@ -81,14 +81,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
 }
 
 function MiniPayConnector() {
+  const connectors = useConnectors();
   const { connect } = useConnect();
   const { isConnected } = useAccount();
+  const hasAttempted = React.useRef(false);
 
   React.useEffect(() => {
-    if ((window.ethereum as any)?.isMiniPay && !isConnected) {
-      connect({ connector: injected({ target: "metaMask" }) });
-    }
-  }, []);
+    if (hasAttempted.current || connectors.length === 0) return;
+    if (!(window.ethereum as any)?.isMiniPay || isConnected) return;
+    hasAttempted.current = true;
+    connect({ connector: connectors[0] });
+  }, [connectors, connect, isConnected]);
 
   return null;
 }
