@@ -62,6 +62,8 @@ import { StreakFlame } from "./../../components/StreakFlame";
 import { NamingModal } from "@/components/NamingModal";
 import { useStreaming } from "@/hooks/useStreaming";
 import { Navbar } from "@/components/Navbar";
+import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
+import { AppWelcome } from "@/components/AppWelcome";
 
 import { Suspense } from "react";
 
@@ -165,21 +167,6 @@ function AppPageContent() {
     setHasMounted(true);
   }, []);
 
-  // Redirect to home after logout — Privy clears `authenticated` before wagmi
-  // drops the connection, so we gate on privyReady to avoid a false redirect on load.
-  // MiniPay users are never Privy-authenticated; skip the redirect for them.
-  useEffect(() => {
-    const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-    if (privyReady && !authenticated && !isMiniPay) {
-      // On app.focus-pet.xyz, "/" proxies back to /app — redirect to root domain instead
-      const isAppSubdomain = typeof window !== "undefined" && window.location.hostname.startsWith("app.");
-      if (isAppSubdomain) {
-        window.location.href = window.location.origin.replace("app.", "");
-      } else {
-        router.replace("/");
-      }
-    }
-  }, [privyReady, authenticated]);
 
   // Safety timeout: if authenticated but wagmi never connects after 15s, the user
   // likely has an external wallet or their iOS Safari cleared Privy's IndexedDB key shares.
@@ -449,6 +436,12 @@ function AppPageContent() {
   // --- Conditional Rendering Blocks ---
   if (!hasMounted) {
     return <AppLoadingScreen />;
+  }
+
+  // Show welcome/auth screen for unauthenticated non-MiniPay users
+  const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+  if (privyReady && !authenticated && !isMiniPay) {
+    return <AppWelcome />;
   }
 
   if (!isConnected) {
@@ -858,6 +851,7 @@ function AppPageContent() {
       </main>
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
+      <IOSInstallPrompt />
 
       <NamingModal
         isOpen={isEditModalOpen}

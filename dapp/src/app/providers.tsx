@@ -13,7 +13,6 @@ import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { celo } from "wagmi/chains";
 
 import { AudioProvider } from "@/hooks/useAudio";
-import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
 
 // React Query uses JSON.stringify internally to hash query/mutation keys.
 // Transaction receipts and contract args contain BigInt (blockNumber, gasUsed, etc.).
@@ -70,7 +69,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <MiniPayConnector />
               <GasStationTrigger />
               <AudioProvider>{children}</AudioProvider>
-              <IOSInstallPrompt />
               <Toaster position="bottom-right" />
             </>
           </ThemeProvider>
