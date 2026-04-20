@@ -164,8 +164,10 @@ function AppPageContent() {
 
   // Redirect to home after logout — Privy clears `authenticated` before wagmi
   // drops the connection, so we gate on privyReady to avoid a false redirect on load.
+  // MiniPay users are never Privy-authenticated; skip the redirect for them.
   useEffect(() => {
-    if (privyReady && !authenticated) {
+    const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+    if (privyReady && !authenticated && !isMiniPay) {
       router.replace("/");
     }
   }, [privyReady, authenticated]);

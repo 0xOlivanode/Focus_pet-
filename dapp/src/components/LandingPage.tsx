@@ -64,8 +64,10 @@ export function LandingPage() {
   // Privy `authenticated` is the sole routing signal.
   // wagmi `isConnected` can be stale (persisted across sessions) and causes
   // contradictory state when used alongside Privy — don't route on it.
+  // MiniPay users are never Privy-authenticated, so check isMiniPay first.
   useEffect(() => {
-    if (privyReady && authenticated) {
+    const isMiniPay = typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+    if (isMiniPay || (privyReady && authenticated)) {
       router.replace("/app");
     }
   }, [privyReady, authenticated, router]);
