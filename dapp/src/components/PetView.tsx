@@ -7,21 +7,15 @@ import Image from "next/image";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import {
   Heart,
-  Zap,
-  Flame,
   Sun,
   Cloud,
   CloudRain,
   CloudLightning,
-  Info,
-  Waves,
   ZapOff,
   Moon,
 } from "lucide-react";
 import { useStreaming } from "@/hooks/useStreaming";
-import { parseEther, formatEther } from "viem";
 import { SuperchargeModal } from "./SuperchargeModal";
-import { calculateMonthlyAmount } from "@/lib/superfluid";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -38,7 +32,7 @@ import {
   StageInfo,
 } from "@/utils/pet";
 
-import { WeatherType } from "./WeatherLayer";
+import { WeatherLayer, WeatherType } from "./WeatherLayer";
 
 interface PetViewProps {
   stage: PetStage;
@@ -291,7 +285,7 @@ export function PetView({
                           : "translate-y-[-30px] scale-110"
                 }`}
               >
-                <span className="text-6xl drop-shadow-lg">🕶️</span>
+                <img src="/assets/shop/cool-shades.png" alt="sunglasses" className="w-16 h-16 object-contain drop-shadow-lg" />
               </motion.div>
             )}
             {equippedCosmetics.crown && (
@@ -312,9 +306,7 @@ export function PetView({
                           : "translate-y-[-110px] scale-120"
                 } ${isNight ? "brightness-[0.7] contrast-[1.1] drop-shadow-[0_0_15px_rgba(165,180,252,0.4)]" : ""}`}
               >
-                <span className="text-6xl drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">
-                  👑
-                </span>
+                <img src="/assets/shop/crown.png" alt="crown" className="w-16 h-16 object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -357,6 +349,29 @@ export function PetView({
       >
         {/* Main Pet Container */}
         <motion.div className="w-full h-80 md:h-[483px] bg-[#000000] rounded-[calc(2rem-0.5px)] flex items-center justify-center relative group transition-colors duration-500 shadow-xl cursor-pointer">
+          {/* Weather Layer */}
+          <WeatherLayer weather={weather} isNight={isNight} />
+
+          {/* Weather Badge */}
+          {(() => {
+            const badge: Record<WeatherType, { icon: React.ReactNode; label: string } | null> = {
+              sunny:   { icon: <Sun size={11} />,           label: "Sunny" },
+              clear:   null,
+              cloudy:  { icon: <Cloud size={11} />,         label: "Cloudy" },
+              rainy:   { icon: <CloudRain size={11} />,     label: "Rainy" },
+              stormy:  { icon: <CloudLightning size={11} />, label: "Stormy" },
+            };
+            const nightBadge = isNight ? { icon: <Moon size={11} />, label: "Night" } : null;
+            const b = nightBadge ?? badge[weather];
+            if (!b) return null;
+            return (
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-2.5 py-1.5 bg-black/60 border border-neutral-800/80 rounded-full backdrop-blur-sm pointer-events-none">
+                <span className="text-neutral-400">{b.icon}</span>
+                <span className="text-[10px] text-neutral-400 font-medium tracking-wide">{b.label}</span>
+              </div>
+            );
+          })()}
+
           {/* Night Aura (Moonlight Effect) */}
           {/* {isNight && (
           <motion.div

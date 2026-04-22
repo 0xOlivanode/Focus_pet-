@@ -133,6 +133,9 @@ export function FocusTimer({
             setStatus("running");
             endTimeRef.current = e;
             scheduleFocusReminder(e);
+            // Sync parent focusing state — without this, isFocusing stays false
+            // after a tab-switch re-mount and the UI flickers incorrectly.
+            onStart?.(n);
           } else {
             // Session finished while away
             setTimeLeft(0);

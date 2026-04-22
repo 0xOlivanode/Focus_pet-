@@ -524,8 +524,7 @@ function AppPageContent() {
 
   if (!hasPet) {
     const isMiniPayHatch =
-      typeof window !== "undefined" &&
-      !!(window.ethereum as any)?.isMiniPay;
+      typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
     const hasGas =
       isMiniPayHatch || (celoBalance?.value ?? 0n) >= parseEther("0.003");
 
@@ -550,7 +549,11 @@ function AppPageContent() {
               src="/assets/pets/cyber_dino/egg_sunny.png"
               alt="Your egg"
               animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+              transition={{
+                duration: 3.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
               className="relative w-44 h-44 object-contain drop-shadow-[0_0_40px_rgba(255,255,255,0.08)]"
             />
           </motion.div>
@@ -591,7 +594,8 @@ function AppPageContent() {
             ) : gasTimedOut ? (
               <div className="flex flex-col gap-3">
                 <p className="text-neutral-500 text-sm text-center leading-relaxed">
-                  We couldn't top up your wallet. Send a small CELO to your address to continue.
+                  We couldn't top up your wallet. Send a small CELO to your
+                  address to continue.
                 </p>
                 <button
                   onClick={() => {
@@ -615,7 +619,9 @@ function AppPageContent() {
             ) : (
               <div className="flex items-center justify-center gap-3">
                 <Loader2 className="w-4 h-4 animate-spin text-neutral-500 shrink-0" />
-                <p className="text-neutral-500 text-sm">Preparing your wallet…</p>
+                <p className="text-neutral-500 text-sm">
+                  Preparing your wallet…
+                </p>
               </div>
             )}
 
@@ -644,11 +650,21 @@ function AppPageContent() {
               <div className="relative w-24 h-24 flex items-center justify-center">
                 <motion.div
                   animate={{ opacity: [0.05, 0.18, 0.05], scale: [1, 1.2, 1] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
                   className="absolute inset-0 rounded-full bg-white blur-xl"
                 />
                 <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white/40 animate-spin" />
-                <div className="absolute inset-3 rounded-full border border-transparent border-b-white/20 animate-spin" style={{ animationDuration: "2s", animationDirection: "reverse" }} />
+                <div
+                  className="absolute inset-3 rounded-full border border-transparent border-b-white/20 animate-spin"
+                  style={{
+                    animationDuration: "2s",
+                    animationDirection: "reverse",
+                  }}
+                />
                 <motion.div
                   animate={{ opacity: [0.2, 0.7, 0.2] }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -893,7 +909,9 @@ function AppPageContent() {
               </motion.div>
 
               {/* Mobile-only left panel — hidden while focusing */}
-              <div className={`sm:hidden p-8 bg-[#0F0F0F] flex-col gap-5 ${isFocusing ? "hidden" : "flex"}`}>
+              <div
+                className={`sm:hidden p-8 bg-[#0F0F0F] flex-col gap-5 ${isFocusing ? "hidden" : "flex"}`}
+              >
                 <div>
                   <h2 className="text-white text-3xl font-medium mb-4 leading-tight capitalize">
                     {petName || "Pet Name"}
