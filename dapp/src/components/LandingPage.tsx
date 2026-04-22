@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, Zap, Trophy, Coins } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 
@@ -124,19 +125,24 @@ export function LandingPage() {
               </div>
             </div>
 
-            <img
+            <Image
               src="/hero-pets.png"
-              className=" max-w-sm sm:max-w-md lg:max-w-none lg:absolute lg:bottom-0 lg:right-25 self-center lg:self-auto"
+              width={800}
+              height={600}
               alt=""
+              className="max-w-sm sm:max-w-md lg:max-w-none lg:absolute lg:bottom-0 lg:right-25 self-center lg:self-auto"
+              style={{ width: "auto", height: "auto" }}
             />
           </div>
         </div>
       </div>
       <div className="py-25 flex flex-col items-center bg-[#FBFBFB]">
-        <img
+        <Image
           src="/milestone-images.png"
-          className="mb-[33px] w-full max-w-[900px]"
+          width={900}
+          height={300}
           alt=""
+          className="mb-[33px] w-full max-w-[900px] h-auto"
         />
         <div className="flex justify-center gap-x-[152px] text-[#000000] text-xl">
           <div>1hr</div>

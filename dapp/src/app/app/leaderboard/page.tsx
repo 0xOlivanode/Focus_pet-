@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import { useAccount } from "wagmi";
@@ -183,7 +184,7 @@ export default function LeaderboardPage() {
                 {formatHours(userEntry.totalFocusTime || 0)} focused
                 {userEntry.streak ? (
                   <span className="inline-flex items-center gap-1 ml-1">
-                    · <img src="/streak-flame.png" className="w-3 h-3 inline" alt="" /> {userEntry.streak}
+                    · <Image src="/streak-flame.png" width={12} height={12} alt="" className="inline" /> {userEntry.streak}
                   </span>
                 ) : ""}
               </p>
@@ -280,7 +281,7 @@ export default function LeaderboardPage() {
                           </span>
                           {streak > 0 && (
                             <span className="inline-flex items-center gap-0.5 text-[11px] text-neutral-500">
-                              <img src="/streak-flame.png" className="w-3 h-3" alt="" /> {streak}
+                              <Image src="/streak-flame.png" width={12} height={12} alt="" /> {streak}
                             </span>
                           )}
                           <span className="text-neutral-500 text-[11px] font-medium tabular-nums">
@@ -311,7 +312,7 @@ export default function LeaderboardPage() {
                     <div className="hidden sm:flex items-center gap-1.5">
                       {streak > 0 ? (
                         <>
-                          <img src="/streak-flame.png" className="w-4 h-4" alt="" />
+                          <Image src="/streak-flame.png" width={16} height={16} alt="" />
                           <span className="text-neutral-300 text-sm tabular-nums">
                             {streak}
                           </span>

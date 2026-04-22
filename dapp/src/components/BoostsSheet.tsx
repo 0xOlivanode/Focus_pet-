@@ -85,11 +85,7 @@ function BoostRow({
       {active && expiresAt && expiresAt > 0 && (
         <div className="shrink-0 text-right">
           <div className="flex items-center gap-1.5">
-            <motion.div
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-1.5 h-1.5 rounded-full bg-white shrink-0"
-            />
+            <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
             <span className="text-white text-xs tabular-nums font-medium">
               {formatCountdown(remaining)}
             </span>
