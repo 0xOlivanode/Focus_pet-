@@ -50,9 +50,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         defaultChain: celo,
         supportedChains: [celo],
         appearance: {
-          theme: "light",
-          accentColor: "#4f46e5",
-          logo: "/focus-pet.png",
+          theme: "#000000",
+          accentColor: "#ffffff",
+          logo: "/focus-pet-logo.jpeg",
+          landingHeader: "Sign in to FocusPet",
+          loginMessage: "Raise a pet. Earn G$. Focus more.",
         },
         embeddedWallets: {
           ethereum: {
@@ -69,7 +71,35 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <MiniPayConnector />
               <GasStationTrigger />
               <AudioProvider>{children}</AudioProvider>
-              <Toaster position="bottom-right" />
+              <Toaster
+                position="top-center"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: "#111111",
+                    color: "#ffffff",
+                    border: "1px solid #262626",
+                    borderRadius: "999px",
+                    padding: "12px 20px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                    maxWidth: "420px",
+                  },
+                  success: {
+                    iconTheme: {
+                      primary: "#ffffff",
+                      secondary: "#111111",
+                    },
+                  },
+                  error: {
+                    iconTheme: {
+                      primary: "#ef4444",
+                      secondary: "#111111",
+                    },
+                  },
+                }}
+              />
             </>
           </ThemeProvider>
         </WagmiProvider>
@@ -114,7 +144,7 @@ function GasStationTrigger() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ address }),
       }).then((res) => res.json());

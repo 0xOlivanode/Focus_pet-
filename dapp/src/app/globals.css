@@ -2,17 +2,22 @@
 
 @plugin "tailwindcss-animate";
 
-/* 
-  Force Tailwind to use class-based dark mode. 
-  In v4, we use the @custom-variant to map 'dark' to the class 
+/*
+  Force Tailwind to use class-based dark mode.
+  In v4, we use the @custom-variant to map 'dark' to the class
 */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+}
+
+@theme {
+  --font-sans: var(--font-dm-sans);
+  --font-mono: var(--font-dm-mono);
+  --font-anton: var(--font-anton);
+  --font-outfit: var(--font-outfit);
 }
 
 /* Explicitly override variables when .dark class is present on html/body */
@@ -21,10 +26,10 @@
   --foreground: #ededed;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+button,
+[role="button"],
+a {
+  cursor: pointer;
 }
 
 body {
@@ -32,4 +37,22 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
+}
+
+@keyframes superchargeShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes boostShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes streakShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }

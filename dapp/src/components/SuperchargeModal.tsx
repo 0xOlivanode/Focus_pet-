@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Waves, Zap, X, Flame, Leaf } from "lucide-react";
-import { parseEther } from "viem";
+import { parseEther, formatEther } from "viem";
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 
@@ -12,39 +12,32 @@ export interface StreamTier {
   amountPerMonth: number;
   icon: React.ReactNode;
   color: string;
-  cardClass: string;
 }
 
 export const STREAM_TIERS: StreamTier[] = [
   {
-    label: "Gentle Flow",
+    label: "Gentle flow",
     description:
-      "1.2x XP Boost & Emerald Aura. No health decay. Funds the UBI pool.",
+      "1.2x XP boost & emerald aura. No health decay. Fund the UBI pool.",
     amountPerMonth: 10,
-    icon: <Leaf className="w-5 h-5" />,
-    color: "text-emerald-500",
-    cardClass:
-      "border-emerald-500/20 hover:border-emerald-500/40 hover:bg-emerald-500/5",
+    icon: <Leaf className="w-4 h-4" />,
+    color: "text-emerald-400",
   },
   {
-    label: "Power Surge",
+    label: "Power surge",
     description:
-      "1.4x XP Boost & Cyan Energy Aura. No health decay. Higher UBI impact.",
+      "1.4x XP boost & cyan energy aura. No health decay. Higher UBI impact.",
     amountPerMonth: 50,
-    icon: <Zap className="w-5 h-5" />,
-    color: "text-cyan-500",
-    cardClass:
-      "border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/5",
+    icon: <Zap className="w-4 h-4" />,
+    color: "text-cyan-400",
   },
   {
-    label: "Max Overdrive",
+    label: "Max overdrive",
     description:
-      "1.7x XP Boost & Indigo Explosion. No health decay. Maximum UBI impact.",
+      "1.7x XP boost & indigo explosion aura. No health decay. Maximum UBI impact.",
     amountPerMonth: 100,
-    icon: <Flame className="w-5 h-5" />,
-    color: "text-indigo-500",
-    cardClass:
-      "border-indigo-500/20 hover:border-indigo-500/40 hover:bg-indigo-500/5",
+    icon: <Flame className="w-4 h-4" />,
+    color: "text-indigo-400",
   },
 ];
 
@@ -52,6 +45,7 @@ interface SuperchargeModalProps {
   isOpen: boolean;
   onClose: () => void;
   isStreaming: boolean;
+  flowRate?: bigint;
   onStart: (amountPerMonth: bigint) => void;
   onStop: () => void;
 }
@@ -60,13 +54,37 @@ export function SuperchargeModal({
   isOpen,
   onClose,
   isStreaming,
+  flowRate,
   onStart,
   onStop,
 }: SuperchargeModalProps) {
+  const monthlyAmount = flowRate
+    ? Number(formatEther(flowRate * BigInt(30 * 24 * 60 * 60)))
+    : 0;
+  const activeTier =
+    monthlyAmount >= 90
+      ? STREAM_TIERS[2]
+      : monthlyAmount >= 45
+        ? STREAM_TIERS[1]
+        : monthlyAmount >= 9
+          ? STREAM_TIERS[0]
+          : null;
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   const handleSelect = (tier: StreamTier) => {
     onStart(parseEther(String(tier.amountPerMonth)));
@@ -78,105 +96,153 @@ export function SuperchargeModal({
     onClose();
   };
 
-  const modal = (
+  const sheet = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-99999 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99999] flex items-end">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 backdrop-blur-xs"
           />
 
-          {/* Modal */}
+          {/* Bottom sheet */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 24 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 24 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="relative w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-4xl p-6 shadow-2xl"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 380, damping: 38 }}
+            className="relative w-full lg:w-[960px] mx-auto bg-[#111111] rounded-t-[2rem] overflow-hidden"
           >
-            {/* Close */}
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 flex items-center justify-center text-neutral-400 transition-colors"
-            >
-              <X size={14} />
-            </button>
-
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                <Waves className="w-5 h-5 text-cyan-500" />
-              </div>
-              <div>
-                <h2 className="text-neutral-900 dark:text-white font-black text-base">
-                  Supercharge Your Pet
-                </h2>
-                <p className="text-neutral-400 text-xs">
-                  Boost your progress & protect your pet’s health.
-                </p>
-              </div>
+            {/* Drag handle */}
+            <div className="flex justify-center pt-4 pb-1">
+              <div className="w-10 h-1 rounded-full bg-neutral-700" />
             </div>
 
-            {/* Already streaming — show stop option */}
-            {isStreaming ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20">
-                  <Waves className="w-4 h-4 text-cyan-500 animate-pulse" />
-                  <p className="text-cyan-600 dark:text-cyan-300 text-sm font-bold">
-                    Stream is active
+            <div className="px-6 pt-4 pb-10">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-7">
+                <div>
+                  <h2 className="text-white text-xl font-semibold leading-tight">
+                    {isStreaming ? "Pet Supercharged!" : "Supercharge Your Pet"}
+                  </h2>
+                  <p className="text-neutral-500 text-sm mt-1">
+                    {isStreaming && activeTier
+                      ? `${activeTier.label} — ${activeTier.description}`
+                      : "Boost your progress & protect your pet's health."}
                   </p>
                 </div>
-                <p className="text-neutral-400 text-xs text-center">
-                  G$ is flowing from your wallet to the UBI Pool. Your pet is
-                  currently at maximum health and boosted! ⚡️
-                </p>
                 <button
-                  onClick={handleStop}
-                  className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-black hover:bg-red-500/20 transition-all active:scale-95"
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-neutral-400 transition-colors shrink-0 ml-4 mt-0.5"
                 >
-                  Stop Stream
+                  <X size={14} />
                 </button>
               </div>
-            ) : (
-              /* Tier Selection */
-              <div className="flex flex-col gap-3">
-                {STREAM_TIERS.map((tier) => (
-                  <motion.button
-                    key={tier.label}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => handleSelect(tier)}
-                    className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl bg-neutral-50 dark:bg-white/5 border transition-all text-left ${tier.cardClass}`}
+
+              {isStreaming ? (
+                <div className="flex flex-col gap-3">
+                  {/* Active stream status card */}
+                  <div className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-[#1a1a1a] px-5 py-5">
+                    <motion.div
+                      animate={{ opacity: [0.03, 0.07, 0.03] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute inset-0 bg-white rounded-2xl pointer-events-none"
+                    />
+                    <div className="relative flex items-center gap-4">
+                      {/* Pulsing dot */}
+                      <div className="relative w-2.5 h-2.5 shrink-0">
+                        <motion.div
+                          animate={{ scale: [1, 2, 1], opacity: [0.3, 0, 0.3] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                          className="absolute inset-0 rounded-full bg-white"
+                        />
+                        <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-white text-sm font-semibold leading-tight">Stream active</p>
+                          {activeTier && (
+                            <span className={`text-xs font-medium capitalize ${activeTier.color}`}>
+                              · {activeTier.label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-neutral-500 text-xs mt-0.5">G$ is flowing to the UBI Pool</p>
+                      </div>
+                      {activeTier ? (
+                        <span className={`ml-auto shrink-0 ${activeTier.color}`}>{activeTier.icon}</span>
+                      ) : (
+                        <Waves className="w-4 h-4 text-neutral-700 ml-auto shrink-0" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Benefit pills */}
+                  <div className="flex gap-2">
+                    {["Health locked", "XP boosted", "UBI impact"].map((label) => (
+                      <div
+                        key={label}
+                        className="flex-1 text-center py-2 rounded-xl bg-[#1a1a1a] border border-neutral-800"
+                      >
+                        <span className="text-[11px] font-medium text-neutral-400">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Stop button */}
+                  <button
+                    onClick={handleStop}
+                    className="w-full py-3.5 rounded-2xl bg-[#1a1a1a] hover:bg-[#222222] text-red-500 hover:text-red-400 text-sm font-medium transition-all active:scale-[0.98] border border-neutral-800 mt-1"
                   >
-                    <div className={`shrink-0 ${tier.color}`}>{tier.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-black text-sm ${tier.color}`}>
-                        {tier.label}
-                      </p>
-                      <p className="text-neutral-400 text-[11px] leading-tight mt-0.5">
-                        {tier.description}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-neutral-800 dark:text-white font-black text-sm">
-                        {tier.amountPerMonth} G$
-                      </p>
-                      <p className="text-neutral-400 text-[10px]">per month</p>
-                    </div>
-                  </motion.button>
-                ))}
-                <p className="text-neutral-400 text-[10px] text-center mt-1 leading-relaxed">
-                  Streams flow to the official GoodDollar UBI Pool on Celo.
-                  <br />
-                  Boosts stack with Energy Drinks! Stop at any time.
-                </p>
-              </div>
-            )}
+                    Stop Stream
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {STREAM_TIERS.map((tier) => (
+                    <motion.button
+                      key={tier.label}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleSelect(tier)}
+                      className="flex items-center gap-4 px-5 py-4 bg-[#1a1a1a] rounded-2xl border border-neutral-800 hover:border-neutral-700 transition-colors text-left w-full"
+                    >
+                      {/* Radio circle */}
+                      <div className="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center shrink-0">
+                        <div className={tier.color}>{tier.icon}</div>
+                      </div>
+
+                      {/* Text */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-medium capitalize">
+                          {tier.label}
+                        </p>
+                        <p className="text-neutral-500 text-xs leading-snug mt-0.5">
+                          {tier.description}
+                        </p>
+                      </div>
+
+                      {/* Price */}
+                      <div className="text-right shrink-0">
+                        <p className="text-white text-base font-semibold tabular-nums">
+                          {tier.amountPerMonth} G$
+                        </p>
+                        <p className="text-neutral-500 text-xs">Per month</p>
+                      </div>
+                    </motion.button>
+                  ))}
+
+                  <p className="text-neutral-600 text-[11px] text-center mt-2 leading-relaxed">
+                    Streams flow to the official GoodDollar UBI Pool on Celo.
+                    Boosts stack with Energy Drinks! Stop at any time.
+                  </p>
+                </div>
+              )}
+            </div>
           </motion.div>
         </div>
       )}
@@ -184,5 +250,5 @@ export function SuperchargeModal({
   );
 
   if (!mounted) return null;
-  return createPortal(modal, document.body);
+  return createPortal(sheet, document.body);
 }

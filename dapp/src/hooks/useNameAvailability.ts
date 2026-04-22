@@ -52,6 +52,7 @@ export function useNameAvailability(
         username.toLowerCase() === initialUsername.toLowerCase()
       ) {
         setUsernameAvailable(true);
+        setIsCheckingUsername(false);
         return;
       }
 
@@ -105,6 +106,7 @@ export function useNameAvailability(
         petName.toLowerCase() === initialPetName.toLowerCase()
       ) {
         setPetNameAvailable(true);
+        setIsCheckingPetName(false);
         return;
       }
 

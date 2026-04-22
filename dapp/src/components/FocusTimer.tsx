@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import * as RadixSlider from "@radix-ui/react-slider";
+import { BoostBadge } from "./BoostBadge";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -23,29 +25,45 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 type TimerState = "idle" | "running" | "paused" | "completed" | "failed";
 
+const STEPS = [
+  5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100, 110, 120,
+];
+
 interface FocusTimerProps {
   initialMinutes?: number;
   onComplete?: (durationMinutes: number) => void;
   onFail?: () => void;
+  onStop?: () => void;
   onStart?: (note: string) => void;
   onPause?: () => void;
   onNoteChange?: (note: string) => void;
   isSupercharged?: boolean;
   streak?: number;
   isNight?: boolean;
+  embedded?: boolean;
+  boostEndTime?: number;
+  shieldCount?: number;
+  streakBonus?: number;
 }
 
 export function FocusTimer({
   initialMinutes = 25,
   onComplete,
   onFail,
+  onStop,
   onStart,
   onPause,
   onNoteChange,
   isSupercharged = false,
   streak = 0,
   isNight = false,
+  embedded = false,
+  boostEndTime = 0,
+  shieldCount = 0,
+  streakBonus = 0,
 }: FocusTimerProps) {
+  const xpBoostActive = boostEndTime > Math.floor(Date.now() / 1000);
+  const shieldActive = shieldCount > 0;
   const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
   const [status, setStatus] = useState<TimerState>("idle");
   const [duration, setDuration] = useState(initialMinutes * 60);
@@ -59,7 +77,8 @@ export function FocusTimer({
 
   async function scheduleFocusReminder(endTime: number) {
     if (typeof window === "undefined") return;
-    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    if (!("Notification" in window) || Notification.permission !== "granted")
+      return;
     if (!address) return;
 
     // QStash handles delivery for all platforms including iOS
@@ -95,11 +114,16 @@ export function FocusTimer({
     const saved = localStorage.getItem("focus-session");
     if (saved) {
       try {
-        const { status: s, duration: d, endTime: e, note: n } = JSON.parse(saved);
+        const {
+          status: s,
+          duration: d,
+          endTime: e,
+          note: n,
+        } = JSON.parse(saved);
         if (s === "running" && e) {
           const now = Date.now();
           const remaining = Math.max(0, Math.ceil((e - now) / 1000));
-          
+
           setDuration(d);
           setNote(n);
           onNoteChange?.(n);
@@ -109,6 +133,9 @@ export function FocusTimer({
             setStatus("running");
             endTimeRef.current = e;
             scheduleFocusReminder(e);
+            // Sync parent focusing state — without this, isFocusing stays false
+            // after a tab-switch re-mount and the UI flickers incorrectly.
+            onStart?.(n);
           } else {
             // Session finished while away
             setTimeLeft(0);
@@ -131,13 +158,16 @@ export function FocusTimer({
 
   useEffect(() => {
     if (status !== "idle" && status !== "failed") {
-      localStorage.setItem("focus-session", JSON.stringify({
-        status,
-        duration,
-        endTime: endTimeRef.current,
-        note,
-        updatedAt: Date.now()
-      }));
+      localStorage.setItem(
+        "focus-session",
+        JSON.stringify({
+          status,
+          duration,
+          endTime: endTimeRef.current,
+          note,
+          updatedAt: Date.now(),
+        }),
+      );
     } else {
       localStorage.removeItem("focus-session");
     }
@@ -174,6 +204,7 @@ export function FocusTimer({
     setTimeLeft(duration);
     if (timerRef.current) clearInterval(timerRef.current);
     cancelFocusReminder();
+    onStop?.();
   };
 
   const handleDurationSelect = (mins: number) => {
@@ -184,6 +215,10 @@ export function FocusTimer({
 
   const [isCustom, setIsCustom] = useState(false);
   const [customMins, setCustomMins] = useState<string>("");
+  const [sliderIndex, setSliderIndex] = useState(() => {
+    const idx = STEPS.indexOf(initialMinutes);
+    return idx !== -1 ? idx : 4; // default to 25min
+  });
 
   useEffect(() => {
     const updateTimer = () => {
@@ -250,6 +285,258 @@ export function FocusTimer({
     }
     setIsCustom(false);
   };
+
+  // Auto-reset 2 s after session completes in embedded mode
+  useEffect(() => {
+    if (!embedded || status !== "completed") return;
+    const t = setTimeout(() => resetTimer(), 2000);
+    return () => clearTimeout(t);
+  }, [embedded, status]);
+
+  // Keep slider in sync when preset pills are clicked
+  useEffect(() => {
+    const idx = STEPS.indexOf(duration / 60);
+    if (idx !== -1) setSliderIndex(idx);
+  }, [duration]);
+
+  // ── Embedded layout (right-half of the main app card) ──────────────────
+  if (embedded) {
+    const isIdle = status === "idle" || status === "failed";
+    const isDone = status === "completed";
+
+    if (isIdle || isDone) {
+      return (
+        <div className="flex flex-col gap-6 h-full">
+          {isDone && (
+            <div className="flex flex-col items-center justify-center flex-1 gap-3 text-center">
+              <motion.div
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
+                <CheckCircle2 size={40} className="text-emerald-400" />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+              >
+                <p className="text-white font-semibold text-lg">
+                  Session Complete!
+                </p>
+                <p className="text-neutral-500 text-xs mt-1">
+                  Great work. Back in a moment…
+                </p>
+              </motion.div>
+            </div>
+          )}
+
+          {!isDone && (
+            <>
+              <div className="space-y-4">
+                <p className="text-[#A9A9A9] text-base/[100%] font-medium">
+                  Focus for
+                </p>
+
+                {/* Duration pills */}
+                <div className="flex flex-wrap bg-[#141414] rounded-full p-1">
+                  {[10, 25, 45, 60].map((mins) => (
+                    <button
+                      key={mins}
+                      style={
+                        duration === mins * 60
+                          ? { boxShadow: "0px 2px 10px 0px #7474741A" }
+                          : {}
+                      }
+                      onClick={() => handleDurationSelect(mins)}
+                      className={cn(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-all flex-1",
+                        duration === mins * 60
+                          ? "bg-white text-black"
+                          : " text-[#646363] hover:text-neutral-200",
+                      )}
+                    >
+                      {mins === 60 ? "1h" : `${mins}m`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-[#A9A9A9] text-base/[100%] font-medium">
+                  <p>Custom Time</p>
+                  <p>Max: 2h</p>
+                </div>
+                <div className="flex items-center justify-between gap-2 bg-[#161616] rounded-full py-5 px-6">
+                  <RadixSlider.Root
+                    className="relative flex flex-1 items-center select-none touch-none"
+                    min={0}
+                    max={STEPS.length - 1}
+                    step={1}
+                    value={[sliderIndex]}
+                    onValueChange={([idx]) => {
+                      setSliderIndex(idx);
+                      handleDurationSelect(STEPS[idx]);
+                    }}
+                  >
+                    <RadixSlider.Track className="relative flex-1 h-[6px] rounded-full bg-[#202020]">
+                      <RadixSlider.Range className="absolute h-full rounded-full bg-white" />
+                    </RadixSlider.Track>
+                    <RadixSlider.Thumb className="block w-5 h-5 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.5)] focus:outline-none" />
+                  </RadixSlider.Root>
+                  <span className="text-white text-sm/[100%] font-mono font-medium tabular-nums text-right w-[60px] shrink-0">
+                    {STEPS[sliderIndex] >= 60
+                      ? `${Math.floor(STEPS[sliderIndex] / 60)}h${STEPS[sliderIndex] % 60 > 0 ? ` ${STEPS[sliderIndex] % 60}m` : ""}`
+                      : `${STEPS[sliderIndex]}min`}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {!isDone && (
+            <button
+              onClick={toggleTimer}
+              className=" w-fit px-10 py-3.5 rounded-full bg-white hover:bg-neutral-100 text-black font-semibold text-sm transition-all"
+            >
+              Start focus
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // Running / paused — split H/M/S display
+    const hrs = Math.floor(timeLeft / 3600);
+    const mins = Math.floor((timeLeft % 3600) / 60);
+    const secs = timeLeft % 60;
+    const durationMins = duration / 60;
+    const durationLabel =
+      durationMins >= 60
+        ? `${Math.floor(durationMins / 60)} hour${Math.floor(durationMins / 60) !== 1 ? "s" : ""}`
+        : `${durationMins} min`;
+
+    return (
+      <div className="flex flex-col h-full gap-5">
+        {/* Controls row */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-4 bg-[#0F0F0F] rounded-full py-4 px-6 shrink-0">
+            <button
+              onClick={status === "paused" ? toggleTimer : undefined}
+              disabled={status === "running"}
+              className="text-neutral-400 hover:text-white transition-colors disabled:opacity-25 disabled:cursor-default"
+              aria-label="Play"
+            >
+              <Play size={17} />
+            </button>
+            <button
+              onClick={status === "running" ? toggleTimer : undefined}
+              disabled={status === "paused"}
+              className="text-neutral-400 hover:text-white transition-colors disabled:opacity-25 disabled:cursor-default"
+              aria-label="Pause"
+            >
+              <Pause size={17} />
+            </button>
+            <button
+              onClick={resetTimer}
+              className="text-neutral-400 hover:text-white transition-colors"
+              aria-label="Stop"
+            >
+              <Square size={17} />
+            </button>
+          </div>
+
+          {/* Active boost badges */}
+          {(isNight || xpBoostActive || streakBonus > 0) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {isNight && <BoostBadge variant="night" />}
+              {xpBoostActive && <BoostBadge variant="xp" />}
+              {streakBonus > 0 && (
+                <BoostBadge variant="streak" label={`Streak · +${streakBonus}%`} />
+              )}
+            </div>
+          )}
+
+          {/* Session duration pill — pushed to the right on larger screens */}
+          <div className="flex items-center rounded-full bg-[#0F0F0F] p-1 h-fit ml-auto">
+            <span className="hidden sm:block text-white text-sm whitespace-nowrap px-4">
+              Current focus session:
+            </span>
+            <div className="px-5 py-3 rounded-full bg-[#1F1F1F] text-white text-sm font-medium whitespace-nowrap">
+              {durationLabel}
+            </div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full bg-[#131313] rounded-full h-[6px] overflow-hidden">
+          <motion.div
+            className="bg-white h-full rounded-full"
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5 }}
+          />
+        </div>
+
+        {/* H / M / S display */}
+        <div className="flex-1 flex items-center">
+          <div className="w-full bg-[#0F0F0F] p-5 lg:p-7 xl:p-10 rounded-xl flex items-center justify-between min-w-0">
+            {/* Hours */}
+            <div className="flex flex-col items-center gap-1 xl:gap-2 flex-1 min-w-0">
+              {/* <span className="text-neutral-500 text-left text-xs xl:text-sm">
+                Hours
+              </span> */}
+              <span className="text-white text-4xl lg:text-5xl xl:text-[80px] font-mono tabular-nums leading-none">
+                {String(hrs).padStart(2, "0")}
+                <span className="text-neutral-500 text-xl lg:text-2xl xl:text-4xl font-sans font-light tracking-widest align-baseline ml-0.5">
+                  Hours
+                </span>
+              </span>
+            </div>
+
+            {/* Colon 1 */}
+            <span className="text-neutral-400 text-xl xl:text-3xl font-bold select-none pb-1 mx-1 xl:mx-2">
+              :
+            </span>
+
+            {/* Minutes */}
+            <div className="flex flex-col items-center gap-1 xl:gap-2 flex-1 min-w-0">
+              {/* <span className="text-neutral-500 text-xs xl:text-sm text-left">
+                Minutes
+              </span> */}
+              <span className="text-white text-4xl lg:text-5xl xl:text-[80px] font-mono tabular-nums leading-none">
+                {String(mins).padStart(2, "0")}
+                <span className="text-neutral-500 text-xl lg:text-2xl xl:text-4xl font-sans font-light tracking-widest align-baseline ml-0.5">
+                  Mins
+                </span>
+              </span>
+            </div>
+
+            {/* Colon 2 */}
+            <span className="text-neutral-400 text-xl xl:text-3xl font-bold select-none pb-1 mx-1 xl:mx-2">
+              :
+            </span>
+
+            {/* Seconds */}
+            <div className="flex flex-col items-center gap-1 xl:gap-2 flex-1 min-w-0">
+              {/* <span className="text-neutral-500 text-xs xl:text-sm">
+                Seconds
+              </span> */}
+              <span className="text-white text-4xl lg:text-5xl xl:text-[80px] font-mono tabular-nums leading-none">
+                {String(secs).padStart(2, "0")}
+                <span className="text-neutral-500 text-xl lg:text-2xl xl:text-4xl font-sans font-light tracking-widest align-baseline ml-0.5">
+                  Secs
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {note && (
+          <p className="text-neutral-600 text-xs italic truncate">"{note}"</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto p-6">

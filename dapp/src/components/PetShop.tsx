@@ -175,9 +175,6 @@ export function PetShop({
     ],
   };
 
-  useEffect(() => {
-    console.log(formatEther(gBalance || 0n), "balance");
-  }, [gBalance]);
 
   const balanceFormatted = gBalance
     ? parseFloat(formatEther(gBalance)).toFixed(2)

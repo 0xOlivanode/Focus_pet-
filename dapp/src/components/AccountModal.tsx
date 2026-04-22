@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAccount, useBalance, useWriteContract, useDisconnect } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
-import { X, Copy, ArrowDownLeft, ArrowUpRight, Loader2 } from "lucide-react";
+import {
+  Copy,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Loader2,
+  Settings,
+  LogOut,
+  ChevronLeft,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { parseUnits } from "viem";
 import toast from "react-hot-toast";
@@ -13,41 +21,74 @@ import { ERC20ABI } from "@/config/abi";
 interface AccountModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenProfile?: () => void;
+  onOpenOnboarding?: () => void;
 }
 
 type ViewState = "overview" | "send" | "receive";
 
-export function AccountModal({ isOpen, onClose }: AccountModalProps) {
+export function AccountModal({
+  isOpen,
+  onClose,
+  onOpenProfile,
+  onOpenOnboarding,
+}: AccountModalProps) {
   const { address } = useAccount();
-  const { user, logout, linkEmail } = usePrivy();
+  const { logout, user, linkEmail } = usePrivy();
   const { disconnect } = useDisconnect();
+  const [isLinkingEmail, setIsLinkingEmail] = useState(false);
+
+  const email = user?.email?.address ?? user?.google?.email ?? null;
+  const hasEmail = !!email;
 
   const handleLinkEmail = async () => {
+    setIsLinkingEmail(true);
     try {
       await linkEmail();
-      toast.success("Email linked! You can now sign in with email.");
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to link email");
+    } catch {
+      // dismissed
+    } finally {
+      setIsLinkingEmail(false);
     }
-  };
-
-  const handleLogout = async () => {
-    onClose();
-    disconnect(); // drop wagmi connection immediately so isConnected goes false
-    await logout();
   };
   const [view, setView] = useState<ViewState>("overview");
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
-
+  const ref = useRef<HTMLDivElement>(null);
 
   const { data: celoBalance } = useBalance({ address });
   const { data: gBalance } = useBalance({
     address,
     token: GOOD_DOLLAR_ADDRESSES.CELO_MAINNET,
   });
-
   const { writeContract, isPending: isGSPending } = useWriteContract();
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [isOpen, onClose]);
+
+  // Reset view when closed
+  useEffect(() => {
+    if (!isOpen) setView("overview");
+  }, [isOpen]);
+
+  const copyAddress = () => {
+    if (!address) return;
+    navigator.clipboard.writeText(address);
+    toast.success("Address copied!");
+  };
+
+  const handleLogout = async () => {
+    onClose();
+    disconnect();
+    await logout();
+  };
 
   const handleSend = () => {
     if (!recipient || !amount) {
@@ -73,285 +114,211 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
     );
   };
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copied!`);
-  };
+  const formatAddress = (addr: string) =>
+    `${addr.slice(0, 7)}...${addr.slice(-4)}`;
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-200 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-md"
-          />
+        <motion.div
+          ref={ref}
+          initial={{ opacity: 0, y: -8, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.97 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          className="fixed top-[60px] left-3 right-3 sm:left-auto sm:right-10 lg:right-[80px] z-200 sm:w-[340px] bg-[#141414] rounded-2xl shadow-2xl overflow-hidden"
+        >
+          {view === "overview" && (
+            <>
+              {/* Address + email row */}
+              <div className="flex items-start justify-between px-5 py-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-white font-mono text-base font-medium">
+                    {address ? formatAddress(address) : "—"}
+                  </span>
+                  {hasEmail ? (
+                    <span className="text-neutral-400 text-xs">{email}</span>
+                  ) : (
+                    <button
+                      onClick={handleLinkEmail}
+                      disabled={isLinkingEmail}
+                      className="text-xs text-amber-400 hover:text-amber-300 transition-colors text-left disabled:opacity-50 flex items-center gap-1"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                      {isLinkingEmail
+                        ? "Opening…"
+                        : "Link email to secure account"}
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={copyAddress}
+                  className="text-neutral-400 hover:text-white transition-colors mt-0.5"
+                >
+                  <Copy size={18} />
+                </button>
+              </div>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative w-full max-w-[500px] bg-white dark:bg-neutral-900 rounded-[40px] shadow-2xl overflow-hidden"
-          >
-            {/* Header */}
-            <div className="pt-10 pb-4 flex flex-col items-center gap-4">
-              <img
-                src="/focus-pet-logo.jpeg"
-                className="w-12 h-12 rounded-full shadow-md border border-neutral-100 dark:border-neutral-800"
-                alt="FocusPet"
-              />
-              <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
-                {view === "overview"
-                  ? "Your Account"
-                  : view === "send"
-                    ? "Send Assets"
-                    : "Receive Assets"}
-              </h2>
+              <div className="border-t border-neutral-800" />
+
+              {/* Balances */}
+              <div className="px-5 py-1">
+                {/* Celo */}
+                <div className="flex items-center justify-between py-4 border-b border-neutral-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center overflow-hidden shrink-0">
+                      <img
+                        src="/celoicon.webp"
+                        className="w-full h-full object-cover"
+                        alt="Celo"
+                      />
+                    </div>
+                    <span className="text-white font-medium">Celo</span>
+                  </div>
+                  <span className="text-white font-medium tabular-nums">
+                    {celoBalance?.formatted?.slice(0, 6) ?? "0.00"}
+                  </span>
+                </div>
+
+                {/* G$ */}
+                <div className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center shrink-0">
+                      <span className="text-white text-xs font-bold">G$</span>
+                    </div>
+                    <span className="text-white font-medium">G$</span>
+                  </div>
+                  <span className="text-white font-medium tabular-nums">
+                    {gBalance?.formatted?.slice(0, 7) ?? "0.00"}
+                  </span>
+                </div>
+
+                {/* Send / Receive */}
+                <div className="grid grid-cols-2 gap-3 pb-4">
+                  <button
+                    onClick={() => setView("send")}
+                    className="py-3 rounded-full bg-white hover:bg-neutral-100 text-black font-semibold text-sm transition-colors"
+                  >
+                    Send
+                  </button>
+                  <button
+                    onClick={() => setView("receive")}
+                    className="py-3 rounded-full bg-white hover:bg-neutral-100 text-black font-semibold text-sm transition-colors"
+                  >
+                    Receive
+                  </button>
+                </div>
+              </div>
+
+              <div className="border-t border-neutral-800" />
+
+              {/* Footer actions */}
+              <div className="px-5 py-2">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 py-3 text-red-500 hover:text-red-400 transition-colors text-sm"
+                >
+                  <LogOut size={17} className="text-red-500" />
+                  Disconnect
+                </button>
+              </div>
+            </>
+          )}
+
+          {view === "send" && (
+            <div className="px-5 py-5 space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <button
+                  onClick={() => setView("overview")}
+                  className="text-neutral-400 hover:text-white transition-colors"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="text-white font-semibold">Send G$</span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-neutral-500 uppercase tracking-widest font-bold">
+                  Recipient
+                </label>
+                <input
+                  type="text"
+                  placeholder="0x..."
+                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 outline-none focus:border-neutral-500 font-mono text-sm transition-colors"
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <label className="text-xs text-neutral-500 uppercase tracking-widest font-bold">
+                    Amount (G$)
+                  </label>
+                  <button
+                    onClick={() => setAmount(gBalance?.formatted || "")}
+                    className="text-xs text-neutral-400 hover:text-white transition-colors"
+                  >
+                    Max: {gBalance?.formatted?.slice(0, 7)}
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 outline-none focus:border-neutral-500 font-bold text-2xl transition-colors"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+
               <button
-                onClick={view === "overview" ? onClose : () => setView("overview")}
-                className="absolute right-6 top-6 p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                onClick={handleSend}
+                disabled={isGSPending}
+                className="w-full py-3.5 rounded-full bg-white hover:bg-neutral-100 text-black font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                <X size={18} className="text-neutral-400" />
+                {isGSPending ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  "Send G$"
+                )}
               </button>
             </div>
+          )}
 
-            <div className="px-6 pb-10">
-              {view === "overview" && (
-                <div className="space-y-3">
-                  {/* Identity */}
-                  <div className="space-y-2 mb-6">
-                    <button
-                      onClick={() => copyToClipboard(address || "", "Address")}
-                      className="w-full flex items-center justify-between p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="text-left">
-                          <div className="text-xs text-neutral-400 uppercase tracking-widest">
-                            Wallet Address
-                          </div>
-                          <div className="text-neutral-900 dark:text-white">
-                            {address?.slice(0, 6)}...{address?.slice(-4)}
-                          </div>
-                        </div>
-                      </div>
-                      <Copy
-                        size={16}
-                        className="text-neutral-300 group-hover:text-indigo-500 transition-colors"
-                      />
-                    </button>
-
-                    {user?.email ? (
-                      <div className="w-full flex items-center justify-between p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-                        <div className="flex items-center gap-3">
-                          <div className="text-left">
-                            <div className="text-xs text-neutral-400 uppercase tracking-widest">
-                              Connected Email
-                            </div>
-                            <div className="text-neutral-900 dark:text-white">
-                              {user.email.address}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={handleLinkEmail}
-                        className="w-full flex items-center justify-between p-3 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all"
-                      >
-                        <div className="text-left">
-                          <div className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
-                            Action Required
-                          </div>
-                          <div className="text-sm text-amber-700 dark:text-amber-300 font-medium mt-0.5">
-                            Link an email to keep access to your account
-                          </div>
-                        </div>
-                        <ArrowUpRight size={16} className="text-amber-500 shrink-0" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Balances */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-4 rounded-3xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/20">
-                      <div className="flex items-center gap-2 mb-3">
-                        <img src="/celoicon.webp" className="w-5 h-5 rounded-full" alt="Celo" />
-                        <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                          Celo
-                        </span>
-                      </div>
-                      <div className="font-bold text-lg text-neutral-900 dark:text-white">
-                        {celoBalance?.formatted?.slice(0, 6) || "0.00"}
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-3xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/20">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] text-white font-black">
-                          G
-                        </div>
-                        <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                          G$
-                        </span>
-                      </div>
-                      <div className="font-bold text-lg text-neutral-900 dark:text-white">
-                        {gBalance?.formatted?.slice(0, 7) || "0.00"}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="grid grid-cols-2 gap-3 pt-4">
-                    <button
-                      onClick={() => setView("send")}
-                      className="py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all flex items-center justify-center gap-2"
-                    >
-                      <ArrowUpRight size={18} />
-                      Send G$
-                    </button>
-                    <button
-                      onClick={() => setView("receive")}
-                      className="py-3 rounded-2xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white font-bold transition-all flex items-center justify-center gap-2"
-                    >
-                      <ArrowDownLeft size={18} />
-                      Receive
-                    </button>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="pt-6 flex flex-col items-center gap-3">
-                    <button
-                      onClick={handleLogout}
-                      className="text-[10px] font-black text-neutral-400/60 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors uppercase tracking-[0.2em] mt-2"
-                    >
-                      Log Out
-                    </button>
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-300 uppercase tracking-widest">
-                      <span>Protected by</span>
-                      <div className="flex items-center gap-1 text-neutral-400">
-                        <div className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
-                        privy
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {view === "send" && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="space-y-6"
+          {view === "receive" && (
+            <div className="px-5 py-5 space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <button
+                  onClick={() => setView("overview")}
+                  className="text-neutral-400 hover:text-white transition-colors"
                 >
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">
-                        Recipient
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Address (0x...)"
-                        className="w-full px-5 py-4 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl outline-hidden focus:ring-1 focus:ring-indigo-500 font-medium transition-all"
-                        value={recipient}
-                        onChange={(e) => setRecipient(e.target.value)}
-                      />
-                    </div>
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="text-white font-semibold">Receive</span>
+              </div>
 
-                    <div className="space-y-1">
-                      <div className="flex justify-between px-1">
-                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                          Amount (G$)
-                        </label>
-                        <button
-                          onClick={() => setAmount(gBalance?.formatted || "")}
-                          className="text-[10px] font-black text-indigo-500 uppercase tracking-widest"
-                        >
-                          Max: {gBalance?.formatted?.slice(0, 7)}
-                        </button>
-                      </div>
-                      <input
-                        type="number"
-                        placeholder="0.00"
-                        className="w-full px-5 py-5 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl outline-hidden focus:ring-1 focus:ring-indigo-500 font-bold text-3xl transition-all"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                      />
-                    </div>
-                  </div>
+              <div className="bg-neutral-800 rounded-xl p-4">
+                <p className="text-xs text-neutral-500 uppercase tracking-widest font-bold mb-2">
+                  Your Address
+                </p>
+                <p className="text-white font-mono text-xs break-all leading-relaxed">
+                  {address}
+                </p>
+              </div>
 
-                  <div className="pt-4 flex flex-col gap-4">
-                    <button
-                      onClick={handleSend}
-                      disabled={isGSPending}
-                      className="w-full h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-lg shadow-lg shadow-emerald-100 dark:shadow-none"
-                    >
-                      {isGSPending ? (
-                        <Loader2 size={24} className="animate-spin" />
-                      ) : (
-                        <span>Send G$</span>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setView("overview")}
-                      className="text-xs font-bold text-neutral-400 hover:text-neutral-600 transition-colors uppercase tracking-widest text-center"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {view === "receive" && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="space-y-8 text-center"
-                >
-                  <div className="bg-white dark:bg-neutral-900 rounded-[40px] p-6 border border-neutral-100 dark:border-neutral-800 shadow-xs flex flex-col items-center gap-6">
-                    <div className="w-48 h-48 bg-neutral-50 dark:bg-neutral-800 rounded-3xl flex items-center justify-center relative p-4 border border-neutral-100 dark:border-neutral-700">
-                      <div className="grid grid-cols-4 gap-2 opacity-10">
-                        {[...Array(16)].map((_, i) => (
-                          <div key={i} className="w-6 h-6 bg-black dark:bg-white rounded-md" />
-                        ))}
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <ArrowDownLeft size={48} className="text-neutral-200" />
-                      </div>
-                    </div>
-
-                    <div className="w-full space-y-1">
-                      <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                        Your Receive Address
-                      </div>
-                      <div className="text-sm font-mono break-all text-neutral-900 dark:text-white bg-neutral-50 dark:bg-neutral-800 px-4 py-3 rounded-xl border border-neutral-100 dark:border-neutral-700">
-                        {address}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-4">
-                    <button
-                      onClick={() => copyToClipboard(address || "", "Address")}
-                      className="w-full h-16 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-                    >
-                      <Copy size={20} />
-                      Copy Address
-                    </button>
-                    <button
-                      onClick={() => setView("overview")}
-                      className="text-xs font-bold text-neutral-400 hover:text-neutral-600 transition-colors uppercase tracking-widest"
-                    >
-                      Back to Wallet
-                    </button>
-                  </div>
-                </motion.div>
-              )}
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(address || "");
+                  toast.success("Address copied!");
+                }}
+                className="w-full py-3.5 rounded-full bg-white hover:bg-neutral-100 text-black font-bold transition-colors flex items-center justify-center gap-2"
+              >
+                <Copy size={16} />
+                Copy Address
+              </button>
             </div>
-          </motion.div>
-        </div>
+          )}
+        </motion.div>
       )}
     </AnimatePresence>
   );
