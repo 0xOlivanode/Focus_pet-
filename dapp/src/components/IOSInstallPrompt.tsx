@@ -13,7 +13,6 @@ function isIOS(): boolean {
 
 function isInStandaloneMode(): boolean {
   if (typeof window === "undefined") return false;
-  // iOS Safari sets this when launched from home screen
   return (window.navigator as any).standalone === true;
 }
 
@@ -24,8 +23,6 @@ export function IOSInstallPrompt() {
     if (!isIOS()) return;
     if (isInStandaloneMode()) return;
     if (localStorage.getItem(STORAGE_KEY)) return;
-
-    // Delay slightly so it doesn't flash immediately on load
     const timer = setTimeout(() => setVisible(true), 3000);
     return () => clearTimeout(timer);
   }, []);
@@ -38,80 +35,96 @@ export function IOSInstallPrompt() {
   return (
     <AnimatePresence>
       {visible && (
-        <motion.div
-          initial={{ y: "100%", opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed bottom-0 left-0 right-0 z-[300] p-4 pb-safe"
-        >
-          <div className="relative bg-white dark:bg-neutral-900 rounded-[2rem] border border-neutral-200 dark:border-neutral-800 shadow-2xl p-6 max-w-sm mx-auto">
-            <button
-              onClick={dismiss}
-              className="absolute top-4 right-4 p-1.5 rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors"
-            >
-              <X size={18} />
-            </button>
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={dismiss}
+            className="fixed inset-0 z-[299] bg-black/60"
+          />
 
-            <div className="flex items-start gap-4">
-              {/* App icon */}
-              <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/30">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/focus-pet.png"
-                  alt="FocusPet"
-                  className="w-10 h-10 object-contain"
-                />
-              </div>
+          {/* Sheet */}
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 340, damping: 40 }}
+            className="fixed bottom-0 left-0 right-0 z-[300] pb-safe"
+          >
+            <div className="bg-[#111111] border-t border-neutral-800 rounded-t-3xl px-6 pt-5 pb-8 max-w-lg mx-auto">
+              {/* Handle */}
+              <div className="w-10 h-1 bg-neutral-700 rounded-full mx-auto mb-6" />
 
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-black text-neutral-900 dark:text-white leading-tight mb-1">
-                  Install FocusPet
-                </p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                  Add to your home screen to get push notifications when your
-                  pet needs you.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-col gap-2.5">
-              {/* Step 1 */}
-              <div className="flex items-center gap-3 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
-                <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
-                  <Share size={14} className="text-indigo-600 dark:text-indigo-400" />
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-[#1a1a1a] border border-neutral-800 overflow-hidden flex items-center justify-center shrink-0">
+                    <img
+                      src="/focus-pet.png"
+                      alt="FocusPet"
+                      className="w-8 h-8 object-contain"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-semibold leading-tight">
+                      Install FocusPet
+                    </p>
+                    <p className="text-neutral-500 text-xs mt-0.5">
+                      Add to your home screen
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                  Tap the{" "}
-                  <span className="font-black text-indigo-600 dark:text-indigo-400">
-                    Share
-                  </span>{" "}
-                  button in Safari's toolbar
-                </p>
+                <button
+                  onClick={dismiss}
+                  className="w-7 h-7 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
+                >
+                  <X size={13} />
+                </button>
               </div>
 
-              {/* Step 2 */}
-              <div className="flex items-center gap-3 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
-                <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
-                  <Plus size={14} className="text-indigo-600 dark:text-indigo-400" />
+              {/* Description */}
+              <p className="text-neutral-500 text-sm leading-relaxed mb-5">
+                Get push notifications when your pet needs you — add FocusPet to your home screen in two taps.
+              </p>
+
+              {/* Steps */}
+              <div className="flex flex-col gap-2 mb-6">
+                <div className="flex items-center gap-3 px-4 py-3 bg-[#1a1a1a] border border-neutral-800 rounded-xl">
+                  <div className="w-7 h-7 rounded-full bg-[#222222] border border-neutral-700 flex items-center justify-center shrink-0">
+                    <Share size={13} className="text-neutral-300" />
+                  </div>
+                  <p className="text-sm text-neutral-300">
+                    Tap{" "}
+                    <span className="text-white font-semibold">Share</span>{" "}
+                    in Safari's toolbar
+                  </p>
                 </div>
-                <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                  Select{" "}
-                  <span className="font-black text-indigo-600 dark:text-indigo-400">
-                    Add to Home Screen
-                  </span>
-                </p>
-              </div>
-            </div>
 
-            <button
-              onClick={dismiss}
-              className="mt-4 w-full py-2.5 text-xs font-black uppercase tracking-widest text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
-            >
-              Maybe later
-            </button>
-          </div>
-        </motion.div>
+                <div className="flex items-center gap-3 px-4 py-3 bg-[#1a1a1a] border border-neutral-800 rounded-xl">
+                  <div className="w-7 h-7 rounded-full bg-[#222222] border border-neutral-700 flex items-center justify-center shrink-0">
+                    <Plus size={13} className="text-neutral-300" />
+                  </div>
+                  <p className="text-sm text-neutral-300">
+                    Select{" "}
+                    <span className="text-white font-semibold">
+                      Add to Home Screen
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Dismiss */}
+              <button
+                onClick={dismiss}
+                className="w-full py-3 rounded-full bg-[#1a1a1a] hover:bg-[#222222] border border-neutral-800 text-neutral-500 hover:text-neutral-300 text-sm font-medium transition-colors"
+              >
+                Maybe later
+              </button>
+            </div>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
