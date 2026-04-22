@@ -1,38 +1,69 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAccount } from "wagmi";
 import { useIsMiniPay } from "@/hooks/useMiniPay";
-import {
-  HelpCircle,
-  User,
-  Share2,
-  Menu,
-  X,
-  History,
-  Trophy,
-} from "lucide-react";
+import { HelpCircle, User, History, Trophy, ShoppingBag, Home } from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "./ThemeToggle";
 import { SoundMenu } from "./SoundMenu";
-import { StreakFlame } from "./StreakFlame";
 import { PrivyConnectButton } from "./PrivyConnectButton";
-import { useFocusPet } from "@/hooks/useFocusPet";
 import { useAudio } from "@/hooks/useAudio";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import { AccountModal } from "./AccountModal";
 import { MiniPayAccountModal } from "./MiniPayAccountModal";
-import { NotificationBell } from "./NotificationBell";
 
 interface NavbarProps {
   onOpenOnboarding?: () => void;
   onOpenProfile?: () => void;
+  minimal?: boolean;
 }
 
-export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
+const NAV_LINKS = [
+  { label: "Shop", href: "/app/shop" },
+  { label: "Leaderboard", href: "/app/leaderboard" },
+  { label: "Activities", href: "/app/activities" },
+  { label: "Guide", href: "/app/guide" },
+];
+
+const MOBILE_LINKS = [
+  { label: "Home", href: "/app", icon: <Home size={16} /> },
+  { label: "Shop", href: "/app/shop", icon: <ShoppingBag size={16} /> },
+  { label: "Leaderboard", href: "/app/leaderboard", icon: <Trophy size={16} /> },
+  { label: "Activities", href: "/app/activities", icon: <History size={16} /> },
+  { label: "Guide", href: "/app/guide", icon: <HelpCircle size={16} /> },
+];
+
+/* ── Animated hamburger ───────────────────────────────────────── */
+function HamburgerIcon({ open }: { open: boolean }) {
+  return (
+    <div className="w-5 h-4 flex flex-col justify-between">
+      <motion.span
+        animate={open ? { rotate: 45, y: 7 } : { rotate: 0, y: 0 }}
+        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+        className="block h-[1.5px] w-full bg-white origin-center"
+      />
+      <motion.span
+        animate={open ? { opacity: 0, scaleX: 0 } : { opacity: 1, scaleX: 1 }}
+        transition={{ duration: 0.15 }}
+        className="block h-[1.5px] w-full bg-white"
+      />
+      <motion.span
+        animate={open ? { rotate: -45, y: -7 } : { rotate: 0, y: 0 }}
+        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+        className="block h-[1.5px] w-full bg-white origin-center"
+      />
+    </div>
+  );
+}
+
+export function Navbar({ onOpenOnboarding, onOpenProfile, minimal }: NavbarProps) {
   const { address } = useAccount();
-  const { streak } = useFocusPet();
+  const APP_HOME =
+    typeof window !== "undefined" &&
+    window.location.hostname === "app.focus-pet.xyz"
+      ? "/"
+      : "/app";
   const { playSound } = useAudio();
   const isMiniPay = useIsMiniPay();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -43,179 +74,237 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
     setIsMobileMenuOpen(false);
   }
 
-  function copyInvite() {
-    if (!address) {
-      toast.error("Connect your wallet first.");
-      return;
-    }
-    // In MiniPay: use the native share sheet — it's a full invite flow
-    if (isMiniPay) {
-      window.location.href = "https://link.minipay.xyz/invite_friends";
-      return;
-    }
-    const link = `${window.location.origin}/?ref=${address}`;
-    navigator.clipboard.writeText(link);
-    toast.success("Invite link copied!");
-    playSound("click");
+  // TODO: Invite a Friend — re-enable when referral flow is ready
+  // function copyInvite() {
+  //   if (!address) {
+  //     toast.error("Connect your wallet first.");
+  //     return;
+  //   }
+  //   if (isMiniPay) {
+  //     window.location.href = "https://link.minipay.xyz/invite_friends";
+  //     return;
+  //   }
+  //   navigator.clipboard.writeText(`${window.location.origin}/?ref=${address}`);
+  //   toast.success("Invite link copied!");
+  //   playSound("click");
+  // }
+
+  if (minimal) {
+    return (
+      <>
+        <header className="sticky top-0 z-50 w-full bg-black border-b border-neutral-900">
+          <div className="px-5 sm:px-10 lg:px-[80px] py-2 flex items-center justify-between">
+            <span className="font-anton text-white text-xl uppercase tracking-wide select-none">
+              Focus Pet
+            </span>
+            <div className="flex items-center gap-3">
+              {isMiniPay ? (
+                address ? (
+                  <button
+                    onClick={() => {
+                      setIsMiniPayModalOpen(true);
+                      playSound("click");
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-neutral-100 text-neutral-900 rounded-full font-mono text-xs hover:bg-white transition-colors"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    {address.slice(0, 6)}…{address.slice(-3)}
+                  </button>
+                ) : null
+              ) : (
+                <PrivyConnectButton
+                  onOpenAccount={() => {
+                    setIsAccountModalOpen(true);
+                    playSound("click");
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </header>
+        <AccountModal
+          isOpen={isAccountModalOpen}
+          onClose={() => setIsAccountModalOpen(false)}
+          onOpenProfile={onOpenProfile}
+          onOpenOnboarding={onOpenOnboarding}
+        />
+        <MiniPayAccountModal
+          isOpen={isMiniPayModalOpen}
+          onClose={() => setIsMiniPayModalOpen(false)}
+        />
+      </>
+    );
   }
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-neutral-100 dark:border-neutral-900 bg-white/80 dark:bg-[#0a0a0b]/80 backdrop-blur-md">
-        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 md:px-12 lg:px-20 h-14 sm:h-16 flex items-center justify-between gap-2">
-
-          {/* Left — Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <img
-              src="/focus-pet-logo.jpeg"
-              className="rounded-full h-8 w-8 shadow-sm"
-              alt="FocusPet"
-            />
-            <span className="font-black text-base tracking-tight hidden sm:block">
-              FocusPet
+      <header className="sticky top-0 z-50 w-full bg-black border-b border-neutral-900">
+        <div className="px-5 sm:px-10 lg:px-[80px] py-2 flex items-center justify-between">
+          {/* Logo */}
+          <Link href={APP_HOME} className="flex items-center gap-x-2 shrink-0">
+            <span className="font-anton text-white text-xl uppercase tracking-wide">
+              Focus Pet
             </span>
           </Link>
 
-          {/* Right — Actions */}
-          <div className="flex items-center gap-1.5">
-
-            {/* Streak — always visible */}
-            <StreakFlame count={streak} />
-
-            {/* Desktop-only actions */}
-            <div className="hidden sm:flex items-center gap-1.5">
-              {address && (
-                <NavIconBtn href="/app/history" title="History">
-                  <History size={17} />
-                </NavIconBtn>
-              )}
-              <NavIconBtn href="/app/leaderboard" title="Leaderboard">
-                <Trophy size={17} />
-              </NavIconBtn>
-              {onOpenOnboarding && (
-                <button
-                  onClick={() => { onOpenOnboarding(); playSound("click"); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all font-bold text-xs"
-                  title="How to Play"
-                >
-                  <HelpCircle size={15} />
-                  <span>Guide</span>
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500" />
-                  </span>
-                </button>
-              )}
-              {!isMiniPay && <NotificationBell />}
-              {!isMiniPay && <ThemeToggle />}
-              {!isMiniPay && <SoundMenu />}
-              {onOpenProfile && (
-                <NavBtn onClick={() => { onOpenProfile(); playSound("click"); }} title="Edit Profile">
-                  <User size={17} />
-                </NavBtn>
-              )}
-              <NavBtn onClick={copyInvite} title="Invite Friend" accent>
-                <Share2 size={17} />
-              </NavBtn>
-            </div>
-
-            {/* Mobile — notification bell only outside MiniPay */}
-            {!isMiniPay && (
-              <div className="sm:hidden">
-                <NotificationBell />
-              </div>
-            )}
-
-            {/* Wallet button — address pill in MiniPay, Privy button otherwise */}
-            {isMiniPay ? (
-              address ? (
-                <button
-                  onClick={() => { setIsMiniPayModalOpen(true); playSound("click"); }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-full font-bold text-xs hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors shadow-sm"
-                >
-                  <div className="w-3 h-3 rounded-full bg-linear-to-r from-indigo-500 to-purple-500 shadow-sm shrink-0" />
-                  <span className="font-mono">
-                    {address.slice(0, 4)}…{address.slice(-3)}
-                  </span>
-                </button>
-              ) : null
-            ) : (
-              <PrivyConnectButton
-                onOpenAccount={() => {
-                  setIsAccountModalOpen(true);
-                  playSound("click");
-                }}
-              />
-            )}
-
-            {/* Hamburger — mobile only, hidden in MiniPay */}
-            {!isMiniPay && (
-              <button
-                onClick={() => setIsMobileMenuOpen((v) => !v)}
-                className="sm:hidden p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-                aria-label="Menu"
+          <div className="flex items-center gap-x-2">
+            {/* Desktop center nav */}
+            <nav className="hidden md:flex items-center gap-1">
+              <Link
+                href={APP_HOME}
+                className="px-6 py-5 text-sm text-neutral-300 hover:text-white transition-colors font-outfit"
               >
-                {isMobileMenuOpen
-                  ? <X key="close" size={18} />
-                  : <Menu key="open" size={18} />}
-              </button>
-            )}
+                Home
+              </Link>
+              {NAV_LINKS.map((l) => (
+                <Link
+                  key={l.label}
+                  href={l.href}
+                  className="px-6 py-5 text-sm text-neutral-300 hover:text-white transition-colors font-outfit"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+
+            {/* Right side */}
+            <div className="flex items-center gap-3">
+              {/* Profile icon — desktop only */}
+              {onOpenProfile && (
+                <button
+                  onClick={() => {
+                    onOpenProfile();
+                    playSound("click");
+                  }}
+                  className="hidden md:flex w-9 h-9 items-center justify-center rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                  aria-label="Edit profile"
+                >
+                  <User size={16} />
+                </button>
+              )}
+
+              {/* Wallet */}
+              {isMiniPay ? (
+                address ? (
+                  <button
+                    onClick={() => {
+                      setIsMiniPayModalOpen(true);
+                      playSound("click");
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-neutral-100 text-neutral-900 rounded-full font-mono text-xs hover:bg-white transition-colors"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    {address.slice(0, 6)}…{address.slice(-3)}
+                  </button>
+                ) : null
+              ) : (
+                <PrivyConnectButton
+                  onOpenAccount={() => {
+                    setIsAccountModalOpen(true);
+                    playSound("click");
+                  }}
+                />
+              )}
+
+              {/* Hamburger — mobile only, not in MiniPay */}
+              {!isMiniPay && (
+                <button
+                  onClick={() => setIsMobileMenuOpen((v) => !v)}
+                  className="md:hidden p-2 -mr-1"
+                  aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+                >
+                  <HamburgerIcon open={isMobileMenuOpen} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Mobile dropdown */}
+        {/* Mobile menu */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.15 }}
-              className="sm:hidden border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-[#0a0a0b] px-4 py-3 flex flex-col gap-1"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+              className="md:hidden overflow-hidden border-t border-neutral-900 bg-black"
             >
-              {/* Nav links */}
-              {address && (
-                <MobileMenuItem
-                  icon={<History size={17} />}
-                  label="Focus History"
-                  href="/app/history"
-                  onClick={closeMenu}
-                />
-              )}
-              <MobileMenuItem
-                icon={<Trophy size={17} />}
-                label="Leaderboard"
-                href="/app/leaderboard"
-                onClick={closeMenu}
-              />
-              {onOpenOnboarding && (
-                <MobileMenuItem
-                  icon={<HelpCircle size={17} />}
-                  label="How to Play"
-                  onClick={() => { onOpenOnboarding(); playSound("click"); closeMenu(); }}
-                  accent
-                />
-              )}
-              {onOpenProfile && (
-                <MobileMenuItem
-                  icon={<User size={17} />}
-                  label="Edit Profile"
-                  onClick={() => { onOpenProfile(); playSound("click"); closeMenu(); }}
-                />
-              )}
-              <MobileMenuItem
-                icon={<Share2 size={17} />}
-                label="Invite a Friend"
-                onClick={() => { copyInvite(); closeMenu(); }}
-              />
+              <div className="px-5 py-4 flex flex-col gap-0.5">
+                {MOBILE_LINKS.map((l, i) => (
+                  <motion.div
+                    key={l.label}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05, duration: 0.2 }}
+                  >
+                    <Link
+                      href={l.href}
+                      onClick={closeMenu}
+                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-neutral-300 hover:text-white hover:bg-neutral-900 transition-colors"
+                    >
+                      {l.icon}
+                      {l.label}
+                    </Link>
+                  </motion.div>
+                ))}
 
-              {/* Divider + toggles */}
-              <div className="flex items-center gap-2 pt-2 mt-1 border-t border-neutral-100 dark:border-neutral-800">
-                <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mr-auto">
-                  Preferences
-                </span>
-                <ThemeToggle />
-                <SoundMenu />
+                {onOpenProfile && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{
+                      delay: (MOBILE_LINKS.length + 1) * 0.05,
+                      duration: 0.2,
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        onOpenProfile();
+                        playSound("click");
+                        closeMenu();
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-neutral-300 hover:text-white hover:bg-neutral-900 transition-colors text-left"
+                    >
+                      <User size={16} />
+                      Edit Profile
+                    </button>
+                  </motion.div>
+                )}
+
+                {/* TODO: Invite a Friend — re-enable when referral flow is ready */}
+                {/* <motion.div
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    delay: (MOBILE_LINKS.length + 2) * 0.05,
+                    duration: 0.2,
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      copyInvite();
+                      closeMenu();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-neutral-300 hover:text-white hover:bg-neutral-900 transition-colors text-left"
+                  >
+                    <Share2 size={16} />
+                    Invite a Friend
+                  </button>
+                </motion.div> */}
+
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex items-center gap-2 pt-3 mt-2 border-t border-neutral-900"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 mr-auto">
+                    Preferences
+                  </span>
+                  <ThemeToggle />
+                  <SoundMenu />
+                </motion.div>
               </div>
             </motion.div>
           )}
@@ -225,94 +314,13 @@ export function Navbar({ onOpenOnboarding, onOpenProfile }: NavbarProps) {
       <AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
+        onOpenProfile={onOpenProfile}
+        onOpenOnboarding={onOpenOnboarding}
       />
       <MiniPayAccountModal
         isOpen={isMiniPayModalOpen}
         onClose={() => setIsMiniPayModalOpen(false)}
       />
     </>
-  );
-}
-
-/* ── small helper components ── */
-
-function NavIconBtn({
-  href,
-  title,
-  children,
-}: {
-  href: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      title={title}
-      className="p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-    >
-      {children}
-    </Link>
-  );
-}
-
-function NavBtn({
-  onClick,
-  title,
-  accent,
-  children,
-}: {
-  onClick: () => void;
-  title: string;
-  accent?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      className={`p-2 rounded-xl transition-colors ${
-        accent
-          ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
-          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function MobileMenuItem({
-  icon,
-  label,
-  href,
-  onClick,
-  accent,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  href?: string;
-  onClick?: () => void;
-  accent?: boolean;
-}) {
-  const cls = `flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-colors w-full text-left ${
-    accent
-      ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
-      : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
-  }`;
-
-  if (href) {
-    return (
-      <Link href={href} onClick={onClick} className={cls}>
-        {icon}
-        {label}
-      </Link>
-    );
-  }
-  return (
-    <button onClick={onClick} className={cls}>
-      {icon}
-      {label}
-    </button>
   );
 }

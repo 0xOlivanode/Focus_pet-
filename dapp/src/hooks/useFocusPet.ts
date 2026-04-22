@@ -163,7 +163,6 @@ export function useFocusPet() {
         }
       } else if (lastAction === "profile") {
         setHasToasted(true);
-        toast.success("Profile Updated Successfully!");
         refetchAll();
       } else if (lastAction === "sync") {
         setHasToasted(true);
@@ -219,7 +218,6 @@ export function useFocusPet() {
     setLastAction("shop");
 
     if (currentAllowance < amount) {
-      toast.loading("Unlocking G$...", { id: "unlocking" });
       if (itemId) {
         setPendingItem({ id: itemId, price, functionName, args });
       }
@@ -231,7 +229,6 @@ export function useFocusPet() {
         args: [CONTRACT_ADDRESS, amount],
       } as any);
     } else {
-      toast.dismiss("unlocking");
       writeContract({
         ...txOverrides,
         address: CONTRACT_ADDRESS,
@@ -327,7 +324,6 @@ export function useFocusPet() {
         setPendingItem(null); // Clear first to prevent loops
 
         console.log("🚀 Auto-triggering buy for:", item.id);
-        toast.dismiss("unlocking");
 
         if (item.functionName) {
           writeContract({

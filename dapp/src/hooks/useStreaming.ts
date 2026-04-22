@@ -26,6 +26,7 @@ export function useStreaming() {
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
+  const [isStreamPending, setIsStreamPending] = useState(false);
 
   // Fetch current flow info
   const { data: flowData, refetch: refetchFlow } = useReadContract({
@@ -80,20 +81,22 @@ export function useStreaming() {
         ],
       });
 
-      toast.promise(promise, {
-        loading: "Initiating G$ Stream...",
-        success: "Supercharged Happiness Activated! ⚡️🦖",
-        error: (err) => {
-          if (err.message.includes("User rejected"))
-            return "Request cancelled by user.";
-          return "Failed to start supercharge. Please try again.";
-        },
-      });
-
-      await promise;
-      await refetchFlow();
+      setIsStreamPending(true);
+      try {
+        await promise;
+        await refetchFlow();
+        toast.success("Supercharged Happiness Activated! ⚡️🦖");
+      } catch (err: any) {
+        if (err?.message?.includes("User rejected")) {
+          toast.error("Request cancelled by user.");
+        } else {
+          toast.error("Failed to start supercharge. Please try again.");
+        }
+      } finally {
+        setIsStreamPending(false);
+      }
     } catch (error) {
-      // Error handled by toast.promise
+      setIsStreamPending(false);
     }
   };
 
@@ -108,25 +111,29 @@ export function useStreaming() {
         args: [G_DOLLAR_CELO, address, TRUST_FUND_ADDRESS, "0x"],
       });
 
-      toast.promise(promise, {
-        loading: "Stopping G$ Stream...",
-        success: "Stream stopped. Pet happiness will return to normal.",
-        error: (err) => {
-          if (err.message.includes("User rejected"))
-            return "Request cancelled by user.";
-          return "Failed to stop stream. Please try again.";
-        },
-      });
-
-      await promise;
-      await refetchFlow();
+      setIsStreamPending(true);
+      try {
+        await promise;
+        await refetchFlow();
+        toast.success("Stream stopped. Pet happiness will return to normal.");
+      } catch (err: any) {
+        if (err?.message?.includes("User rejected")) {
+          toast.error("Request cancelled by user.");
+        } else {
+          toast.error("Failed to stop stream. Please try again.");
+        }
+      } finally {
+        setIsStreamPending(false);
+      }
     } catch (error) {
+      setIsStreamPending(false);
       console.error("Failed to stop stream:", error);
     }
   };
 
   return {
     isStreaming,
+    isStreamPending,
     flowRate,
     lastUpdated,
     globalUbiBalance: communityImpact as bigint | undefined,

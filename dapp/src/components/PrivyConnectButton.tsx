@@ -2,7 +2,6 @@
 
 import { usePrivy } from "@privy-io/react-auth";
 import { useAccount } from "wagmi";
-import { LogOut, Copy, ChevronDown } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -36,16 +35,12 @@ export function PrivyConnectButton({ onOpenAccount }: PrivyConnectButtonProps) {
     return (
       <button
         onClick={onOpenAccount}
-        className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-full font-bold text-xs sm:text-sm hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors shadow-sm"
+        className="flex items-center gap-2 px-6 py-3.5 bg-neutral-100 text-neutral-900 rounded-full font-mono text-xs hover:bg-white transition-colors"
         title="Manage Account"
       >
-        <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-linear-to-r from-indigo-500 to-purple-500 shadow-sm shrink-0" />
-        <span className="shrink-0">
-          {address
-            ? `${address.slice(0, 4)}...${address.slice(-3)}`
-            : "Connected"}
-        </span>
-        <ChevronDown size={16} className="ml-0.5 opacity-50 hidden sm:block" />
+        {address
+          ? `${address.slice(0, 6)}...${address.slice(-3)}`
+          : "Connected"}
       </button>
     );
   }
@@ -53,9 +48,9 @@ export function PrivyConnectButton({ onOpenAccount }: PrivyConnectButtonProps) {
   return (
     <button
       onClick={login}
-      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-bold text-sm transition-colors shadow-sm active:scale-95"
+      className="px-4 py-2 bg-white hover:bg-neutral-100 text-black rounded-full font-bold text-sm transition-colors active:scale-95"
     >
-      Start Your Journey
+      Sign In
     </button>
   );
 }
