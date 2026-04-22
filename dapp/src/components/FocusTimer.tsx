@@ -479,22 +479,22 @@ export function FocusTimer({
 
         {/* H / M / S display */}
         <div className="flex-1 flex items-center">
-          <div className="w-full bg-[#0F0F0F] p-5 lg:p-7 xl:p-10 rounded-xl flex items-center justify-between min-w-0">
+          <div className="w-full bg-[#0F0F0F] p-3 sm:p-5 lg:p-7 xl:p-10 rounded-xl flex items-center justify-between min-w-0 overflow-hidden">
             {/* Hours */}
             <div className="flex flex-col items-center gap-1 xl:gap-2 flex-1 min-w-0">
               {/* <span className="text-neutral-500 text-left text-xs xl:text-sm">
                 Hours
               </span> */}
-              <span className="text-white text-4xl lg:text-5xl xl:text-[80px] font-mono tabular-nums leading-none">
+              <span className="text-white text-2xl sm:text-4xl lg:text-5xl xl:text-[80px] font-mono tabular-nums leading-none">
                 {String(hrs).padStart(2, "0")}
-                <span className="text-neutral-500 text-xl lg:text-2xl xl:text-4xl font-sans font-light tracking-widest align-baseline ml-0.5">
+                <span className="text-neutral-500 text-xs sm:text-xl lg:text-2xl xl:text-4xl font-sans font-light tracking-wide sm:tracking-widest align-baseline ml-0.5">
                   Hours
                 </span>
               </span>
             </div>
 
             {/* Colon 1 */}
-            <span className="text-neutral-400 text-xl xl:text-3xl font-bold select-none pb-1 mx-1 xl:mx-2">
+            <span className="text-neutral-400 text-base xl:text-3xl font-bold select-none pb-1 mx-0.5 xl:mx-2">
               :
             </span>
 
@@ -503,16 +503,16 @@ export function FocusTimer({
               {/* <span className="text-neutral-500 text-xs xl:text-sm text-left">
                 Minutes
               </span> */}
-              <span className="text-white text-4xl lg:text-5xl xl:text-[80px] font-mono tabular-nums leading-none">
+              <span className="text-white text-2xl sm:text-4xl lg:text-5xl xl:text-[80px] font-mono tabular-nums leading-none">
                 {String(mins).padStart(2, "0")}
-                <span className="text-neutral-500 text-xl lg:text-2xl xl:text-4xl font-sans font-light tracking-widest align-baseline ml-0.5">
+                <span className="text-neutral-500 text-xs sm:text-xl lg:text-2xl xl:text-4xl font-sans font-light tracking-wide sm:tracking-widest align-baseline ml-0.5">
                   Mins
                 </span>
               </span>
             </div>
 
             {/* Colon 2 */}
-            <span className="text-neutral-400 text-xl xl:text-3xl font-bold select-none pb-1 mx-1 xl:mx-2">
+            <span className="text-neutral-400 text-base xl:text-3xl font-bold select-none pb-1 mx-0.5 xl:mx-2">
               :
             </span>
 
@@ -521,9 +521,9 @@ export function FocusTimer({
               {/* <span className="text-neutral-500 text-xs xl:text-sm">
                 Seconds
               </span> */}
-              <span className="text-white text-4xl lg:text-5xl xl:text-[80px] font-mono tabular-nums leading-none">
+              <span className="text-white text-2xl sm:text-4xl lg:text-5xl xl:text-[80px] font-mono tabular-nums leading-none">
                 {String(secs).padStart(2, "0")}
-                <span className="text-neutral-500 text-xl lg:text-2xl xl:text-4xl font-sans font-light tracking-widest align-baseline ml-0.5">
+                <span className="text-neutral-500 text-xs sm:text-xl lg:text-2xl xl:text-4xl font-sans font-light tracking-wide sm:tracking-widest align-baseline ml-0.5">
                   Secs
                 </span>
               </span>

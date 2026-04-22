@@ -759,7 +759,7 @@ function AppPageContent() {
           </div>
 
           {/* Right – stats bar + info/timer card */}
-          <div className="flex-1 min-w-0 flex flex-col gap-4">
+          <div className="flex-1 min-w-0 w-full lg:w-auto flex flex-col gap-4">
             {streak > 0 && (
               <div className="flex items-center gap-3 lg:justify-between">
                 <div
@@ -954,7 +954,7 @@ function AppPageContent() {
               )}
 
               {/* Right – flex-1 absorbs whatever the left gives up */}
-              <div className="flex-1 min-w-0 p-10 bg-[#0C0C0C]">
+              <div className="flex-1 min-w-0 p-5 sm:p-8 lg:p-10 bg-[#0C0C0C]">
                 <FocusTimer
                   embedded
                   onComplete={(mins) => {
