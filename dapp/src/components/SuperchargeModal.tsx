@@ -116,7 +116,7 @@ export function SuperchargeModal({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 380, damping: 38 }}
-            className="relative w-full lg:w-[960px] mx-auto bg-[#111111] rounded-t-[2rem] overflow-hidden"
+            className="relative w-full max-w-full lg:max-w-[960px] mx-auto bg-[#111111] rounded-t-[2rem] overflow-hidden"
           >
             {/* Drag handle */}
             <div className="flex justify-center pt-4 pb-1">

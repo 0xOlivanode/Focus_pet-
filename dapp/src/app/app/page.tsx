@@ -22,7 +22,6 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatEther, parseEther } from "viem";
 import { PrivyConnectButton } from "@/components/PrivyConnectButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { SocialShare } from "@/components/SocialShare";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { SuperchargeModal } from "@/components/SuperchargeModal";
@@ -529,7 +528,7 @@ function AppPageContent() {
       isMiniPayHatch || (celoBalance?.value ?? 0n) >= parseEther("0.003");
 
     return (
-      <div className="min-h-screen w-screen overflow-x-hidden bg-black flex flex-col">
+      <div className="min-h-screen w-full bg-black flex flex-col">
         <Navbar minimal onOpenOnboarding={() => setShowOnboarding(true)} />
 
         <div className="flex-1 flex flex-col items-center justify-center px-5 py-16">

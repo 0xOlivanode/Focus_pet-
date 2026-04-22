@@ -5,7 +5,6 @@ import { useAccount } from "wagmi";
 import { useIsMiniPay } from "@/hooks/useMiniPay";
 import { HelpCircle, User, History, Trophy, ShoppingBag, Home } from "lucide-react";
 import Link from "next/link";
-import { ThemeToggle } from "./ThemeToggle";
 import { SoundMenu } from "./SoundMenu";
 import { PrivyConnectButton } from "./PrivyConnectButton";
 import { useAudio } from "@/hooks/useAudio";
@@ -302,7 +301,6 @@ export function Navbar({ onOpenOnboarding, onOpenProfile, minimal }: NavbarProps
                   <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 mr-auto">
                     Preferences
                   </span>
-                  <ThemeToggle />
                   <SoundMenu />
                 </motion.div>
               </div>

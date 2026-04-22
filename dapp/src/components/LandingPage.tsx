@@ -135,7 +135,7 @@ export function LandingPage() {
       <div className="py-25 flex flex-col items-center bg-[#FBFBFB]">
         <img
           src="/milestone-images.png"
-          className="mb-[33px] w-[900px]"
+          className="mb-[33px] w-full max-w-[900px]"
           alt=""
         />
         <div className="flex justify-center gap-x-[152px] text-[#000000] text-xl">
