@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Share, Plus } from "lucide-react";
+import Image from "next/image";
 
 const STORAGE_KEY = "ios-install-prompt-dismissed";
 
@@ -61,10 +62,12 @@ export function IOSInstallPrompt() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-[#1a1a1a] border border-neutral-800 overflow-hidden flex items-center justify-center shrink-0">
-                    <img
+                    <Image
                       src="/focus-pet.png"
+                      width={32}
+                      height={32}
                       alt="FocusPet"
-                      className="w-8 h-8 object-contain"
+                      className="object-contain"
                     />
                   </div>
                   <div>

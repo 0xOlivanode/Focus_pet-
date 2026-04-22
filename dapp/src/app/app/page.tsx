@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Image from "next/image";
 import { FocusTimer } from "@/components/FocusTimer";
 import { PetView } from "@/components/PetView";
 import { ImpactDashboard } from "@/components/ImpactDashboard";
@@ -539,11 +540,6 @@ function AppPageContent() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="relative mb-12 flex items-center justify-center"
           >
-            <motion.div
-              animate={{ opacity: [0.04, 0.14, 0.04], scale: [1, 1.18, 1] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute inset-0 rounded-full bg-white blur-3xl"
-            />
             <motion.img
               src="/assets/pets/cyber_dino/egg_sunny.png"
               alt="Your egg"
@@ -764,14 +760,9 @@ function AppPageContent() {
               <div className="flex items-center gap-3 lg:justify-between">
                 <div
                   className="rounded-full flex items-center gap-2 py-2.5 px-5 border border-dashed border-[#664600] text-white text-sm font-medium whitespace-nowrap"
-                  style={{
-                    background:
-                      "linear-gradient(90deg, #322000, #8B4500, #010101, #8B4500, #322000)",
-                    backgroundSize: "300% 100%",
-                    animation: "streakShift 5s ease infinite",
-                  }}
+                  style={{ background: "linear-gradient(90deg, #322000, #8B4500, #322000)" }}
                 >
-                  <img src="/streak-flame.png" className="w-5 h-5" alt="" />
+                  <Image src="/streak-flame.png" width={20} height={20} alt="" />
                   <span className="flex items-center gap-x-1">
                     <span className="hidden lg:flex">You are on a </span>
                     {` ${streak}`} day streak
@@ -789,13 +780,7 @@ function AppPageContent() {
                 className="px-5 py-3 rounded-full text-sm font-medium whitespace-nowrap"
                 style={
                   isStreaming
-                    ? {
-                        background:
-                          "linear-gradient(90deg, #342804, #E73B74, #342804, #E73B74, #342804)",
-                        backgroundSize: "300% 100%",
-                        animation: "superchargeShift 4s ease infinite",
-                        color: "#ffffff",
-                      }
+                    ? { background: "linear-gradient(90deg, #342804, #E73B74, #342804)", color: "#ffffff" }
                     : { background: "#ffffff", color: "#000000" }
                 }
               >
@@ -820,13 +805,7 @@ function AppPageContent() {
                     className="flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium whitespace-nowrap"
                     style={
                       boostActive
-                        ? {
-                            background:
-                              "linear-gradient(90deg, #063D49, #3B4CE7, #063D49, #3B4CE7, #063D49)",
-                            backgroundSize: "300% 100%",
-                            animation: "boostShift 4s ease infinite",
-                            color: "#ffffff",
-                          }
+                        ? { background: "linear-gradient(90deg, #063D49, #3B4CE7, #063D49)", color: "#ffffff" }
                         : { background: "#ffffff", color: "#000000" }
                     }
                   >
@@ -892,7 +871,7 @@ function AppPageContent() {
                             {username || "focuser"}
                           </p>
                         </button>
-                        {isVerified && <img src="/SealCheck.svg" />}
+                        {isVerified && <Image src="/SealCheck.svg" width={16} height={16} alt="Verified" />}
                       </div>
                     </div>
                   </div>
@@ -931,7 +910,7 @@ function AppPageContent() {
                           {username || "focuser"}
                         </p>
                       </button>
-                      {isVerified && <img src="/SealCheck.svg" />}
+                      {isVerified && <Image src="/SealCheck.svg" width={16} height={16} alt="Verified" />}
                     </div>
                   </div>
                 </div>

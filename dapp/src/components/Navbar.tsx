@@ -58,11 +58,7 @@ function HamburgerIcon({ open }: { open: boolean }) {
 
 export function Navbar({ onOpenOnboarding, onOpenProfile, minimal }: NavbarProps) {
   const { address } = useAccount();
-  const APP_HOME =
-    typeof window !== "undefined" &&
-    window.location.hostname === "app.focus-pet.xyz"
-      ? "/"
-      : "/app";
+  const APP_HOME = "/app";
   const { playSound } = useAudio();
   const isMiniPay = useIsMiniPay();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

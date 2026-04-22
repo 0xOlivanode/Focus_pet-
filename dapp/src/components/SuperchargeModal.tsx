@@ -147,22 +147,9 @@ export function SuperchargeModal({
               {isStreaming ? (
                 <div className="flex flex-col gap-3">
                   {/* Active stream status card */}
-                  <div className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-[#1a1a1a] px-5 py-5">
-                    <motion.div
-                      animate={{ opacity: [0.03, 0.07, 0.03] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute inset-0 bg-white rounded-2xl pointer-events-none"
-                    />
-                    <div className="relative flex items-center gap-4">
-                      {/* Pulsing dot */}
-                      <div className="relative w-2.5 h-2.5 shrink-0">
-                        <motion.div
-                          animate={{ scale: [1, 2, 1], opacity: [0.3, 0, 0.3] }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                          className="absolute inset-0 rounded-full bg-white"
-                        />
-                        <div className="w-2.5 h-2.5 rounded-full bg-white" />
-                      </div>
+                  <div className="rounded-2xl border border-neutral-800 bg-[#1a1a1a] px-5 py-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-2.5 h-2.5 rounded-full bg-white shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-white text-sm font-semibold leading-tight">Stream active</p>

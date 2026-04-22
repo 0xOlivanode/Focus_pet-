@@ -47,13 +47,9 @@ export function LiveEarn({
         <div className="relative">
           <Coins className="w-4 h-4 text-emerald-500" />
           {isSupercharged && (
-            <motion.div
-              animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.2, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="absolute -top-1 -right-1"
-            >
+            <div className="absolute -top-1 -right-1">
               <Zap className="w-2 h-2 text-cyan-400 fill-cyan-400" />
-            </motion.div>
+            </div>
           )}
         </div>
 
