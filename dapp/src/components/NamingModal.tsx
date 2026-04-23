@@ -102,8 +102,8 @@ export function NamingModal({
 
               <div className="space-y-5">
                 {/* Username row */}
-                <div className="flex items-center gap-4 sm:gap-8">
-                  <label className="text-white text-sm sm:text-xl font-medium w-36 sm:w-44 shrink-0">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
+                  <label className="text-white text-sm sm:text-xl font-medium sm:w-44 sm:shrink-0">
                     Your hero name
                   </label>
                   <div className="flex-1 relative group">
@@ -120,7 +120,7 @@ export function NamingModal({
                         setUsername(v);
                         checkUsername(v);
                       }}
-                      placeholder={initialUsername || "oshioke"}
+                      placeholder={initialUsername || "heroname"}
                       className="w-full bg-[#2a2a2a] text-white placeholder-neutral-500 rounded-xl py-3 pl-8 pr-10 text-sm outline-none focus:ring-1 focus:ring-neutral-600 transition-all"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -141,15 +141,15 @@ export function NamingModal({
                   </div>
                 </div>
                 {username.length > 0 && !isUsernameAvailable(username) && (
-                  <p className="text-xs text-red-400 ml-[11rem] sm:ml-[13rem]">
+                  <p className="text-xs text-red-400 sm:ml-52">
                     This hero name is already taken!
                   </p>
                 )}
 
                 {/* Pet name row */}
-                <div className="flex items-center gap-4 sm:gap-8">
-                  <label className="text-white text-sm sm:text-xl font-medium w-36 sm:w-44 shrink-0">
-                    Companion's name
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
+                  <label className="text-white text-sm sm:text-xl font-medium sm:w-44 sm:shrink-0">
+                    Pet Name
                   </label>
                   <div className="flex-1 relative group">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm select-none">
@@ -182,7 +182,7 @@ export function NamingModal({
                   </div>
                 </div>
                 {petName.length > 0 && !isPetNameAvailable(petName) && (
-                  <p className="text-xs text-red-400 ml-[11rem] sm:ml-[13rem]">
+                  <p className="text-xs text-red-400 sm:ml-52">
                     Another companion already claimed this name!
                   </p>
                 )}
