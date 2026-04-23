@@ -35,6 +35,12 @@ function getSupabase() {
 }
 
 export async function POST(req: NextRequest) {
+  return NextResponse.json(
+    { error: "Faucet is temporarily unavailable. Contact support to receive gas." },
+    { status: 503 },
+  );
+
+  // eslint-disable-next-line no-unreachable
   try {
     const { address } = await req.json();
 
