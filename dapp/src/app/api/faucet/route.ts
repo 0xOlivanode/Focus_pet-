@@ -35,6 +35,12 @@ function getSupabase() {
 }
 
 export async function POST(req: NextRequest) {
+  return NextResponse.json(
+    { error: "Faucet is temporarily unavailable. Contact support to receive gas." },
+    { status: 503 },
+  );
+
+  // eslint-disable-next-line no-unreachable
   try {
     const { address } = await req.json();
 
@@ -44,8 +50,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 2. Privy auth — blocks all bots calling the API directly ──────────
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const rawAuth = req.headers.get("authorization") ?? "";
+    const token = rawAuth.startsWith("Bearer ") ? rawAuth.slice(7) : null;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -57,7 +63,7 @@ export async function POST(req: NextRequest) {
         process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "cmmw8pr3l00lr0cjp282x5v3l",
         process.env.PRIVY_APP_SECRET!,
       );
-      const claims = await privy.verifyAuthToken(token);
+      const claims = await privy.verifyAuthToken(token as string);
       privyUserId = claims.userId;
 
       // Fetch user once — reused for ownership check + identity check below
@@ -158,7 +164,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Faucet temporarily unavailable." }, { status: 503 });
       }
 
-      if (privyGrant && privyGrant.address !== normalized) {
+      if (privyGrant !== null && privyGrant!.address !== normalized) {
         return NextResponse.json(
           { error: "This account has already received a faucet grant." },
           { status: 429 },
@@ -182,13 +188,13 @@ export async function POST(req: NextRequest) {
     }
 
     const lastTxSucceeded =
-      existing &&
-      existing.tx_hash !== "failed" &&
-      existing.tx_hash !== "pending";
+      existing != null &&
+      existing!.tx_hash !== "failed" &&
+      existing!.tx_hash !== "pending";
 
     if (lastTxSucceeded) {
       const hoursSince =
-        (Date.now() - new Date(existing.last_funded_at).getTime()) / (1000 * 60 * 60);
+        (Date.now() - new Date(existing!.last_funded_at).getTime()) / (1000 * 60 * 60);
       if (hoursSince < COOLDOWN_H) {
         const hoursLeft = Math.ceil(COOLDOWN_H - hoursSince);
         return NextResponse.json({

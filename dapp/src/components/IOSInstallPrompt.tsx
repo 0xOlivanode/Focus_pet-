@@ -17,10 +17,16 @@ function isInStandaloneMode(): boolean {
   return (window.navigator as any).standalone === true;
 }
 
+function isMiniPay(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!(window as any).ethereum?.isMiniPay;
+}
+
 export function IOSInstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (isMiniPay()) return;
     if (!isIOS()) return;
     if (isInStandaloneMode()) return;
     if (localStorage.getItem(STORAGE_KEY)) return;

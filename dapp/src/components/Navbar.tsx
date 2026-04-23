@@ -201,16 +201,14 @@ export function Navbar({ onOpenOnboarding, onOpenProfile, minimal }: NavbarProps
                 />
               )}
 
-              {/* Hamburger — mobile only, not in MiniPay */}
-              {!isMiniPay && (
-                <button
-                  onClick={() => setIsMobileMenuOpen((v) => !v)}
-                  className="md:hidden p-2 -mr-1"
-                  aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-                >
-                  <HamburgerIcon open={isMobileMenuOpen} />
-                </button>
-              )}
+              {/* Hamburger — mobile only */}
+              <button
+                onClick={() => setIsMobileMenuOpen((v) => !v)}
+                className="md:hidden p-2 -mr-1"
+                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+              >
+                <HamburgerIcon open={isMobileMenuOpen} />
+              </button>
             </div>
           </div>
         </div>

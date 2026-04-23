@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import { parseUnits, isAddress } from "viem";
 import { useIdentitySDK } from "@goodsdks/identity-sdk";
@@ -257,7 +258,7 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-md"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
 
           <motion.div
@@ -265,11 +266,11 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="relative w-full max-w-lg bg-white dark:bg-neutral-900 rounded-t-[32px] shadow-2xl overflow-hidden pb-safe"
+            className="relative w-full max-w-lg bg-[#111111] border-t border-neutral-800 rounded-t-[32px] shadow-2xl overflow-hidden pb-safe"
           >
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full bg-neutral-200 dark:bg-neutral-700" />
+              <div className="w-10 h-1 rounded-full bg-neutral-700" />
             </div>
 
             {/* Header */}
@@ -278,24 +279,26 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                 {view === "send" ? (
                   <button
                     onClick={() => { setView("main"); setSendError(""); resetSend(); }}
-                    className="p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors mr-0.5"
+                    className="p-1.5 rounded-full hover:bg-neutral-800 transition-colors mr-0.5"
                   >
                     <ArrowLeft size={16} className="text-neutral-400" />
                   </button>
                 ) : (
-                  <img
+                  <Image
                     src="/focus-pet-logo.jpeg"
-                    className="w-7 h-7 rounded-full border border-neutral-100 dark:border-neutral-800"
+                    width={28}
+                    height={28}
                     alt="FocusPet"
+                    className="rounded-full border border-neutral-800"
                   />
                 )}
-                <span className="font-bold text-neutral-900 dark:text-white">
+                <span className="font-bold text-white">
                   {view === "send" ? "Send G$" : "My Wallet"}
                 </span>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                className="p-2 rounded-full hover:bg-neutral-800 transition-colors"
               >
                 <X size={18} className="text-neutral-400" />
               </button>
@@ -314,66 +317,66 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                   {/* Wallet address */}
                   <button
                     onClick={copyAddress}
-                    className="w-full flex items-center justify-between p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group"
+                    className="w-full flex items-center justify-between p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a] hover:bg-neutral-800 transition-all group"
                   >
                     <div className="text-left">
-                      <div className="text-xs text-neutral-400 uppercase tracking-widest mb-0.5">
+                      <div className="text-xs text-neutral-500 uppercase tracking-widest mb-0.5">
                         Wallet Address
                       </div>
-                      <div className="font-medium text-neutral-900 dark:text-white font-mono text-sm">
+                      <div className="font-medium text-white font-mono text-sm">
                         {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "—"}
                       </div>
                     </div>
                     <Copy
                       size={16}
-                      className={`transition-colors ${copied ? "text-indigo-500" : "text-neutral-300 group-hover:text-indigo-500"}`}
+                      className={`transition-colors ${copied ? "text-indigo-400" : "text-neutral-600 group-hover:text-indigo-400"}`}
                     />
                   </button>
 
                   {/* Balances grid */}
                   <div className="grid grid-cols-2 gap-3">
                     {/* USDm */}
-                    <div className="p-4 rounded-3xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/20">
+                    <div className="p-4 rounded-3xl border border-neutral-800 bg-neutral-800/30">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
                           <span className="text-[9px] text-white font-black">$</span>
                         </div>
-                        <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                        <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
                           USDm
                         </span>
                       </div>
-                      <div className="font-bold text-lg text-neutral-900 dark:text-white">
+                      <div className="font-bold text-lg text-white">
                         {usdmFormatted}
                       </div>
                       {usdmLocalValue && (
-                        <div className="text-[10px] font-medium text-neutral-400 mt-0.5">
+                        <div className="text-[10px] font-medium text-neutral-500 mt-0.5">
                           ≈ {localCurrency} {usdmLocalValue}
                         </div>
                       )}
                     </div>
 
                     {/* G$ */}
-                    <div className="p-4 rounded-3xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/20">
+                    <div className="p-4 rounded-3xl border border-neutral-800 bg-neutral-800/30">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
                           <span className="text-[9px] text-white font-black">G</span>
                         </div>
-                        <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                        <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
                           G$
                         </span>
                       </div>
-                      <div className="font-bold text-lg text-neutral-900 dark:text-white">
+                      <div className="font-bold text-lg text-white">
                         {gBalance}
                       </div>
                       {/* Claim CTA inline */}
                       <div className="mt-2">
                         {isCheckingClaim ? (
-                          <Loader2 size={11} className="animate-spin text-neutral-300" />
+                          <Loader2 size={11} className="animate-spin text-neutral-600" />
                         ) : claimStatus === "can_claim" ? (
                           <button
                             onClick={handleClaim}
                             disabled={isClaiming || entitlement === BigInt(0)}
-                            className="flex items-center gap-1 text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors disabled:opacity-50 uppercase tracking-widest"
+                            className="flex items-center gap-1 text-[10px] font-black text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50 uppercase tracking-widest"
                           >
                             {isClaiming ? (
                               <Loader2 size={10} className="animate-spin" />
@@ -383,7 +386,7 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                             Claim {claimAmountDisplay > 0 ? `${claimAmountDisplay} G$` : "daily"}
                           </button>
                         ) : claimStatus === "already_claimed" ? (
-                          <span className="flex items-center gap-1 text-[10px] font-black text-neutral-300 dark:text-neutral-600 uppercase tracking-widest">
+                          <span className="flex items-center gap-1 text-[10px] font-black text-neutral-600 uppercase tracking-widest">
                             <CheckCircle2 size={10} />
                             Claimed today
                           </span>
@@ -396,54 +399,54 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                   <div className="grid grid-cols-4 gap-2">
                     <button
                       onClick={() => window.location.href = "https://link.minipay.xyz/qr"}
-                      className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all"
+                      className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a] hover:bg-neutral-800 transition-all"
                     >
-                      <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-                        <QrCode size={16} className="text-neutral-600 dark:text-neutral-300" />
+                      <div className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center">
+                        <QrCode size={16} className="text-neutral-300" />
                       </div>
-                      <span className="text-[9px] font-black text-neutral-400 uppercase tracking-wide">
+                      <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wide">
                         Receive
                       </span>
                     </button>
 
                     <button
                       onClick={() => window.location.href = "https://link.minipay.xyz/balance"}
-                      className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all"
+                      className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a] hover:bg-neutral-800 transition-all"
                     >
-                      <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-                        <Wallet size={16} className="text-neutral-600 dark:text-neutral-300" />
+                      <div className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center">
+                        <Wallet size={16} className="text-neutral-300" />
                       </div>
-                      <span className="text-[9px] font-black text-neutral-400 uppercase tracking-wide">
+                      <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wide">
                         Balance
                       </span>
                     </button>
 
                     <button
                       onClick={() => window.location.href = "https://link.minipay.xyz/add_cash"}
-                      className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all"
+                      className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a] hover:bg-neutral-800 transition-all"
                     >
-                      <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-                        <Plus size={16} className="text-neutral-600 dark:text-neutral-300" />
+                      <div className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center">
+                        <Plus size={16} className="text-neutral-300" />
                       </div>
-                      <span className="text-[9px] font-black text-neutral-400 uppercase tracking-wide">
+                      <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wide">
                         Add Cash
                       </span>
                     </button>
 
                     <button
                       onClick={() => setView("send")}
-                      className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all"
+                      className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a] hover:bg-neutral-800 transition-all"
                     >
-                      <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-                        <Send size={16} className="text-neutral-600 dark:text-neutral-300" />
+                      <div className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center">
+                        <Send size={16} className="text-neutral-300" />
                       </div>
-                      <span className="text-[9px] font-black text-neutral-400 uppercase tracking-wide">
+                      <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wide">
                         Send G$
                       </span>
                     </button>
                   </div>
 
-                  <p className="text-center text-[10px] font-bold text-neutral-300 dark:text-neutral-600 uppercase tracking-widest pt-1">
+                  <p className="text-center text-[10px] font-bold text-neutral-700 uppercase tracking-widest pt-1">
                     Powered by MiniPay · Celo
                   </p>
                 </motion.div>
@@ -457,16 +460,16 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                   className="px-6 pb-10 space-y-4"
                 >
                   {/* Available balance */}
-                  <div className="flex items-center justify-between p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-                    <span className="text-xs text-neutral-400 uppercase tracking-widest">Available</span>
-                    <span className="font-bold text-neutral-900 dark:text-white">
-                      {gBalance} <span className="text-neutral-400 font-medium">G$</span>
+                  <div className="flex items-center justify-between p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a]">
+                    <span className="text-xs text-neutral-500 uppercase tracking-widest">Available</span>
+                    <span className="font-bold text-white">
+                      {gBalance} <span className="text-neutral-500 font-medium">G$</span>
                     </span>
                   </div>
 
                   {/* Recipient */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">
+                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">
                       Recipient
                     </label>
                     <div className="relative">
@@ -475,13 +478,13 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                         placeholder="Address (0x...)"
                         value={recipient}
                         onChange={(e) => { setRecipient(e.target.value); setSendError(""); }}
-                        className="w-full px-5 py-4 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl outline-hidden focus:ring-1 focus:ring-indigo-500 font-mono text-sm font-medium transition-all pr-14"
+                        className="w-full px-5 py-4 bg-[#1a1a1a] border border-neutral-800 rounded-2xl outline-hidden focus:ring-1 focus:ring-indigo-500 font-mono text-sm font-medium text-white placeholder:text-neutral-600 transition-all pr-14"
                       />
                       <button
                         onClick={handleScanQr}
                         disabled={isScanning}
                         title="Scan QR code"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-indigo-500 transition-colors disabled:opacity-40"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-xl hover:bg-neutral-800 text-neutral-500 hover:text-indigo-400 transition-colors disabled:opacity-40"
                       >
                         {isScanning
                           ? <Loader2 size={16} className="animate-spin" />
@@ -493,12 +496,12 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                   {/* Amount */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between px-1">
-                      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                      <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
                         Amount
                       </label>
                       <button
                         onClick={() => setSendAmount(gDollarBalance?.formatted ?? "")}
-                        className="text-[10px] font-black text-indigo-500 uppercase tracking-widest"
+                        className="text-[10px] font-black text-indigo-400 uppercase tracking-widest"
                       >
                         Max: {gBalance} G$
                       </button>
@@ -509,20 +512,20 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                         placeholder="0.00"
                         value={sendAmount}
                         onChange={(e) => { setSendAmount(e.target.value); setSendError(""); }}
-                        className="w-full px-5 py-5 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl outline-hidden focus:ring-1 focus:ring-indigo-500 font-bold text-3xl transition-all"
+                        className="w-full px-5 py-5 bg-[#1a1a1a] border border-neutral-800 rounded-2xl outline-hidden focus:ring-1 focus:ring-indigo-500 font-bold text-3xl text-white placeholder:text-neutral-700 transition-all"
                       />
                     </div>
                   </div>
 
                   {sendError && (
-                    <p className="text-xs font-bold text-red-500 px-1">{sendError}</p>
+                    <p className="text-xs font-bold text-red-400 px-1">{sendError}</p>
                   )}
 
                   <div className="pt-2 flex flex-col gap-4">
                     <button
                       onClick={handleSend}
                       disabled={isSending || isSendConfirming}
-                      className="w-full h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-base shadow-lg shadow-indigo-100 dark:shadow-none"
+                      className="w-full h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-base"
                     >
                       {isSending || isSendConfirming ? (
                         <Loader2 size={22} className="animate-spin" />
@@ -532,7 +535,7 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                     </button>
                     <button
                       onClick={() => { setView("main"); setSendError(""); resetSend(); }}
-                      className="text-xs font-bold text-neutral-400 hover:text-neutral-600 transition-colors uppercase tracking-widest text-center"
+                      className="text-xs font-bold text-neutral-500 hover:text-neutral-300 transition-colors uppercase tracking-widest text-center"
                     >
                       Cancel
                     </button>
