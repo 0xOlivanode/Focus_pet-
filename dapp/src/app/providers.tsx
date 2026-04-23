@@ -1,14 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAccount, useConnect, useConnectors, fallback, http } from "wagmi";
 import { injected } from "wagmi/connectors";
 
-import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
+import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { celo } from "wagmi/chains";
 
@@ -41,7 +40,19 @@ export const wagmiConfig = createConfig({
 });
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = React.useState(() => new QueryClient());
+  const [queryClient] = React.useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 30_000,
+            gcTime: 5 * 60_000,
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      }),
+  );
 
   return (
     <PrivyProvider
@@ -66,11 +77,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
-          <ThemeProvider attribute="class" defaultTheme="light">
-            <>
-              <MiniPayConnector />
-              <GasStationTrigger />
-              <AudioProvider>{children}</AudioProvider>
+          <>
+            <MiniPayConnector />
+            <AudioProvider>{children}</AudioProvider>
               <Toaster
                 position="top-center"
                 toastOptions={{
@@ -100,8 +109,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   },
                 }}
               />
-            </>
-          </ThemeProvider>
+          </>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
@@ -124,45 +132,3 @@ function MiniPayConnector() {
   return null;
 }
 
-function GasStationTrigger() {
-  const { address, isConnected } = useAccount();
-  const { getAccessToken } = usePrivy();
-  const hasFiredRef = React.useRef<string | null>(null);
-
-  React.useEffect(() => {
-    // MiniPay users pay gas via USDm — no CELO faucet needed
-    if ((window.ethereum as any)?.isMiniPay) return;
-    if (!isConnected || !address) return;
-    // Deduplicate: only fire once per address per page session
-    if (hasFiredRef.current === address) return;
-    hasFiredRef.current = address;
-
-    const callFaucet = async () => {
-      const token = await getAccessToken();
-      if (!token) return { funded: false, error: "Not authenticated" };
-      return fetch("/api/faucet", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ address }),
-      }).then((res) => res.json());
-    };
-
-    callFaucet()
-      .then((data) => {
-        console.log("Faucet:", data);
-        if (!data.funded) {
-          setTimeout(() => {
-            callFaucet()
-              .then((d) => console.log("Faucet retry:", d))
-              .catch(() => {});
-          }, 3000);
-        }
-      })
-      .catch((err) => console.error("Faucet error:", err));
-  }, [isConnected, address]);
-
-  return null;
-}
