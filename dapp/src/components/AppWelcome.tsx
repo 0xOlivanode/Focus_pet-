@@ -56,7 +56,7 @@ export function AppWelcome() {
           </button>
 
           <p className="mt-4 text-xs text-neutral-500">
-            Sign in with email or any Celo wallet
+            Sign in with email or MiniPay
           </p>
         </div>
       </main>

@@ -61,7 +61,7 @@ export function NotificationBell() {
 
   const handleClick = async () => {
     if (!address) {
-      toast.error("Connect your wallet first.");
+      toast.error("Sign in first.");
       return;
     }
 

@@ -91,8 +91,8 @@ export function PetShop({
       showToast(
         isCancelled ? "Purchase Cancelled" : "Transmission Error",
         isCancelled
-          ? "You declined the request in your wallet."
-          : "Something went wrong on-chain. Please check your network.",
+          ? "Purchase cancelled."
+          : "Something went wrong. Please try again.",
         "error",
       );
     }
