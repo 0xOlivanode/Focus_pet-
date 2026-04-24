@@ -17,6 +17,7 @@ dataSources:
       entities:
         - User
         - GlobalStats
+        - DailyActivity
       abis:
         - name: FocusPet
           file: FocusPet/abis/FocusPet.json
@@ -25,6 +26,8 @@ dataSources:
           handler: handlePetBorn
         - event: PetFed(indexed address,uint256,uint256)
           handler: handlePetFed
+        - event: FocusSessionRecorded(indexed address,uint256,uint256,uint256,uint256,uint256)
+          handler: handleFocusSessionRecorded
         - event: NamesUpdated(indexed address,string,string)
           handler: handleNamesUpdated
         - event: UserDeleted(indexed address)
