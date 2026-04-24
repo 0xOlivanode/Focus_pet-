@@ -60,7 +60,7 @@ export default function ShopPage() {
       const err = writeError || receiptError;
       const cancelled = err?.message?.includes("user rejected");
       toast.error(
-        cancelled ? "Purchase cancelled." : "Transaction failed. Try again.",
+        cancelled ? "Purchase cancelled." : "Purchase failed. Try again.",
       );
     }
   }, [writeError, receiptError]);
@@ -206,11 +206,11 @@ export default function ShopPage() {
               </h2>
               <p className="text-neutral-500 text-sm">
                 {isSigning
-                  ? "Preparing transaction…"
+                  ? "Getting ready…"
                   : isPending
-                    ? "Confirm in your wallet…"
+                    ? "Confirm in your app…"
                     : isConfirming
-                      ? "Writing to chain…"
+                      ? "Saving…"
                       : "Almost there…"}
               </p>
             </div>

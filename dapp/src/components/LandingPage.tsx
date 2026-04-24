@@ -16,7 +16,7 @@ const FEATURES = [
       <Coins size={20} className="text-emerald-600 dark:text-emerald-400" />
     ),
     title: "Earn G$ Daily",
-    desc: "Verified humans earn GoodDollar (G$) every day — real crypto UBI on Celo. Your focus sessions supercharge the flow.",
+    desc: "Verified humans earn GoodDollar (G$) every day — a real universal income. Your focus sessions supercharge the flow.",
   },
   {
     icon: <Trophy size={20} className="text-yellow-500" />,
@@ -28,8 +28,8 @@ const FEATURES = [
 const STEPS = [
   {
     num: "01",
-    title: "Connect your wallet",
-    desc: "Sign in with email or any Celo wallet. MiniPay users connect automatically — no extra steps.",
+    title: "Sign in",
+    desc: "Sign in with your email or MiniPay — no extra steps needed.",
   },
   {
     num: "02",
@@ -72,7 +72,7 @@ export function LandingPage() {
           <div className="w-full lg:max-w-[402px] shrink-0">
             <p className="mb-6 sm:mb-8 lg:mb-10 text-base sm:text-lg lg:text-xl text-neutral-300 max-w-sm">
               FocusPet rewards every completed session with XP and GoodDollar
-              (G$) — daily crypto earned on Celo. The more you focus, the more
+              (G$) — a digital currency you earn every day. The more you focus, the more
               your pet evolves.
             </p>
             <h1 className="font-anton text-[64px]/[52px] sm:text-[80px]/[58px] lg:text-[100px]/[60px] mb-8 lg:mb-10">

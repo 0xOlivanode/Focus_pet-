@@ -100,7 +100,7 @@ export function DailyActionButton() {
         msg.toLowerCase().includes("cancelled") ||
         msg.toLowerCase().includes("user rejected")
       ) {
-        toast.error("Claim transaction cancelled.");
+        toast.error("Claim cancelled.");
       } else {
         toast.error("Claim failed. Please try again.");
       }

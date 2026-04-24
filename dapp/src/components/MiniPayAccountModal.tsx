@@ -134,11 +134,11 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
     const name = (sendWriteError as any)?.name ?? "";
     const code = (sendWriteError as any)?.code ?? 0;
     if (name === "UserRejectedRequestError" || code === 4001) {
-      setSendError("Transaction cancelled");
+      setSendError("Cancelled");
     } else if (code === -32602) {
       setSendError("Invalid address or amount");
     } else {
-      setSendError("Transaction failed — try again");
+      setSendError("Failed — try again");
     }
   }, [sendWriteError]);
 

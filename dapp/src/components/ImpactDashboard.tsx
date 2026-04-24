@@ -100,7 +100,7 @@ export function ImpactDashboard({
               <button
                 onClick={(e) => { e.stopPropagation(); onSync(); }}
                 disabled={isSyncing}
-                title="Sync to blockchain"
+                title="Sync"
                 className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-40"
               >
                 <RotateCcw size={10} className={isSyncing ? "animate-spin" : ""} />

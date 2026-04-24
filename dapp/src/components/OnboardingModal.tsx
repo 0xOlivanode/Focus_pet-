@@ -26,10 +26,10 @@ const steps = [
     tag: "The core loop",
     title: "Focus. Earn. Evolve.",
     description:
-      "FocusPet turns your deep work into a living creature. Complete focus sessions to hatch your egg, earn real G$ crypto, and evolve your pet from a baby all the way to an Elder.",
+      "FocusPet turns your deep work into a living creature. Complete focus sessions to hatch your egg, earn real G$, and evolve your pet from a baby all the way to an Elder.",
     bullets: [
       { icon: <Zap size={13} />, text: "10 min minimum to earn XP" },
-      { icon: <Coins size={13} />, text: "G$ is real GoodDollar cryptocurrency" },
+      { icon: <Coins size={13} />, text: "G$ is digital money you can actually use" },
       { icon: <ArrowRight size={13} />, text: "5 evolution stages to unlock" },
     ],
   },

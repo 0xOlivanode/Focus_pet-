@@ -46,7 +46,6 @@ import {
   Gift,
   AlertCircle,
   Loader2,
-  ExternalLink,
   HelpCircle,
   User,
   Edit2,
@@ -374,7 +373,7 @@ function AppPageContent() {
             playSound("success");
             showToast(
               "Focus Recorded! 🏆",
-              "Your pet is growing stronger and your status is updated on-chain.",
+              "Your pet is growing stronger!",
               "achievement",
               true,
               `I just focused ${focusNote ? `on "${focusNote}" ` : ""}for ${lastSessionDuration < 1 ? Math.round(lastSessionDuration * 60) + " seconds" : lastSessionDuration + " minutes"} with FocusPet! 🦅 My pet is leveling up on Celo. #FocusPet #BuildWithCelo`,
@@ -392,7 +391,7 @@ function AppPageContent() {
             setIsEditModalOpen(false);
             showToast(
               "Profile Updated! 👤",
-              "Your on-chain identity has been saved successfully.",
+              "Your profile has been saved!",
               "info",
             );
           }
@@ -419,7 +418,7 @@ function AppPageContent() {
   // Parse BigInt data from contract
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pet = petData as any;
-  const stage = getPetStage(xp);
+  const stage = getPetStage(pet ? Number(pet[0]) : xp);
   const nextStageInfo = getNextStageInfo(xp);
 
   // Level Up Ceremony Detection
@@ -449,6 +448,14 @@ function AppPageContent() {
       logout();
     }
   }, [authenticated, walletConnectTimedOut]);
+
+  // Close profile modal as soon as the tx is submitted (not waiting for confirmation).
+  // The full-screen processing overlay covers the wait from here.
+  useEffect(() => {
+    if (isPending && lastAction === "profile") {
+      setIsEditModalOpen(false);
+    }
+  }, [isPending, lastAction]);
 
   const handleSessionComplete = (minutes: number) => {
     setLastSessionDuration(minutes);
@@ -589,8 +596,7 @@ function AppPageContent() {
             ) : gasTimedOut ? (
               <div className="flex flex-col gap-3">
                 <p className="text-neutral-500 text-sm text-center leading-relaxed">
-                  We couldn't top up your wallet. Send a small CELO to your
-                  address to continue.
+                  We couldn't cover your gas fee. Send a small amount of CELO to your address to continue.
                 </p>
                 <button
                   onClick={() => {
@@ -615,7 +621,7 @@ function AppPageContent() {
               <div className="flex items-center justify-center gap-3">
                 <Loader2 className="w-4 h-4 animate-spin text-neutral-500 shrink-0" />
                 <p className="text-neutral-500 text-sm">
-                  Preparing your wallet…
+                  Getting ready…
                 </p>
               </div>
             )}
@@ -673,26 +679,15 @@ function AppPageContent() {
                 </h2>
                 <p className="text-neutral-500 text-sm">
                   {isSigning
-                    ? "Preparing transaction…"
+                    ? "Getting ready…"
                     : isPending
-                      ? "Confirm in your wallet…"
+                      ? "Confirm in your app…"
                       : isConfirming
                         ? "Waking up your companion…"
                         : "Almost there…"}
                 </p>
               </div>
 
-              {hash && (
-                <a
-                  href={`https://celoscan.io/tx/${hash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-300 text-xs transition-colors"
-                >
-                  View on CeloScan
-                  <ExternalLink size={11} />
-                </a>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1093,30 +1088,19 @@ function AppPageContent() {
               </h2>
               <p className="text-neutral-500 text-sm">
                 {isStreamPending
-                  ? "Confirm the transaction in your wallet…"
+                  ? "Confirm in your app…"
                   : isSigning
-                    ? "Preparing your rewards…"
+                    ? "Getting ready…"
                     : isSyncing
-                      ? "Syncing with Celo…"
+                      ? "Saving…"
                       : isPending
-                        ? "Confirm in your wallet…"
+                        ? "Confirm in your app…"
                         : isConfirming
-                          ? "Writing to chain…"
+                          ? "Saving…"
                           : "Almost there…"}
               </p>
             </div>
 
-            {hash && (
-              <a
-                href={`https://celoscan.io/tx/${hash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-neutral-600 hover:text-neutral-400 text-xs transition-colors"
-              >
-                View on CeloScan
-                <ExternalLink size={11} />
-              </a>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1149,7 +1133,7 @@ function AppLoadingScreen({ miniPay = false }: { miniPay?: boolean }) {
           {miniPay ? "Opening in MiniPay…" : "Loading your pet…"}
         </p>
         {!miniPay && (
-          <p className="text-neutral-600 text-xs mt-1">Syncing with Celo</p>
+          <p className="text-neutral-600 text-xs mt-1">Almost ready…</p>
         )}
       </div>
 
