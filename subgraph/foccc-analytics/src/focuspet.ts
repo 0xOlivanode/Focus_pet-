@@ -1,6 +1,7 @@
 import {
   PetBorn as PetBornEvent,
   PetFed as PetFedEvent,
+  FocusSessionRecorded as FocusSessionRecordedEvent,
   NamesUpdated as NamesUpdatedEvent,
   UserDeleted as UserDeletedEvent,
   FocusPet,
@@ -44,6 +45,7 @@ function getOrCreateUser(address: Address): User {
     user.boostEndTime = BigInt.fromI32(0);
     user.shieldCount = BigInt.fromI32(0);
     user.activeCosmetic = "";
+    user.totalSessions = BigInt.fromI32(0);
     user.isActive = true;
     user.lastUpdatedBlock = BigInt.fromI32(0);
     user.lastUpdatedAt = BigInt.fromI32(0);
@@ -143,6 +145,19 @@ export function handlePetFed(event: PetFedEvent): void {
   user.save();
 }
 
+export function handleFocusSessionRecorded(event: FocusSessionRecordedEvent): void {
+  let user = getOrCreateUser(event.params.owner);
+  user.totalSessions = user.totalSessions.plus(BigInt.fromI32(1));
+  user.totalFocusTime = event.params.newTotalFocusTime;
+  user.streak = event.params.streak;
+  user.health = event.params.newHealth;
+  user.isActive = true;
+  user.lastUpdatedBlock = event.block.number;
+  user.lastUpdatedAt = event.block.timestamp;
+  upsertDailyActivity(user, event.block.timestamp);
+  user.save();
+}
+
 export function handleNamesUpdated(event: NamesUpdatedEvent): void {
   let user = getOrCreateUser(event.params.owner);
 
@@ -170,6 +185,7 @@ export function handleUserDeleted(event: UserDeletedEvent): void {
   user.streak = BigInt.fromI32(0);
   user.totalFocusTime = BigInt.fromI32(0);
   user.totalDonated = BigInt.fromI32(0);
+  user.totalSessions = BigInt.fromI32(0);
   user.username = "";
   user.usernameLower = "";
   user.petName = "";

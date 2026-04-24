@@ -208,6 +208,10 @@ export default function ActivitiesPage() {
         )
       : xp;
 
+  const totalSessions = user ? Number(user.totalSessions) : 0;
+  const avgPerSession =
+    totalSessions > 0 ? Math.round(focusTime / totalSessions) : 0;
+
   const stats = [
     { label: "Total XP", value: xp.toLocaleString() },
     { label: "Focus Time", value: fmtHours(focusTime) },
@@ -217,6 +221,11 @@ export default function ActivitiesPage() {
     {
       label: "Pet Stage",
       value: stage.charAt(0).toUpperCase() + stage.slice(1),
+    },
+    { label: "Sessions", value: totalSessions.toLocaleString() },
+    {
+      label: "Avg / Session",
+      value: avgPerSession > 0 ? fmtHours(avgPerSession) : "—",
     },
   ];
 
@@ -293,7 +302,7 @@ export default function ActivitiesPage() {
           <div className="space-y-4">
             {/* ── Stats bar ───────────────────────────────────── */}
             <div className="bg-[#111111] border border-neutral-800 rounded-2xl overflow-hidden">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y sm:divide-y-0 divide-neutral-800">
+              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y divide-neutral-800">
                 {stats.map((s) => (
                   <div key={s.label} className="px-6 py-5">
                     <p className="text-neutral-500 text-xs mb-2">{s.label}</p>

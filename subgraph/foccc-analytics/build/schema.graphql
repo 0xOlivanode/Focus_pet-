@@ -26,6 +26,9 @@ type User @entity {
   shieldCount: BigInt!
   activeCosmetic: String!
 
+  # Focus session counter — incremented on every FocusSessionRecorded event
+  totalSessions: BigInt!
+
   # Soft-delete flag — set false on UserDeleted, true on PetBorn
   isActive: Boolean!
 

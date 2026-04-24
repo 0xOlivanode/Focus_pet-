@@ -34,11 +34,12 @@ export type SubgraphUser = {
   address: string;
   username: string;
   petName: string;
-  xp: string;        // BigInt comes back as string from GraphQL
+  xp: string;           // BigInt comes back as string from GraphQL
   health: string;
   streak: string;
   totalFocusTime: string;
   totalDonated: string;
+  totalSessions: string;
   isActive: boolean;
 };
 
@@ -144,6 +145,7 @@ const USER_QUERY = /* graphql */ `
       streak
       totalFocusTime
       totalDonated
+      totalSessions
       isActive
     }
   }
@@ -178,6 +180,7 @@ const HISTORY_QUERY = /* graphql */ `
       streak
       totalFocusTime
       totalDonated
+      totalSessions
       birthTime
       isActive
     }

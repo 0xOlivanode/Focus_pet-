@@ -80,6 +80,44 @@ export class NamesUpdated__Params {
   }
 }
 
+export class FocusSessionRecorded extends ethereum.Event {
+  get params(): FocusSessionRecorded__Params {
+    return new FocusSessionRecorded__Params(this);
+  }
+}
+
+export class FocusSessionRecorded__Params {
+  _event: FocusSessionRecorded;
+
+  constructor(event: FocusSessionRecorded) {
+    this._event = event;
+  }
+
+  get owner(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get duration(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get xpEarned(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+
+  get newTotalFocusTime(): BigInt {
+    return this._event.parameters[3].value.toBigInt();
+  }
+
+  get streak(): BigInt {
+    return this._event.parameters[4].value.toBigInt();
+  }
+
+  get newHealth(): BigInt {
+    return this._event.parameters[5].value.toBigInt();
+  }
+}
+
 export class UserDeleted extends ethereum.Event {
   get params(): UserDeleted__Params {
     return new UserDeleted__Params(this);
