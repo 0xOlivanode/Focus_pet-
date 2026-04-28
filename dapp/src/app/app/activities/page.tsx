@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
 import { fetchUserHistory, UserHistory, DailyActivity } from "@/lib/subgraph";
 import { getPetEmoji, getPetStage, STAGE_THRESHOLD } from "@/utils/pet";
@@ -123,7 +123,7 @@ function XPChart({
 
 export default function ActivitiesPage() {
   const { address, isConnected } = useAccount();
-  const { authenticated, ready: privyReady } = usePrivy();
+  const { isAuthenticated, isReady } = useAuth();
   const router = useRouter();
   const { globalUbiBalance, isStreaming, flowRate, lastUpdated } =
     useStreaming();
@@ -134,17 +134,14 @@ export default function ActivitiesPage() {
 
   const [streamedDonation, setStreamedDonation] = useState(0);
 
-  const isMiniPay =
-    typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-
   useEffect(() => {
-    if (!privyReady || (!authenticated && !isMiniPay)) return;
+    if (!isReady || !isAuthenticated) return;
     if (!address) return;
     fetchUserHistory(address, 60)
       .then(setHistory)
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, [address, isConnected, privyReady, authenticated]);
+  }, [address, isConnected, isReady, isAuthenticated]);
 
   // Live stream ticker
   useEffect(() => {
@@ -160,8 +157,8 @@ export default function ActivitiesPage() {
     return () => clearInterval(t);
   }, [isStreaming, flowRate, lastUpdated]);
 
-  if (!privyReady) return null;
-  if (!authenticated && !isMiniPay) {
+  if (!isReady) return null;
+  if (!isAuthenticated) {
     router.replace("/");
     return null;
   }

@@ -1,63 +1,341 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useState, useEffect, useRef } from "react";
+import { ArrowRight, ArrowLeft, Loader2, Wallet } from "lucide-react";
+import { useLoginWithEmail } from "@privy-io/react-auth";
+import { useConnect, useConnectors } from "wagmi";
+import { Web3AuthConnector } from "@web3auth/web3auth-wagmi-connector";
+import { web3authInstance } from "@/app/providers";
 import { IOSInstallPrompt } from "./IOSInstallPrompt";
 
-const STAGES = [
-  { emoji: "🥚", label: "Egg" },
-  { emoji: "🐣", label: "Baby" },
-  { emoji: "🦖", label: "Teen" },
-  { emoji: "🐉", label: "Adult" },
-  { emoji: "👑", label: "Elder" },
-];
+type AuthRouteResult = "privy" | "web3auth" | "new" | null;
+type View = "email" | "otp";
 
 export function AppWelcome() {
-  const { login } = usePrivy();
+  const { sendCode, loginWithCode } = useLoginWithEmail();
+  const { connect } = useConnect();
+  const connectors = useConnectors();
+
+  const [view, setView] = useState<View>("email");
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [isChecking, setIsChecking] = useState(false);
+  const [authRoute, setAuthRoute] = useState<AuthRouteResult>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState("");
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const otpInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounced email check: fires 600ms after user stops typing
+  useEffect(() => {
+    setAuthRoute(null);
+    setError("");
+
+    if (!email || !email.includes("@") || !email.includes(".")) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      setIsChecking(true);
+      try {
+        const res = await fetch("/api/auth/check-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        setAuthRoute(data.authType ?? "new");
+      } catch {
+        setAuthRoute("new");
+      } finally {
+        setIsChecking(false);
+      }
+    }, 600);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [email]);
+
+  // Auto-focus OTP input when view switches
+  useEffect(() => {
+    if (view === "otp") {
+      setTimeout(() => otpInputRef.current?.focus(), 100);
+    }
+  }, [view]);
+
+  const getWeb3AuthConnector = () =>
+    connectors.find((c) => c.id === "web3auth");
+
+  const handleEmailContinue = async () => {
+    if (!canContinue) return;
+    setError("");
+    setIsConnecting(true);
+
+    try {
+      if (authRoute === "privy") {
+        // Send OTP directly — skip the Privy modal entirely
+        await sendCode({ email });
+        setView("otp");
+      } else {
+        // New user or returning Web3Auth user.
+        // Pass email as login_hint so Web3Auth skips asking for it again
+        // and goes straight to sending the OTP.
+        const emailConnector = Web3AuthConnector({
+          web3AuthInstance: web3authInstance,
+          loginParams: {
+            loginProvider: "email_passwordless",
+            login_hint: email,
+          },
+        });
+        connect({ connector: emailConnector });
+      }
+    } catch (err: any) {
+      if (!err?.message?.includes("rejected")) {
+        setError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    if (!otp.trim() || isConnecting) return;
+    setError("");
+    setIsConnecting(true);
+
+    try {
+      await loginWithCode({ code: otp });
+      // Auth state updates automatically — app re-renders to show main screen
+    } catch (err: any) {
+      const msg = err?.message?.toLowerCase() ?? "";
+      if (
+        msg.includes("invalid") ||
+        msg.includes("expired") ||
+        msg.includes("incorrect")
+      ) {
+        setError("Incorrect or expired code. Try again.");
+      } else if (!msg.includes("rejected")) {
+        setError("Something went wrong. Please try again.");
+      }
+      setOtp("");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setError("");
+    setOtp("");
+    try {
+      await sendCode({ email });
+    } catch {
+      setError("Failed to resend. Please try again.");
+    }
+  };
+
+  const handleWalletConnect = async () => {
+    if (isConnecting) return;
+    setError("");
+    setIsConnecting(true);
+    try {
+      const connector = getWeb3AuthConnector();
+      if (!connector) throw new Error("Web3Auth not ready");
+      connect({ connector });
+    } catch (err: any) {
+      if (!err?.message?.includes("rejected")) {
+        setError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  // authRoute must be resolved before allowing Continue — prevents Privy users
+  // being accidentally routed to Web3Auth if they click within the 600ms debounce window
+  const canContinue =
+    email.includes("@") &&
+    email.includes(".") &&
+    authRoute !== null &&
+    !isChecking &&
+    !isConnecting;
+
+  const statusHint =
+    authRoute === "privy"
+      ? "We'll send you a sign-in code."
+      : authRoute === "web3auth"
+        ? "Welcome back — signing you in."
+        : authRoute === "new"
+          ? "New here — we'll get you set up."
+          : "";
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col overflow-x-hidden">
       {/* Nav */}
-      <header className="flex items-center justify-between py-6 px-5 sm:px-10 lg:px-[80px]">
-        <div className="flex items-center gap-x-2">
-          <img
-            src="/focus-pet-logo.jpeg"
-            alt="FocusPet"
-            className="w-8 h-8 rounded-full shadow-sm"
-          />
-          <span className="text-xl font-anton uppercase">Focus Pet</span>
-        </div>
+      <header className="flex items-center justify-between py-2 px-5 sm:px-10 lg:px-[80px]">
+        <img
+          src="/focus-pet-logo.svg"
+          alt="FocusPet logo"
+          className="w-[140px] lg:w-[200px]"
+        />
       </header>
 
       {/* Main */}
       <main className="flex-1 flex flex-col items-center justify-center px-5 text-center">
         <div className="w-full max-w-sm">
-          <h1 className="font-anton text-[56px]/[52px] sm:text-[64px]/[58px] uppercase mb-6">
-            Welcome to FocusPet
-          </h1>
-          <p className="text-neutral-400 text-sm sm:text-base mb-10 leading-relaxed">
-            Raise a pet by doing the work. Every focus session earns XP and{" "}
-            <strong className="text-white">G$</strong> on Celo.
-          </p>
+          {view === "email" ? (
+            <>
+              <h1 className="font-anton text-[56px]/[52px] sm:text-[64px]/[58px] uppercase mb-6">
+                Welcome to FocusPet
+              </h1>
+              <p className="text-neutral-400 text-sm sm:text-base mb-10 leading-relaxed">
+                Raise a pet by doing the work. Every focus session earns XP and{" "}
+                <strong className="text-white">G$</strong>.
+              </p>
 
-          <button
-            onClick={() => login()}
-            className="group inline-flex items-center overflow-hidden border border-neutral-700 w-fit cursor-pointer"
-          >
-            <span className="flex items-center justify-center px-[18px] h-12 sm:h-14 bg-[#EDEDED]">
-              <ArrowRight
-                size={20}
-                className="text-black transition-transform duration-200 group-hover:translate-x-1"
-              />
-            </span>
-            <span className="px-7 sm:px-10 h-12 sm:h-14 flex items-center bg-white text-black text-sm sm:text-lg tracking-tight">
-              Sign In to Continue
-            </span>
-          </button>
+              {/* Email input + continue */}
+              <div className="flex flex-col gap-3 mb-4">
+                <div className="relative">
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && handleEmailContinue()
+                    }
+                    className="w-full bg-[#111111] border border-neutral-800 rounded-xl px-4 py-3.5 text-white placeholder-neutral-600 text-sm outline-none focus:border-neutral-600 transition-colors pr-10"
+                    autoComplete="email"
+                    inputMode="email"
+                  />
+                  {isChecking && (
+                    <Loader2
+                      size={15}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-neutral-500"
+                    />
+                  )}
+                </div>
 
-          <p className="mt-4 text-xs text-neutral-500">
-            Sign in with email or MiniPay
-          </p>
+                {statusHint && !isChecking && (
+                  <p className="text-xs text-neutral-500 text-left">
+                    {statusHint}
+                  </p>
+                )}
+
+                <button
+                  onClick={handleEmailContinue}
+                  disabled={!canContinue}
+                  className="group inline-flex items-center overflow-hidden border border-neutral-700 w-full cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span className="flex items-center justify-center px-[18px] h-12 sm:h-14 bg-[#EDEDED] shrink-0">
+                    {isConnecting ? (
+                      <Loader2 size={18} className="text-black animate-spin" />
+                    ) : (
+                      <ArrowRight
+                        size={20}
+                        className="text-black transition-transform duration-200 group-hover:translate-x-1"
+                      />
+                    )}
+                  </span>
+                  <span className="px-7 sm:px-10 h-12 sm:h-14 flex-1 flex items-center justify-center bg-white text-black text-sm sm:text-base tracking-tight font-medium">
+                    {isConnecting ? "Sending code…" : "Continue"}
+                  </span>
+                </button>
+              </div>
+
+              {error && <p className="text-red-400 text-xs mb-4">{error}</p>}
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-neutral-800" />
+                <span className="text-neutral-600 text-xs">or</span>
+                <div className="flex-1 h-px bg-neutral-800" />
+              </div>
+
+              {/* Wallet connect */}
+              <button
+                onClick={handleWalletConnect}
+                disabled={isConnecting}
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl border border-neutral-800 bg-[#0a0a0a] hover:bg-[#111111] text-white text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Wallet size={16} className="text-neutral-400" />
+                Connect a wallet
+              </button>
+
+              <p className="mt-4 text-xs text-neutral-600">
+                Sign in with email or connect your wallet
+              </p>
+            </>
+          ) : (
+            <>
+              {/* OTP view — Privy users only */}
+              <button
+                onClick={() => {
+                  setView("email");
+                  setOtp("");
+                  setError("");
+                }}
+                className="flex items-center gap-1.5 text-neutral-500 hover:text-white text-xs mb-8 transition-colors mx-auto"
+              >
+                <ArrowLeft size={13} />
+                Back
+              </button>
+
+              <h1 className="font-anton text-[40px]/[44px] sm:text-[52px]/[52px] uppercase mb-4">
+                Check your email
+              </h1>
+              <p className="text-neutral-400 text-sm mb-2 leading-relaxed">
+                We sent a code to
+              </p>
+              <p className="text-white text-sm font-medium mb-10">{email}</p>
+
+              <div className="flex flex-col gap-3 mb-4">
+                <input
+                  ref={otpInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Enter code"
+                  value={otp}
+                  onChange={(e) =>
+                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  onKeyDown={(e) => e.key === "Enter" && handleOtpSubmit()}
+                  className="w-full bg-[#111111] border border-neutral-800 rounded-xl px-4 py-3.5 text-white placeholder-neutral-600 text-sm outline-none focus:border-neutral-600 transition-colors text-center tracking-[0.3em] text-lg font-mono"
+                  autoComplete="one-time-code"
+                />
+
+                <button
+                  onClick={handleOtpSubmit}
+                  disabled={otp.length < 6 || isConnecting}
+                  className="group inline-flex items-center overflow-hidden border border-neutral-700 w-full cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span className="flex items-center justify-center px-[18px] h-12 sm:h-14 bg-[#EDEDED] shrink-0">
+                    {isConnecting ? (
+                      <Loader2 size={18} className="text-black animate-spin" />
+                    ) : (
+                      <ArrowRight
+                        size={20}
+                        className="text-black transition-transform duration-200 group-hover:translate-x-1"
+                      />
+                    )}
+                  </span>
+                  <span className="px-7 sm:px-10 h-12 sm:h-14 flex-1 flex items-center justify-center bg-white text-black text-sm sm:text-base tracking-tight font-medium">
+                    {isConnecting ? "Signing in…" : "Confirm"}
+                  </span>
+                </button>
+              </div>
+
+              {error && <p className="text-red-400 text-xs mb-4">{error}</p>}
+
+              <button
+                onClick={handleResend}
+                className="text-xs text-neutral-500 hover:text-white transition-colors"
+              >
+                Didn't get it? Resend code
+              </button>
+            </>
+          )}
         </div>
       </main>
 

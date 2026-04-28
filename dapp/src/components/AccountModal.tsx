@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useBalance, useWriteContract, useDisconnect } from "wagmi";
+import { useAccount, useBalance, useWriteContract } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Copy,
   ArrowDownLeft,
@@ -34,12 +35,13 @@ export function AccountModal({
   onOpenOnboarding,
 }: AccountModalProps) {
   const { address } = useAccount();
-  const { logout, user, linkEmail } = usePrivy();
-  const { disconnect } = useDisconnect();
+  const { logout } = useAuth();
+  const { user, linkEmail, authenticated: privyAuthenticated } = usePrivy();
   const [isLinkingEmail, setIsLinkingEmail] = useState(false);
 
   const email = user?.email?.address ?? user?.google?.email ?? null;
-  const hasEmail = !!email;
+  // Only offer email linking to Privy users who don't have one yet
+  const canLinkEmail = privyAuthenticated && !email;
 
   const handleLinkEmail = async () => {
     setIsLinkingEmail(true);
@@ -86,7 +88,6 @@ export function AccountModal({
 
   const handleLogout = async () => {
     onClose();
-    disconnect();
     await logout();
   };
 
@@ -136,9 +137,9 @@ export function AccountModal({
                   <span className="text-white font-mono text-base font-medium">
                     {address ? formatAddress(address) : "—"}
                   </span>
-                  {hasEmail ? (
+                  {email ? (
                     <span className="text-neutral-400 text-xs">{email}</span>
-                  ) : (
+                  ) : canLinkEmail ? (
                     <button
                       onClick={handleLinkEmail}
                       disabled={isLinkingEmail}
@@ -149,7 +150,7 @@ export function AccountModal({
                         ? "Opening…"
                         : "Link email to secure account"}
                     </button>
-                  )}
+                  ) : null}
                 </div>
                 <button
                   onClick={copyAddress}

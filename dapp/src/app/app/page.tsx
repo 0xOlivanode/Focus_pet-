@@ -12,15 +12,15 @@ import {
   getStageName,
 } from "@/utils/pet";
 import { Leaderboard } from "@/components/Leaderboard";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
 import { useIdentity } from "@/hooks/useIdentity";
 
-import { useAccount, useReconnect, useBalance, useDisconnect } from "wagmi";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAccount, useBalance } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { formatEther, parseEther } from "viem";
 import { PrivyConnectButton } from "@/components/PrivyConnectButton";
 import { SocialShare } from "@/components/SocialShare";
@@ -80,9 +80,7 @@ const TIMERS = {
 
 function AppPageContent() {
   const { isConnected, isConnecting, isReconnecting, address } = useAccount();
-  const { logout, authenticated, ready: privyReady } = usePrivy();
-  const { reconnect } = useReconnect();
-  const { disconnect } = useDisconnect();
+  const { isAuthenticated, isReady, logout, authType, authenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -444,7 +442,6 @@ function AppPageContent() {
 
   useEffect(() => {
     if (authenticated && walletConnectTimedOut) {
-      disconnect();
       logout();
     }
   }, [authenticated, walletConnectTimedOut]);
@@ -456,6 +453,20 @@ function AppPageContent() {
       setIsEditModalOpen(false);
     }
   }, [isPending, lastAction]);
+
+  // Register Web3Auth and MiniPay users in Supabase on first connection.
+  // Privy users are pre-seeded from CSV; this handles new users only.
+  const hasRegistered = useRef(false);
+  useEffect(() => {
+    if (!address || !authType || hasRegistered.current) return;
+    if (authType !== "web3auth" && authType !== "minipay") return;
+    hasRegistered.current = true;
+    fetch("/api/auth/register-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ walletAddress: address, authType }),
+    }).catch(() => {});
+  }, [authType, address]);
 
   const handleSessionComplete = (minutes: number) => {
     setLastSessionDuration(minutes);
@@ -492,10 +503,11 @@ function AppPageContent() {
     return <AppLoadingScreen />;
   }
 
-  // Show welcome/auth screen for unauthenticated non-MiniPay users
-  const isMiniPay =
+  // Show welcome/auth screen for unauthenticated users.
+  // MiniPay is excluded: their wallet auto-connects — show loading instead.
+  const isMiniPayEnvCheck =
     typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-  if (privyReady && !authenticated && !isMiniPay) {
+  if (isReady && !isAuthenticated && !isMiniPayEnvCheck) {
     return <AppWelcome />;
   }
 
@@ -508,8 +520,8 @@ function AppPageContent() {
       (isConnecting ||
         isReconnecting ||
         miniPay ||
-        !privyReady ||
-        (privyReady && authenticated));
+        !isReady ||
+        (isReady && authenticated));
 
     if (isAutoConnecting) {
       return <AppLoadingScreen miniPay={miniPay} />;

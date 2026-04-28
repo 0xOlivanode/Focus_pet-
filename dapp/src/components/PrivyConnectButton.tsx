@@ -1,37 +1,34 @@
 "use client";
 
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/hooks/useAuth";
 import { useAccount } from "wagmi";
-import { useEffect, useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
+import { useEffect, useState } from "react";
 
 interface PrivyConnectButtonProps {
   onOpenAccount?: () => void;
 }
 
 export function PrivyConnectButton({ onOpenAccount }: PrivyConnectButtonProps) {
-  const { login, logout, authenticated, ready } = usePrivy();
+  const { isAuthenticated, isReady } = useAuth();
   const { address } = useAccount();
 
-  // Hydration safety
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted || !ready) {
+  if (!mounted || !isReady) {
     return (
       <div className="w-24 h-10 bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-full" />
     );
   }
 
-  // Inside MiniPay the wallet is injected automatically — no connect UI needed
+  // MiniPay: wallet is injected automatically — Navbar handles this separately
   if ((window.ethereum as any)?.isMiniPay) {
     return null;
   }
 
-  if (authenticated) {
+  if (isAuthenticated) {
     return (
       <button
         onClick={onOpenAccount}
@@ -45,12 +42,6 @@ export function PrivyConnectButton({ onOpenAccount }: PrivyConnectButtonProps) {
     );
   }
 
-  return (
-    <button
-      onClick={login}
-      className="px-4 py-2 bg-white hover:bg-neutral-100 text-black rounded-full font-bold text-sm transition-colors active:scale-95"
-    >
-      Sign In
-    </button>
-  );
+  // Unauthenticated state — AppWelcome handles sign-in; this is a fallback
+  return null;
 }
