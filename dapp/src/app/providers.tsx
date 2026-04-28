@@ -15,6 +15,7 @@ import { Web3Auth } from "@web3auth/modal";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
 import { Web3AuthConnector } from "@web3auth/web3auth-wagmi-connector";
+import { WalletConnectV2Adapter } from "@web3auth/wallet-connect-v2-adapter";
 
 if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
   (BigInt.prototype as any).toJSON = function () {
@@ -55,6 +56,19 @@ export const web3authInstance =
         },
       })
     : (null as unknown as InstanceType<typeof Web3Auth>);
+
+// Add WalletConnect adapter so the modal shows MetaMask + other wallets
+if (typeof window !== "undefined" && web3authInstance) {
+  web3authInstance.configureAdapter(
+    new WalletConnectV2Adapter({
+      adapterSettings: {
+        walletConnectInitOptions: {
+          projectId: "90d1ee65fa81de6c3b281a6edcfe88ba",
+        },
+      },
+    }),
+  );
+}
 
 // ── Wagmi config ──────────────────────────────────────────────────────────────
 

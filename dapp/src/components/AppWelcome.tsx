@@ -141,7 +141,8 @@ export function AppWelcome() {
         connector: Web3AuthConnector({ web3AuthInstance: web3authInstance }),
       });
     } catch (err: any) {
-      if (!err?.message?.includes("rejected")) {
+      const msg = err?.message?.toLowerCase() ?? "";
+      if (!msg.includes("rejected") && !msg.includes("denied")) {
         setError("Something went wrong. Please try again.");
       }
     } finally {
