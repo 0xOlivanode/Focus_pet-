@@ -75,10 +75,11 @@ export function AppWelcome() {
         setView("otp");
       } else {
         // New user or returning Web3Auth user — Web3Auth handles its own OTP UI
+        // v10 API: authConnection + loginHint (loginProvider/extraLoginOptions are v9)
         await connectTo("auth", {
-          loginProvider: "email_passwordless",
-          extraLoginOptions: { login_hint: email },
-        } as any);
+          authConnection: "email_passwordless",
+          loginHint: email,
+        });
       }
     } catch (err: any) {
       const msg = err?.message?.toLowerCase() ?? "";

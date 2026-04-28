@@ -29,6 +29,16 @@ const web3AuthConfig: Web3AuthContextConfig = {
   web3AuthOptions: {
     clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID!,
     web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+    uiConfig: {
+      appName: "FocusPet",
+      mode: "dark",
+      logoDark: "/focus-pet-logo.svg",
+      logoLight: "/focus-pet-logo.svg",
+      theme: {
+        primary: "#ffffff",   // white — matches our button/accent colour
+        onPrimary: "#000000", // black text on white elements
+      },
+    },
     chains: [
       {
         chainNamespace: "eip155",
