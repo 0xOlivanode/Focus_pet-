@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowRight, ArrowLeft, Loader2, Wallet } from "lucide-react";
 import { useLoginWithEmail } from "@privy-io/react-auth";
-import { useConnect, useConnectors } from "wagmi";
+import { useConnect } from "wagmi";
 import { Web3AuthConnector } from "@web3auth/web3auth-wagmi-connector";
 import { web3authInstance } from "@/app/providers";
 import { IOSInstallPrompt } from "./IOSInstallPrompt";
@@ -21,6 +21,7 @@ export function AppWelcome() {
   const [isChecking, setIsChecking] = useState(false);
   const [authRoute, setAuthRoute] = useState<AuthRouteResult>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isWalletConnecting, setIsWalletConnecting] = useState(false);
   const [error, setError] = useState("");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -132,9 +133,9 @@ export function AppWelcome() {
   };
 
   const handleWalletConnect = async () => {
-    if (isConnecting) return;
+    if (isWalletConnecting) return;
     setError("");
-    setIsConnecting(true);
+    setIsWalletConnecting(true);
     try {
       await connectAsync({
         connector: Web3AuthConnector({ web3AuthInstance: web3authInstance }),
@@ -144,7 +145,7 @@ export function AppWelcome() {
         setError("Something went wrong. Please try again.");
       }
     } finally {
-      setIsConnecting(false);
+      setIsWalletConnecting(false);
     }
   };
 
@@ -252,11 +253,15 @@ export function AppWelcome() {
               {/* Wallet connect */}
               <button
                 onClick={handleWalletConnect}
-                disabled={isConnecting}
+                disabled={isWalletConnecting}
                 className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl border border-neutral-800 bg-[#0a0a0a] hover:bg-[#111111] text-white text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Wallet size={16} className="text-neutral-400" />
-                Connect a wallet
+                {isWalletConnecting ? (
+                  <Loader2 size={16} className="animate-spin text-neutral-400" />
+                ) : (
+                  <Wallet size={16} className="text-neutral-400" />
+                )}
+                {isWalletConnecting ? "Connecting…" : "Connect a wallet"}
               </button>
 
               <p className="mt-4 text-xs text-neutral-600">
