@@ -228,7 +228,11 @@ export function AppWelcome() {
                     )}
                   </span>
                   <span className="px-7 sm:px-10 h-12 sm:h-14 flex-1 flex items-center justify-center bg-white text-black text-sm sm:text-base tracking-tight font-medium">
-                    {isConnecting ? "Sending code…" : "Continue"}
+                    {isConnecting
+                      ? authRoute === "privy"
+                        ? "Sending code…"
+                        : "Opening…"
+                      : "Continue"}
                   </span>
                 </button>
               </div>
