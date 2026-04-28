@@ -3,9 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowRight, ArrowLeft, Loader2, Wallet } from "lucide-react";
 import { useLoginWithEmail } from "@privy-io/react-auth";
-import { useConnect } from "wagmi";
-import { Web3AuthConnector } from "@web3auth/web3auth-wagmi-connector";
-import { web3authInstance } from "@/app/providers";
+import { useWeb3AuthConnect } from "@web3auth/modal/react";
 import { IOSInstallPrompt } from "./IOSInstallPrompt";
 
 type AuthRouteResult = "privy" | "web3auth" | "new" | null;
@@ -13,7 +11,7 @@ type View = "email" | "otp";
 
 export function AppWelcome() {
   const { sendCode, loginWithCode } = useLoginWithEmail();
-  const { connect, connectAsync } = useConnect();
+  const { connect, connectTo } = useWeb3AuthConnect();
 
   const [view, setView] = useState<View>("email");
   const [email, setEmail] = useState("");
@@ -72,24 +70,19 @@ export function AppWelcome() {
 
     try {
       if (authRoute === "privy") {
-        // Send OTP directly — skip the Privy modal entirely
+        // Existing Privy user — send OTP inline, skip the Privy modal
         await sendCode({ email });
         setView("otp");
       } else {
-        // New user or returning Web3Auth user.
-        // Pass email as login_hint so Web3Auth skips asking for it again
-        // and goes straight to sending the OTP.
-        const emailConnector = Web3AuthConnector({
-          web3AuthInstance: web3authInstance,
-          loginParams: {
-            loginProvider: "email_passwordless",
-            login_hint: email,
-          },
-        });
-        connect({ connector: emailConnector });
+        // New user or returning Web3Auth user — Web3Auth handles its own OTP UI
+        await connectTo("auth", {
+          loginProvider: "email_passwordless",
+          extraLoginOptions: { login_hint: email },
+        } as any);
       }
     } catch (err: any) {
-      if (!err?.message?.includes("rejected")) {
+      const msg = err?.message?.toLowerCase() ?? "";
+      if (!msg.includes("rejected") && !msg.includes("denied")) {
         setError("Something went wrong. Please try again.");
       }
     } finally {
@@ -104,7 +97,6 @@ export function AppWelcome() {
 
     try {
       await loginWithCode({ code: otp });
-      // Auth state updates automatically — app re-renders to show main screen
     } catch (err: any) {
       const msg = err?.message?.toLowerCase() ?? "";
       if (
@@ -137,9 +129,7 @@ export function AppWelcome() {
     setError("");
     setIsWalletConnecting(true);
     try {
-      await connectAsync({
-        connector: Web3AuthConnector({ web3AuthInstance: web3authInstance }),
-      });
+      await connect();
     } catch (err: any) {
       const msg = err?.message?.toLowerCase() ?? "";
       if (!msg.includes("rejected") && !msg.includes("denied")) {

@@ -3,19 +3,17 @@
 import * as React from "react";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAccount, useConnect, useConnectors, fallback, http } from "wagmi";
+import { useAccount, useConnect, useConnectors, useDisconnect, fallback, http } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { celo } from "wagmi/chains";
 import { AudioProvider } from "@/hooks/useAudio";
-
-// Web3Auth
-import { Web3Auth } from "@web3auth/modal";
-import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
-import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
-import { Web3AuthConnector } from "@web3auth/web3auth-wagmi-connector";
-import { WalletConnectV2Adapter } from "@web3auth/wallet-connect-v2-adapter";
+import { Web3AuthProvider, useWeb3Auth } from "@web3auth/modal/react";
+import type { Web3AuthContextConfig } from "@web3auth/modal/react";
+import { WEB3AUTH_NETWORK } from "@web3auth/modal";
+import type { EIP1193Provider } from "viem";
+import { web3AuthConnector, setWeb3AuthProvider } from "@/lib/web3AuthConnector";
 
 if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
   (BigInt.prototype as any).toJSON = function () {
@@ -23,63 +21,60 @@ if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
   };
 }
 
-// ── Web3Auth setup ────────────────────────────────────────────────────────────
+// ── Web3Auth v10 config ───────────────────────────────────────────────────────
 
-const celoChainConfig = {
-  chainNamespace: CHAIN_NAMESPACES.EIP155,
-  chainId: "0xa4ec", // 42220
-  rpcTarget: "https://forno.celo.org",
-  displayName: "Celo",
-  blockExplorerUrl: "https://celoscan.io",
-  ticker: "CELO",
-  tickerName: "Celo",
-  decimals: 18,
-};
+const HIDDEN = { showOnModal: false } as const;
 
-const privateKeyProvider =
-  typeof window !== "undefined"
-    ? new EthereumPrivateKeyProvider({ config: { chainConfig: celoChainConfig } })
-    : (null as unknown as InstanceType<typeof EthereumPrivateKeyProvider>);
-
-export const web3authInstance =
-  typeof window !== "undefined"
-    ? new Web3Auth({
-        clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID ?? "",
-        web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
-        chainConfig: celoChainConfig,
-        privateKeyProvider,
-        uiConfig: {
-          appName: "FocusPet",
-          mode: "dark",
-          loginMethodsOrder: ["email_passwordless"],
-          defaultLanguage: "en",
-        },
-      })
-    : (null as unknown as InstanceType<typeof Web3Auth>);
-
-// Add WalletConnect adapter so the modal shows MetaMask + other wallets
-if (typeof window !== "undefined" && web3authInstance) {
-  web3authInstance.configureAdapter(
-    new WalletConnectV2Adapter({
-      adapterSettings: {
-        walletConnectInitOptions: {
-          projectId: "90d1ee65fa81de6c3b281a6edcfe88ba",
+const web3AuthConfig: Web3AuthContextConfig = {
+  web3AuthOptions: {
+    clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID!,
+    web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+    chains: [
+      {
+        chainNamespace: "eip155",
+        chainId: "0xa4ec",
+        rpcTarget: "https://forno.celo.org",
+        displayName: "Celo Mainnet",
+        ticker: "CELO",
+        tickerName: "Celo",
+        blockExplorerUrl: "https://celoscan.io",
+        logo: "https://cryptologos.cc/logos/celo-celo-logo.png",
+      },
+    ],
+    defaultChainId: "0xa4ec",
+    modalConfig: {
+      connectors: {
+        auth: {
+          label: "auth",
+          loginMethods: {
+            google:    HIDDEN,
+            twitter:   HIDDEN,
+            facebook:  HIDDEN,
+            discord:   HIDDEN,
+            apple:     HIDDEN,
+            github:    HIDDEN,
+            reddit:    HIDDEN,
+            twitch:    HIDDEN,
+            linkedin:  HIDDEN,
+            line:      HIDDEN,
+            kakao:     HIDDEN,
+            wechat:    HIDDEN,
+            farcaster: HIDDEN,
+          },
         },
       },
-    }),
-  );
-}
+    },
+  },
+};
 
-// ── Wagmi config ──────────────────────────────────────────────────────────────
-
-const privyAppId = "cmmw8pr3l00lr0cjp282x5v3l";
+// ── Wagmi config ─────────────────────────────────────────────────────────────
+// @privy-io/wagmi adds Privy's embedded-wallet connector automatically.
+// injected() covers MiniPay + MetaMask.
+// web3AuthConnector bridges Web3Auth into wagmi via the module-level provider store.
 
 export const wagmiConfig = createConfig({
   chains: [celo],
-  connectors: [
-    injected(),                                    // MiniPay + MetaMask
-    Web3AuthConnector({ web3AuthInstance: web3authInstance }),        // new users
-  ],
+  connectors: [injected(), web3AuthConnector],
   transports: {
     [celo.id]: fallback([
       http("https://rpc.ankr.com/celo"),
@@ -91,6 +86,8 @@ export const wagmiConfig = createConfig({
 });
 
 // ── Providers ─────────────────────────────────────────────────────────────────
+
+const privyAppId = "cmmw8pr3l00lr0cjp282x5v3l";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -108,59 +105,94 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <PrivyProvider
-      appId={privyAppId}
-      config={{
-        defaultChain: celo,
-        supportedChains: [celo],
-        appearance: {
-          theme: "#000000",
-          accentColor: "#ffffff",
-          logo: "/focus-pet-logo.jpeg",
-          landingHeader: "Sign in to FocusPet",
-          loginMessage: "Raise a pet. Earn G$. Focus more.",
-        },
-        embeddedWallets: {
-          ethereum: {
-            createOnLogin: "users-without-wallets",
+    <Web3AuthProvider config={web3AuthConfig}>
+      <PrivyProvider
+        appId={privyAppId}
+        config={{
+          defaultChain: celo,
+          supportedChains: [celo],
+          appearance: {
+            theme: "#000000",
+            accentColor: "#ffffff",
+            logo: "/focus-pet-logo.jpeg",
+            landingHeader: "Sign in to FocusPet",
+            loginMessage: "Raise a pet. Earn G$. Focus more.",
           },
-        },
-        loginMethods: ["email", "wallet"],
-      }}
-    >
-      <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={wagmiConfig}>
-          <>
-            <MiniPayConnector />
-            <AudioProvider>{children}</AudioProvider>
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: "#111111",
-                  color: "#ffffff",
-                  border: "1px solid #262626",
-                  borderRadius: "999px",
-                  padding: "12px 20px",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-                  maxWidth: "420px",
-                },
-                success: {
-                  iconTheme: { primary: "#ffffff", secondary: "#111111" },
-                },
-                error: {
-                  iconTheme: { primary: "#ef4444", secondary: "#111111" },
-                },
-              }}
-            />
-          </>
-        </WagmiProvider>
-      </QueryClientProvider>
-    </PrivyProvider>
+          embeddedWallets: {
+            ethereum: {
+              createOnLogin: "users-without-wallets",
+            },
+          },
+          loginMethods: ["email", "wallet"],
+        }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <WagmiProvider config={wagmiConfig}>
+            <>
+              <MiniPayConnector />
+              <Web3AuthWagmiSync />
+              <AudioProvider>{children}</AudioProvider>
+              <Toaster
+                position="top-center"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: "#111111",
+                    color: "#ffffff",
+                    border: "1px solid #262626",
+                    borderRadius: "999px",
+                    padding: "12px 20px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                    maxWidth: "420px",
+                  },
+                  success: {
+                    iconTheme: { primary: "#ffffff", secondary: "#111111" },
+                  },
+                  error: {
+                    iconTheme: { primary: "#ef4444", secondary: "#111111" },
+                  },
+                }}
+              />
+            </>
+          </WagmiProvider>
+        </QueryClientProvider>
+      </PrivyProvider>
+    </Web3AuthProvider>
   );
+}
+
+// Bridges Web3Auth's EIP1193 provider into wagmi so all wagmi hooks work for Web3Auth users
+function Web3AuthWagmiSync() {
+  const { provider, status } = useWeb3Auth();
+  const { connectAsync } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { isConnected } = useAccount();
+  const syncedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (status !== "connected" || !provider || isConnected || syncedRef.current) return;
+    syncedRef.current = true;
+
+    setWeb3AuthProvider(provider as EIP1193Provider);
+    // @privy-io/wagmi narrows connectAsync's types to its own connectors; cast to bypass
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (connectAsync as any)({ connector: web3AuthConnector }).catch(() => {
+      syncedRef.current = false;
+      setWeb3AuthProvider(null);
+    });
+  }, [status, provider, isConnected]);
+
+  React.useEffect(() => {
+    if (status === "disconnected") {
+      if (syncedRef.current && isConnected) disconnect();
+      setWeb3AuthProvider(null);
+      syncedRef.current = false;
+    }
+  }, [status]);
+
+  return null;
 }
 
 function MiniPayConnector() {
@@ -173,7 +205,6 @@ function MiniPayConnector() {
     if (hasAttempted.current || connectors.length === 0) return;
     if (!(window.ethereum as any)?.isMiniPay || isConnected) return;
     hasAttempted.current = true;
-    // injected() is always connectors[0]
     const injectedConnector = connectors.find((c) => c.id === "injected");
     if (injectedConnector) connect({ connector: injectedConnector });
   }, [connectors, connect, isConnected]);
