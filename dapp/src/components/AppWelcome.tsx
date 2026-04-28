@@ -13,8 +13,7 @@ type View = "email" | "otp";
 
 export function AppWelcome() {
   const { sendCode, loginWithCode } = useLoginWithEmail();
-  const { connect } = useConnect();
-  const connectors = useConnectors();
+  const { connect, connectAsync } = useConnect();
 
   const [view, setView] = useState<View>("email");
   const [email, setEmail] = useState("");
@@ -64,9 +63,6 @@ export function AppWelcome() {
       setTimeout(() => otpInputRef.current?.focus(), 100);
     }
   }, [view]);
-
-  const getWeb3AuthConnector = () =>
-    connectors.find((c) => c.id === "web3auth");
 
   const handleEmailContinue = async () => {
     if (!canContinue) return;
@@ -140,9 +136,9 @@ export function AppWelcome() {
     setError("");
     setIsConnecting(true);
     try {
-      const connector = getWeb3AuthConnector();
-      if (!connector) throw new Error("Web3Auth not ready");
-      connect({ connector });
+      await connectAsync({
+        connector: Web3AuthConnector({ web3AuthInstance: web3authInstance }),
+      });
     } catch (err: any) {
       if (!err?.message?.includes("rejected")) {
         setError("Something went wrong. Please try again.");
