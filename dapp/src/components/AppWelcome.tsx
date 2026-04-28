@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowRight, ArrowLeft, Loader2, Wallet } from "lucide-react";
 import { useLoginWithEmail } from "@privy-io/react-auth";
-import { useConnect } from "wagmi";
+import { useConnect, useConnectors } from "wagmi";
 import { Web3AuthConnector } from "@web3auth/web3auth-wagmi-connector";
 import { web3authInstance } from "@/app/providers";
 import { IOSInstallPrompt } from "./IOSInstallPrompt";
@@ -13,7 +13,8 @@ type View = "email" | "otp";
 
 export function AppWelcome() {
   const { sendCode, loginWithCode } = useLoginWithEmail();
-  const { connect, connectAsync } = useConnect();
+  const { connect } = useConnect();
+  const connectors = useConnectors();
 
   const [view, setView] = useState<View>("email");
   const [email, setEmail] = useState("");
@@ -63,6 +64,9 @@ export function AppWelcome() {
       setTimeout(() => otpInputRef.current?.focus(), 100);
     }
   }, [view]);
+
+  const getWeb3AuthConnector = () =>
+    connectors.find((c) => c.id === "web3auth");
 
   const handleEmailContinue = async () => {
     if (!canContinue) return;
@@ -136,10 +140,9 @@ export function AppWelcome() {
     setError("");
     setIsConnecting(true);
     try {
-      const walletConnector = Web3AuthConnector({
-        web3AuthInstance: web3authInstance,
-      });
-      await connectAsync({ connector: walletConnector });
+      const connector = getWeb3AuthConnector();
+      if (!connector) throw new Error("Web3Auth not ready");
+      connect({ connector });
     } catch (err: any) {
       if (!err?.message?.includes("rejected")) {
         setError("Something went wrong. Please try again.");
