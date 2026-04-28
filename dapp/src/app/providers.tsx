@@ -35,22 +35,26 @@ const celoChainConfig = {
   decimals: 18,
 };
 
-const privateKeyProvider = new EthereumPrivateKeyProvider({
-  config: { chainConfig: celoChainConfig },
-});
+const privateKeyProvider =
+  typeof window !== "undefined"
+    ? new EthereumPrivateKeyProvider({ config: { chainConfig: celoChainConfig } })
+    : (null as unknown as InstanceType<typeof EthereumPrivateKeyProvider>);
 
-export const web3authInstance = new Web3Auth({
-  clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID ?? "",
-  web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
-  chainConfig: celoChainConfig,
-  privateKeyProvider,
-  uiConfig: {
-    appName: "FocusPet",
-    mode: "dark",
-    loginMethodsOrder: ["email_passwordless"],
-    defaultLanguage: "en",
-  },
-});
+export const web3authInstance =
+  typeof window !== "undefined"
+    ? new Web3Auth({
+        clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID ?? "",
+        web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+        chainConfig: celoChainConfig,
+        privateKeyProvider,
+        uiConfig: {
+          appName: "FocusPet",
+          mode: "dark",
+          loginMethodsOrder: ["email_passwordless"],
+          defaultLanguage: "en",
+        },
+      })
+    : (null as unknown as InstanceType<typeof Web3Auth>);
 
 // ── Wagmi config ──────────────────────────────────────────────────────────────
 
