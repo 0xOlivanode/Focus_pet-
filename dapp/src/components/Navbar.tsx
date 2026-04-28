@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { useIsMiniPay } from "@/hooks/useMiniPay";
-import { HelpCircle, User, History, Trophy, ShoppingBag, Home } from "lucide-react";
+import {
+  HelpCircle,
+  User,
+  History,
+  Trophy,
+  ShoppingBag,
+  Home,
+} from "lucide-react";
 import Link from "next/link";
 import { SoundMenu } from "./SoundMenu";
 import { PrivyConnectButton } from "./PrivyConnectButton";
@@ -28,7 +35,11 @@ const NAV_LINKS = [
 const MOBILE_LINKS = [
   { label: "Home", href: "/app", icon: <Home size={16} /> },
   { label: "Shop", href: "/app/shop", icon: <ShoppingBag size={16} /> },
-  { label: "Leaderboard", href: "/app/leaderboard", icon: <Trophy size={16} /> },
+  {
+    label: "Leaderboard",
+    href: "/app/leaderboard",
+    icon: <Trophy size={16} />,
+  },
   { label: "Activities", href: "/app/activities", icon: <History size={16} /> },
   { label: "Guide", href: "/app/guide", icon: <HelpCircle size={16} /> },
 ];
@@ -56,7 +67,11 @@ function HamburgerIcon({ open }: { open: boolean }) {
   );
 }
 
-export function Navbar({ onOpenOnboarding, onOpenProfile, minimal }: NavbarProps) {
+export function Navbar({
+  onOpenOnboarding,
+  onOpenProfile,
+  minimal,
+}: NavbarProps) {
   const { address } = useAccount();
   const APP_HOME = "/app";
   const { playSound } = useAudio();
@@ -88,10 +103,15 @@ export function Navbar({ onOpenOnboarding, onOpenProfile, minimal }: NavbarProps
     return (
       <>
         <header className="sticky top-0 z-50 w-full bg-black border-b border-neutral-900">
-          <div className="px-5 sm:px-10 lg:px-[80px] py-2 flex items-center justify-between">
-            <span className="font-anton text-white text-xl uppercase tracking-wide select-none">
+          <div className="px-5 sm:px-10 lg:px-[80px] flex items-center justify-between">
+            {/* <span className="font-anton text-white text-xl uppercase tracking-wide select-none">
               Focus Pet
-            </span>
+            </span> */}
+            <img
+              src="/focus-pet-logo.svg"
+              alt="logo"
+              className="w-[140px] lg:w-[200px]"
+            />
             <div className="flex items-center gap-3">
               {isMiniPay ? (
                 address ? (
@@ -134,12 +154,17 @@ export function Navbar({ onOpenOnboarding, onOpenProfile, minimal }: NavbarProps
   return (
     <>
       <header className="sticky top-0 z-50 w-full bg-black border-b border-neutral-900">
-        <div className="px-5 sm:px-10 lg:px-[80px] py-2 flex items-center justify-between">
+        <div className="px-5 sm:px-10 lg:px-[80px] flex items-center justify-between">
           {/* Logo */}
           <Link href={APP_HOME} className="flex items-center gap-x-2 shrink-0">
-            <span className="font-anton text-white text-xl uppercase tracking-wide">
+            {/* <span className="font-anton text-white text-xl uppercase tracking-wide">
               Focus Pet
-            </span>
+            </span> */}
+            <img
+              src="/focus-pet-logo.svg"
+              alt=""
+              className="w-[140px] lg:w-[200px]"
+            />
           </Link>
 
           <div className="flex items-center gap-x-2">

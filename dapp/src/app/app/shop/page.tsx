@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,7 +25,7 @@ interface ShopItem {
 }
 
 export default function ShopPage() {
-  const { authenticated, ready: privyReady } = usePrivy();
+  const { isAuthenticated, isReady } = useAuth();
   const router = useRouter();
   const [category, setCategory] = useState<Category>("consumables");
 
@@ -51,9 +51,6 @@ export default function ShopPage() {
     equippedCosmetics,
   } = useFocusPet();
 
-  const isMiniPay =
-    typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-
   // Toast on tx error — must be before any early returns (Rules of Hooks)
   useEffect(() => {
     if (writeError || receiptError) {
@@ -65,8 +62,8 @@ export default function ShopPage() {
     }
   }, [writeError, receiptError]);
 
-  if (!privyReady) return null;
-  if (!authenticated && !isMiniPay) {
+  if (!isReady) return null;
+  if (!isAuthenticated) {
     router.replace("/");
     return null;
   }

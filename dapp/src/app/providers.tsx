@@ -2,42 +2,77 @@
 
 import * as React from "react";
 import { Toaster } from "react-hot-toast";
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAccount, useConnect, useConnectors, fallback, http } from "wagmi";
 import { injected } from "wagmi/connectors";
-
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { celo } from "wagmi/chains";
-
 import { AudioProvider } from "@/hooks/useAudio";
 
-// React Query uses JSON.stringify internally to hash query/mutation keys.
-// Transaction receipts and contract args contain BigInt (blockNumber, gasUsed, etc.).
-// @privy-io/wagmi's createConfig does NOT apply wagmi's BigInt-safe query key hasher,
-// so we patch BigInt.prototype.toJSON — the approach recommended by both wagmi v2 and
-// React Query docs for this exact scenario.
+// Web3Auth
+import { Web3Auth } from "@web3auth/modal";
+import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
+import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
+import { Web3AuthConnector } from "@web3auth/web3auth-wagmi-connector";
+
 if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
   (BigInt.prototype as any).toJSON = function () {
     return this.toString();
   };
 }
 
+// ── Web3Auth setup ────────────────────────────────────────────────────────────
+
+const celoChainConfig = {
+  chainNamespace: CHAIN_NAMESPACES.EIP155,
+  chainId: "0xa4ec", // 42220
+  rpcTarget: "https://forno.celo.org",
+  displayName: "Celo",
+  blockExplorerUrl: "https://celoscan.io",
+  ticker: "CELO",
+  tickerName: "Celo",
+  decimals: 18,
+};
+
+const privateKeyProvider = new EthereumPrivateKeyProvider({
+  config: { chainConfig: celoChainConfig },
+});
+
+export const web3authInstance = new Web3Auth({
+  clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID ?? "",
+  web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+  chainConfig: celoChainConfig,
+  privateKeyProvider,
+  uiConfig: {
+    appName: "FocusPet",
+    mode: "dark",
+    loginMethodsOrder: ["email_passwordless"],
+    defaultLanguage: "en",
+  },
+});
+
+// ── Wagmi config ──────────────────────────────────────────────────────────────
+
 const privyAppId = "cmmw8pr3l00lr0cjp282x5v3l";
 
 export const wagmiConfig = createConfig({
   chains: [celo],
-  connectors: [injected()],
+  connectors: [
+    injected(),                                    // MiniPay + MetaMask
+    Web3AuthConnector({ web3AuthInstance: web3authInstance }),        // new users
+  ],
   transports: {
     [celo.id]: fallback([
       http("https://rpc.ankr.com/celo"),
       http("https://forno.celo.org"),
       http("https://1rpc.io/celo"),
-      http(), // Fallback to Wagmi default
+      http(),
     ]),
   },
 });
+
+// ── Providers ─────────────────────────────────────────────────────────────────
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -80,35 +115,29 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <>
             <MiniPayConnector />
             <AudioProvider>{children}</AudioProvider>
-              <Toaster
-                position="top-center"
-                toastOptions={{
-                  duration: 4000,
-                  style: {
-                    background: "#111111",
-                    color: "#ffffff",
-                    border: "1px solid #262626",
-                    borderRadius: "999px",
-                    padding: "12px 20px",
-                    fontSize: "13px",
-                    fontWeight: 500,
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-                    maxWidth: "420px",
-                  },
-                  success: {
-                    iconTheme: {
-                      primary: "#ffffff",
-                      secondary: "#111111",
-                    },
-                  },
-                  error: {
-                    iconTheme: {
-                      primary: "#ef4444",
-                      secondary: "#111111",
-                    },
-                  },
-                }}
-              />
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: "#111111",
+                  color: "#ffffff",
+                  border: "1px solid #262626",
+                  borderRadius: "999px",
+                  padding: "12px 20px",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                  maxWidth: "420px",
+                },
+                success: {
+                  iconTheme: { primary: "#ffffff", secondary: "#111111" },
+                },
+                error: {
+                  iconTheme: { primary: "#ef4444", secondary: "#111111" },
+                },
+              }}
+            />
           </>
         </WagmiProvider>
       </QueryClientProvider>
@@ -126,9 +155,10 @@ function MiniPayConnector() {
     if (hasAttempted.current || connectors.length === 0) return;
     if (!(window.ethereum as any)?.isMiniPay || isConnected) return;
     hasAttempted.current = true;
-    connect({ connector: connectors[0] });
+    // injected() is always connectors[0]
+    const injectedConnector = connectors.find((c) => c.id === "injected");
+    if (injectedConnector) connect({ connector: injectedConnector });
   }, [connectors, connect, isConnected]);
 
   return null;
 }
-

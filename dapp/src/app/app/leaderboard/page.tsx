@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import { useAccount } from "wagmi";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Search } from "lucide-react";
@@ -39,14 +39,11 @@ const getPetLevel = (xp: number) => {
 
 export default function LeaderboardPage() {
   const { address: userAddress } = useAccount();
-  const { authenticated, ready: privyReady } = usePrivy();
+  const { isAuthenticated, isReady } = useAuth();
   const { leaderboard, userEntry, isLoading, totalUsers } = useLeaderboard();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-
-  const isMiniPay =
-    typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
 
   const filteredLeaderboard = useMemo(() => {
     const q = search.toLowerCase();
@@ -65,8 +62,8 @@ export default function LeaderboardPage() {
 
   const top3 = leaderboard.slice(0, 3);
 
-  if (!privyReady) return null;
-  if (!authenticated && !isMiniPay) {
+  if (!isReady) return null;
+  if (!isAuthenticated) {
     router.replace("/");
     return null;
   }
