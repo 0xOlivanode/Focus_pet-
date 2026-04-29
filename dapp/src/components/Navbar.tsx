@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useAuth } from "@/hooks/useAuth";
 import { useIsMiniPay } from "@/hooks/useMiniPay";
 import {
   HelpCircle,
@@ -72,7 +72,7 @@ export function Navbar({
   onOpenProfile,
   minimal,
 }: NavbarProps) {
-  const { address } = useAccount();
+  const { address } = useAuth();
   const APP_HOME = "/app";
   const { playSound } = useAudio();
   const isMiniPay = useIsMiniPay();

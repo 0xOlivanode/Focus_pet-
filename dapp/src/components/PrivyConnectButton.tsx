@@ -1,7 +1,6 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useAccount } from "wagmi";
 import { useEffect, useState } from "react";
 
 interface PrivyConnectButtonProps {
@@ -9,8 +8,7 @@ interface PrivyConnectButtonProps {
 }
 
 export function PrivyConnectButton({ onOpenAccount }: PrivyConnectButtonProps) {
-  const { isAuthenticated, isReady } = useAuth();
-  const { address } = useAccount();
+  const { isAuthenticated, isReady, address } = useAuth();
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useBalance, useWriteContract } from "wagmi";
+import { useBalance, useWriteContract } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -34,8 +34,7 @@ export function AccountModal({
   onOpenProfile,
   onOpenOnboarding,
 }: AccountModalProps) {
-  const { address } = useAccount();
-  const { logout } = useAuth();
+  const { address, logout } = useAuth();
   const { user, linkEmail, authenticated: privyAuthenticated } = usePrivy();
   const [isLinkingEmail, setIsLinkingEmail] = useState(false);
 
