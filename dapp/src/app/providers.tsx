@@ -90,10 +90,14 @@ export const wagmiConfig = createConfig({
   connectors: [injected(), web3AuthConnector],
   transports: {
     [celo.id]: fallback([
-      http("https://rpc.ankr.com/celo"),
+      // Alchemy is the primary — authenticated, fastest, rate-limit protected.
+      // Public RPCs are fallbacks only; http() with no URL omitted (redundant with forno).
+      ...(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL
+        ? [http(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL)]
+        : []),
       http("https://forno.celo.org"),
+      http("https://rpc.ankr.com/celo"),
       http("https://1rpc.io/celo"),
-      http(),
     ]),
   },
 });
