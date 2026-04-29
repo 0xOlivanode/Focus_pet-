@@ -12,7 +12,10 @@ export function useAuth() {
 
   // Use isConnected (stable boolean) rather than status string to avoid issues
   // during transitional states when the SDK asynchronously updates after OTP.
-  const { isConnected: web3authIsConnected, provider: web3authProvider } = useWeb3Auth();
+  // isInitialized becomes true once Web3Auth's init() completes (connected OR not).
+  // We need it to delay "isReady" so we never flash the welcome screen for returning
+  // users while Web3Auth is still restoring its session from storage.
+  const { isConnected: web3authIsConnected, isInitialized: web3authIsInitialized, provider: web3authProvider } = useWeb3Auth();
   const { disconnect: web3authDisconnect } = useWeb3AuthDisconnect();
 
   const isMiniPay =
@@ -39,7 +42,12 @@ export function useAuth() {
   // Fall back to the address from the Web3Auth provider while wagmi is still syncing.
   const address = wagmiAddress ?? web3authAddress;
 
-  const isReady = privyReady || web3authIsConnected || wagmiConnected;
+  // isReady = all providers that could hold a session have finished deciding.
+  // Requiring web3authIsInitialized prevents showing AppWelcome while Web3Auth is
+  // still in the middle of restoring a stored session (which takes 500-1500 ms).
+  // The wagmiConnected short-circuit handles MiniPay and page refreshes where wagmi
+  // reconnects before both SDKs fully initialize.
+  const isReady = (privyReady && web3authIsInitialized) || web3authIsConnected || wagmiConnected;
   const isAuthenticated = authenticated || web3authIsConnected || wagmiConnected;
 
   const authType: "privy" | "web3auth" | "minipay" | null = authenticated
