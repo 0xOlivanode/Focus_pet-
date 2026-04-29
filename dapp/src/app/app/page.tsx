@@ -18,7 +18,7 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
 import { useIdentity } from "@/hooks/useIdentity";
 
-import { useAccount } from "wagmi";
+import { useAccount, useBalance } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useWeb3AuthUser } from "@web3auth/modal/react";
@@ -86,6 +86,7 @@ function AppPageContent() {
   // has established a connection. Using wagmi-only isConnected leaves Web3Auth users
   // stuck on the loading screen while the wagmi bridge completes (up to 15 s → logout).
   const isConnected = wagmiConnected || isAuthenticated;
+  const { data: celoBalance } = useBalance({ address });
   const { userInfo } = useWeb3AuthUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -575,6 +576,10 @@ function AppPageContent() {
           >
             <button
               onClick={async () => {
+                if (!celoBalance || celoBalance.value < BigInt(1e15)) {
+                  toast.error("You need a small amount of CELO for gas. Share your address to receive some.");
+                  return;
+                }
                 playSound("hatch");
                 await handleSessionComplete(0);
               }}
