@@ -1,20 +1,30 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { usePublicClient, useWalletClient } from "wagmi";
+import { createWalletClient, custom, formatEther } from "viem";
+import { celo } from "wagmi/chains";
 import { useIdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gift, ArrowRight, Loader2, ShieldCheck, CheckCircle2 } from "lucide-react";
-import { formatEther } from "viem";
 import { useIdentity } from "@/hooks/useIdentity";
+import { useAuth } from "@/hooks/useAuth";
+import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { IdentityModal } from "./IdentityModal";
 
 export function ClaimReward() {
-  const { address } = useAccount();
+  const { address } = useAuth();
   const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
+  const { data: wagmiWalletClient } = useWalletClient();
   const identitySDK = useIdentitySDK("production");
+
+  const getWalletClient = () => {
+    if (wagmiWalletClient) return wagmiWalletClient;
+    const w3aProvider = getWeb3AuthProvider();
+    if (w3aProvider) return createWalletClient({ chain: celo, transport: custom(w3aProvider) });
+    return null;
+  };
 
   const [entitlement, setEntitlement] = useState<bigint>(BigInt(0));
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +53,7 @@ export function ClaimReward() {
       const claimSDK = new ClaimSDK({
         account: address,
         publicClient: publicClient as any,
-        walletClient: (walletClient as any) || undefined,
+        walletClient: (getWalletClient() as any) || undefined,
         identitySDK: identitySDK as any,
         env: "production",
       });
@@ -64,6 +74,7 @@ export function ClaimReward() {
   }, [address, !!publicClient, !!identitySDK, isMounted]);
 
   const handleClaim = async () => {
+    const walletClient = getWalletClient();
     if (!address || !publicClient || !walletClient || !identitySDK) return;
     if (status === "not_whitelisted") { setIsVerifying(true); return; }
     try {

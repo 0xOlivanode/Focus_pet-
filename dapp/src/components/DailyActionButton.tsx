@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { usePublicClient, useWalletClient } from "wagmi";
+import { createWalletClient, custom, formatEther } from "viem";
+import { celo } from "wagmi/chains";
 import { useIdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
 import { useIdentity } from "@/hooks/useIdentity";
+import { useAuth } from "@/hooks/useAuth";
+import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { IdentityModal } from "./IdentityModal";
-import { formatEther } from "viem";
 import {
   Loader2,
   CheckCircle2,
@@ -23,10 +26,17 @@ type ClaimStatus =
   | "already_claimed";
 
 export function DailyActionButton() {
-  const { address } = useAccount();
+  const { address } = useAuth();
   const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
+  const { data: wagmiWalletClient } = useWalletClient();
   const identitySDK = useIdentitySDK("production");
+
+  const getWalletClient = () => {
+    if (wagmiWalletClient) return wagmiWalletClient;
+    const w3aProvider = getWeb3AuthProvider();
+    if (w3aProvider) return createWalletClient({ chain: celo, transport: custom(w3aProvider) });
+    return null;
+  };
 
   const [status, setStatus] = useState<ClaimStatus>("loading");
   const [entitlement, setEntitlement] = useState<bigint>(BigInt(0));
@@ -53,7 +63,7 @@ export function DailyActionButton() {
       const sdk = new ClaimSDK({
         account: address,
         publicClient: publicClient as any,
-        walletClient: (walletClient as any) || undefined,
+        walletClient: (getWalletClient() as any) || undefined,
         identitySDK: identitySDK as any,
         env: "production",
       });
@@ -72,6 +82,7 @@ export function DailyActionButton() {
   }, [address, !!publicClient, !!identitySDK, isMounted]);
 
   const handleClaim = async () => {
+    const walletClient = getWalletClient();
     if (!address || !publicClient || !walletClient || !identitySDK) return;
     try {
       setIsClaiming(true);
