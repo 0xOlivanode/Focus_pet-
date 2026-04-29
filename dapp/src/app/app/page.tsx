@@ -186,16 +186,19 @@ function AppPageContent() {
     return () => clearTimeout(t);
   }, [isAuthenticated, isConnected]);
 
-  // Safety timeout: if connected but contract reads never resolve after 15s,
-  // the RPC is down or unreachable. Force-proceed so the user isn't stuck forever.
+  // Safety timeout: if connected but contract reads never resolve, force-proceed.
+  // isLoadingPet is intentionally NOT in the deps — useReadContracts retries on
+  // slow RPCs cause isLoadingPet to oscillate (false→true on each retry), which
+  // would reset the timer every time and leave users stuck forever. Instead the
+  // timer runs from when isConnected becomes true, regardless of loading state.
   useEffect(() => {
-    if (!isConnected || !isLoadingPet) {
+    if (!isConnected) {
       setPetLoadTimedOut(false);
       return;
     }
-    const t = setTimeout(() => setPetLoadTimedOut(true), 15000);
+    const t = setTimeout(() => setPetLoadTimedOut(true), 8000);
     return () => clearTimeout(t);
-  }, [isConnected, isLoadingPet]);
+  }, [isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const showToast = useCallback(
     (
