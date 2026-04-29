@@ -5,6 +5,7 @@ import { ArrowRight, ArrowLeft, Loader2, Wallet } from "lucide-react";
 import { useLoginWithEmail } from "@privy-io/react-auth";
 import { useWeb3AuthConnect } from "@web3auth/modal/react";
 import { IOSInstallPrompt } from "./IOSInstallPrompt";
+import { WALLET_CONNECTORS } from "@web3auth/modal";
 
 type AuthRouteResult = "privy" | "web3auth" | "new" | null;
 type View = "email" | "otp";
@@ -90,7 +91,7 @@ export function AppWelcome() {
       } else {
         // New user or returning Web3Auth user — Web3Auth handles its own OTP UI
         // v10 API: authConnection + loginHint (loginProvider/extraLoginOptions are v9)
-        await connectTo("auth", {
+        await connectTo(WALLET_CONNECTORS.AUTH, {
           authConnection: "email_passwordless",
           loginHint: email,
         });
@@ -274,7 +275,10 @@ export function AppWelcome() {
                 className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl border border-neutral-800 bg-[#0a0a0a] hover:bg-[#111111] text-white text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isWalletConnecting ? (
-                  <Loader2 size={16} className="animate-spin text-neutral-400" />
+                  <Loader2
+                    size={16}
+                    className="animate-spin text-neutral-400"
+                  />
                 ) : (
                   <Wallet size={16} className="text-neutral-400" />
                 )}
