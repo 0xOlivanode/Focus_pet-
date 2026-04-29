@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { usePublicClient, useWalletClient } from "wagmi";
+import { createWalletClient, custom } from "viem";
+import { celo } from "wagmi/chains";
 import { useIdentitySDK, IdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 
 export type IdentityStatus = "loading" | "verified" | "not_verified" | "error";
 
 export function useIdentity() {
-  const { address } = useAccount();
+  const { address } = useAuth();
   const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
+  const { data: wagmiWalletClient } = useWalletClient();
   const identitySDK = useIdentitySDK("production");
 
   const [status, setStatus] = useState<IdentityStatus>("loading");
@@ -33,7 +37,7 @@ export function useIdentity() {
       const claimSDK = new ClaimSDK({
         account: address,
         publicClient: publicClient as any,
-        walletClient: walletClient as any,
+        walletClient: wagmiWalletClient as any,
         identitySDK: identitySDK as any,
         env: "production",
       });
@@ -53,14 +57,16 @@ export function useIdentity() {
   };
 
   const generateLink = async () => {
-    if (
-      !address ||
-      !publicClient ||
-      !identitySDK ||
-      !walletClient ||
-      isGeneratingLink
-    )
-      return;
+    if (!address || !publicClient || !identitySDK || isGeneratingLink) return;
+
+    // Prefer wagmi walletClient; fall back to a viem client from the Web3Auth provider
+    const walletClient = wagmiWalletClient ?? (() => {
+      const w3aProvider = getWeb3AuthProvider();
+      if (!w3aProvider) return null;
+      return createWalletClient({ chain: celo, transport: custom(w3aProvider) });
+    })();
+
+    if (!walletClient) return;
 
     try {
       setIsGeneratingLink(true);
@@ -113,7 +119,7 @@ export function useIdentity() {
     isGeneratingLink,
     address,
     publicClient,
-    walletClient,
+    wagmiWalletClient,
     identitySDK,
   ]);
 
