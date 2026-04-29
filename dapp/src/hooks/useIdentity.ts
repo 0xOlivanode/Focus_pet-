@@ -68,7 +68,18 @@ export function useIdentity() {
         setIsVerifying(false);
         setVerificationAttemptedAt(null);
       }
-    } catch (error) {
+    } catch (error: any) {
+      const msg: string = error?.message ?? String(error);
+      // GoodDollar SDK internally queries both Celo and Fuse chains.
+      // Fuse RPC failures are transient network errors, not a real identity failure.
+      if (
+        msg.includes("fuse-rpc") ||
+        msg.includes("pokt.network") ||
+        msg.includes("ERR_NAME_NOT_RESOLVED") ||
+        msg.includes("network")
+      ) {
+        return;
+      }
       console.error("Identity check failed:", error);
       setStatus("error");
     }
@@ -104,9 +115,13 @@ export function useIdentity() {
 
       if (finalLink) {
         setFvLink(finalLink);
+        setStatus("not_verified");
+      } else {
+        setStatus("error");
       }
     } catch (e: any) {
       console.error("❌ Failed to generate FV link:", e);
+      setStatus("error");
     } finally {
       setIsGeneratingLink(false);
     }

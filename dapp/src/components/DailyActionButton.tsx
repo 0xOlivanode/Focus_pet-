@@ -73,7 +73,16 @@ export function DailyActionButton() {
       const result = await sdk.getWalletClaimStatus();
       setEntitlement(result.entitlement);
       setStatus(result.status as ClaimStatus);
-    } catch {
+    } catch (err: any) {
+      const msg: string = err?.message ?? String(err);
+      if (
+        msg.includes("fuse-rpc") ||
+        msg.includes("pokt.network") ||
+        msg.includes("ERR_NAME_NOT_RESOLVED") ||
+        msg.includes("network")
+      ) {
+        return;
+      }
       setStatus("not_whitelisted");
     }
   };
@@ -104,6 +113,7 @@ export function DailyActionButton() {
         env: "production",
       });
       await sdk.claim();
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       const confetti = (await import("canvas-confetti")).default;
       confetti({
         particleCount: 150,

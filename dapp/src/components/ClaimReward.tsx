@@ -69,7 +69,16 @@ export function ClaimReward() {
       const walletStatus = await claimSDK.getWalletClaimStatus();
       setEntitlement(walletStatus.entitlement);
       setStatus(walletStatus.status as any);
-    } catch (error) {
+    } catch (error: any) {
+      const msg: string = error?.message ?? String(error);
+      if (
+        msg.includes("fuse-rpc") ||
+        msg.includes("pokt.network") ||
+        msg.includes("ERR_NAME_NOT_RESOLVED") ||
+        msg.includes("network")
+      ) {
+        return;
+      }
       console.error("Entitlement check failed:", error);
       setStatus("not_whitelisted");
     } finally {
@@ -104,6 +113,7 @@ export function ClaimReward() {
         env: "production",
       });
       await claimSDK.claim();
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       const confetti = (await import("canvas-confetti")).default;
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ["#6366f1", "#a855f7", "#ec4899", "#f59e0b"] });
       await checkEntitlement();
