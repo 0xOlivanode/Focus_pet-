@@ -83,6 +83,14 @@ export function ClaimReward() {
     return () => clearInterval(interval);
   }, [address, !!publicClient, !!identitySDK, !!walletClient?.account?.address, isMounted]);
 
+  // Re-check the moment identity verification confirms so the button
+  // switches from "Face Verify" to "Claim Now" without waiting for the interval.
+  useEffect(() => {
+    if (isVerified && isMounted) {
+      checkEntitlement();
+    }
+  }, [isVerified]);
+
   const handleClaim = async () => {
     if (!address || !publicClient || !walletClient || !identitySDK) return;
     if (status === "not_whitelisted") { setIsVerifying(true); return; }

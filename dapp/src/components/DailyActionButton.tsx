@@ -29,9 +29,6 @@ export function DailyActionButton() {
   const walletClient = useUnifiedWalletClient();
   const identitySDKFromHook = useIdentitySDK("production");
 
-  // Fallback: build IdentitySDK manually if the hook returns null (Web3Auth users
-  // before wagmi syncs). Mirrors delulu's pattern to ensure identitySDK is never
-  // stuck as null when the user is actually connected.
   const identitySDK = useMemo(() => {
     if (identitySDKFromHook) return identitySDKFromHook;
     if (!publicClient || !walletClient) return null;
@@ -51,11 +48,11 @@ export function DailyActionButton() {
     generateLink,
     isVerifying,
     setIsVerifying,
+    isPendingVerification,
   } = useIdentity();
 
   useEffect(() => {
     setIsMounted(true);
-    // Safety net: if identitySDK never initializes, show verify button after 4s
     const t = setTimeout(
       () => setStatus((s) => (s === "loading" ? "not_whitelisted" : s)),
       4000,
@@ -86,6 +83,14 @@ export function DailyActionButton() {
     const t = setInterval(check, 5 * 60 * 1000);
     return () => clearInterval(t);
   }, [address, !!publicClient, !!identitySDK, !!walletClient?.account?.address, isMounted]);
+
+  // Re-check claim status the moment identity verification is confirmed.
+  // Without this, the button stays on "Verify account" until the 5-minute interval fires.
+  useEffect(() => {
+    if (isVerified && isMounted) {
+      check();
+    }
+  }, [isVerified]);
 
   const handleClaim = async () => {
     if (!address || !publicClient || !walletClient || !identitySDK) return;
@@ -139,6 +144,37 @@ export function DailyActionButton() {
   }
 
   if (status === "not_whitelisted") {
+    // User has scanned but GoodDollar's tx hasn't confirmed yet — show "Processing..."
+    // so they know something is happening and don't scan again unnecessarily.
+    if (isPendingVerification) {
+      return (
+        <>
+          <div className="bg-[#0F0F0F] rounded-full p-1 flex items-center gap-x-2">
+            <div className="rounded-full py-3 px-6 bg-[#FFCC01]/20 text-[#FFCC01] flex items-center gap-x-2 text-xs lg:text-sm font-medium border border-[#FFCC01]/30">
+              <Loader2 size={14} className="animate-spin" />
+              Processing verification…
+            </div>
+            <button
+              onClick={() => setIsVerifying(true)}
+              className="py-3 px-4 text-[#BBBBBB] text-xs hover:text-white transition-colors"
+            >
+              Open
+            </button>
+          </div>
+          <IdentityModal
+            isOpen={isVerifying}
+            onClose={() => setIsVerifying(false)}
+            fvLink={fvLink}
+            status={isVerified ? "verified" : (identityStatus as any)}
+            onRefresh={() => {
+              refreshIdentity();
+              if (!fvLink) generateLink();
+            }}
+          />
+        </>
+      );
+    }
+
     return (
       <>
         <div className="bg-[#0F0F0F] rounded-full p-1 flex items-center">
