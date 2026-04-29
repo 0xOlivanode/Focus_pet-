@@ -80,8 +80,12 @@ const TIMERS = {
 };
 
 function AppPageContent() {
-  const { isConnected, isConnecting, isReconnecting, address } = useAccount();
-  const { isAuthenticated, isReady, logout, authType, authenticated } = useAuth();
+  const { isConnected: wagmiConnected, isConnecting, isReconnecting } = useAccount();
+  const { isAuthenticated, isReady, logout, authType, authenticated, address } = useAuth();
+  // Compound isConnected: true as soon as any auth provider (wagmi, Web3Auth, Privy)
+  // has established a connection. Using wagmi-only isConnected leaves Web3Auth users
+  // stuck on the loading screen while the wagmi bridge completes (up to 15 s → logout).
+  const isConnected = wagmiConnected || isAuthenticated;
   const { userInfo } = useWeb3AuthUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -164,7 +168,6 @@ function AppPageContent() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncedHash, setSyncedHash] = useState<string | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
-  const [walletConnectTimedOut, setWalletConnectTimedOut] = useState(false);
   const [petLoadTimedOut, setPetLoadTimedOut] = useState(false);
 
   useEffect(() => {
@@ -175,17 +178,6 @@ function AppPageContent() {
     if (username) setTempUsername(username);
     if (petName) setTempPetName(petName);
   }, [username, petName]);
-
-  // Safety timeout: if authenticated (Privy or Web3Auth) but wagmi never connects
-  // after 15s, show the refresh prompt so the user isn't stuck forever.
-  useEffect(() => {
-    if (!isAuthenticated || isConnected) {
-      setWalletConnectTimedOut(false);
-      return;
-    }
-    const t = setTimeout(() => setWalletConnectTimedOut(true), 15000);
-    return () => clearTimeout(t);
-  }, [isAuthenticated, isConnected]);
 
   // Safety timeout: if connected but contract reads never resolve, force-proceed.
   // isLoadingPet is intentionally NOT in the deps — useReadContracts retries on
@@ -419,14 +411,6 @@ function AppPageContent() {
     }
   }, [xp, isLoadingPet, pet, prevStage]);
 
-  // Use isAuthenticated (not just authenticated) so Web3Auth users are also
-  // recovered — without this they stay on the loading screen forever.
-  useEffect(() => {
-    if (isAuthenticated && walletConnectTimedOut) {
-      logout();
-    }
-  }, [isAuthenticated, walletConnectTimedOut]);
-
   // Close profile modal as soon as the tx is submitted (not waiting for confirmation).
   // The full-screen processing overlay covers the wait from here.
   useEffect(() => {
@@ -503,26 +487,17 @@ function AppPageContent() {
     const miniPay =
       typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
 
+    // Show loading while providers are still initialising or an auto-connect is
+    // in progress (MiniPay, wagmi reconnect, Privy loading). With compound
+    // isConnected, isAuthenticated being true already exits this block above, so
+    // we only reach here for truly unauthenticated states.
     const isAutoConnecting =
-      !walletConnectTimedOut &&
-      (isConnecting ||
-        isReconnecting ||
-        miniPay ||
-        !isReady ||
-        (isReady && isAuthenticated)); // covers both Privy and Web3Auth users
+      isConnecting || isReconnecting || miniPay || !isReady;
 
     if (isAutoConnecting) {
       return <AppLoadingScreen miniPay={miniPay} />;
     }
 
-    // walletConnectTimedOut fired — the logout effect above handles sign-out.
-    // Show loading while logout() runs (brief, then welcome screen renders).
-    if (walletConnectTimedOut) {
-      return <AppLoadingScreen />;
-    }
-
-    // Unauthenticated and not connecting — shouldn't reach here normally
-    // (welcome screen guard above catches this), but safe fallback.
     return <AppWelcome />;
   }
 

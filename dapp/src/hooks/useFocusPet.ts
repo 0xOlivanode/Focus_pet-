@@ -4,7 +4,6 @@ import {
   useReadContracts,
   useWriteContract,
   useWaitForTransactionReceipt,
-  useAccount,
 } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
 import { useEffect, useState } from "react";
@@ -14,9 +13,13 @@ import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
 
 const G_DOLLAR_ADDRESS = GOOD_DOLLAR_ADDRESSES.CELO_MAINNET;
 import { formatEther, erc20Abi } from "viem";
+import { useAuth } from "@/hooks/useAuth";
 
 export function useFocusPet() {
-  const { address } = useAccount();
+  // Use useAuth so the address is available as soon as Web3Auth connects,
+  // without waiting for the wagmi bridge to complete. useAuth falls back to
+  // the Web3Auth EIP1193 provider address when wagmiAddress is not yet set.
+  const { address } = useAuth();
 
   const txOverrides = {};
 
