@@ -1,18 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { usePublicClient, useWalletClient } from "wagmi";
-import { createWalletClient, custom, formatEther } from "viem";
-import { celo } from "wagmi/chains";
-import { useIdentitySDK } from "@goodsdks/identity-sdk";
+import { useState, useEffect, useMemo } from "react";
+import { usePublicClient } from "wagmi";
+import { formatEther } from "viem";
+import { useIdentitySDK, IdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
 import { useIdentity } from "@/hooks/useIdentity";
 import { useAuth } from "@/hooks/useAuth";
-import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
+import { useUnifiedWalletClient } from "@/hooks/useUnifiedWalletClient";
 import { IdentityModal } from "./IdentityModal";
 import {
   Loader2,
-  CheckCircle2,
   Gift,
   GiftIcon,
   CircleAlert,
@@ -28,15 +26,17 @@ type ClaimStatus =
 export function DailyActionButton() {
   const { address } = useAuth();
   const publicClient = usePublicClient();
-  const { data: wagmiWalletClient } = useWalletClient();
-  const identitySDK = useIdentitySDK("production");
+  const walletClient = useUnifiedWalletClient();
+  const identitySDKFromHook = useIdentitySDK("production");
 
-  const getWalletClient = () => {
-    if (wagmiWalletClient) return wagmiWalletClient;
-    const w3aProvider = getWeb3AuthProvider();
-    if (w3aProvider) return createWalletClient({ chain: celo, transport: custom(w3aProvider) });
-    return null;
-  };
+  // Fallback: build IdentitySDK manually if the hook returns null (Web3Auth users
+  // before wagmi syncs). Mirrors delulu's pattern to ensure identitySDK is never
+  // stuck as null when the user is actually connected.
+  const identitySDK = useMemo(() => {
+    if (identitySDKFromHook) return identitySDKFromHook;
+    if (!publicClient || !walletClient) return null;
+    return new (IdentitySDK as any)(publicClient, walletClient, "production");
+  }, [identitySDKFromHook, publicClient, walletClient]);
 
   const [status, setStatus] = useState<ClaimStatus>("loading");
   const [entitlement, setEntitlement] = useState<bigint>(BigInt(0));
@@ -55,15 +55,21 @@ export function DailyActionButton() {
 
   useEffect(() => {
     setIsMounted(true);
+    // Safety net: if identitySDK never initializes, show verify button after 4s
+    const t = setTimeout(
+      () => setStatus((s) => (s === "loading" ? "not_whitelisted" : s)),
+      4000,
+    );
+    return () => clearTimeout(t);
   }, []);
 
   const check = async () => {
-    if (!address || !publicClient || !identitySDK || !isMounted) return;
+    if (!address || !publicClient || !identitySDK || !walletClient?.account?.address || !isMounted) return;
     try {
       const sdk = new ClaimSDK({
         account: address,
         publicClient: publicClient as any,
-        walletClient: (getWalletClient() as any) || undefined,
+        walletClient: walletClient as any,
         identitySDK: identitySDK as any,
         env: "production",
       });
@@ -79,10 +85,9 @@ export function DailyActionButton() {
     check();
     const t = setInterval(check, 5 * 60 * 1000);
     return () => clearInterval(t);
-  }, [address, !!publicClient, !!identitySDK, isMounted]);
+  }, [address, !!publicClient, !!identitySDK, !!walletClient?.account?.address, isMounted]);
 
   const handleClaim = async () => {
-    const walletClient = getWalletClient();
     if (!address || !publicClient || !walletClient || !identitySDK) return;
     try {
       setIsClaiming(true);
@@ -120,7 +125,18 @@ export function DailyActionButton() {
     }
   };
 
-  if (!isMounted || !address || status === "loading") return null;
+  if (!isMounted || !address) return null;
+
+  if (status === "loading") {
+    return (
+      <div className="bg-[#0F0F0F] rounded-full p-1 flex items-center opacity-60 pointer-events-none">
+        <div className="rounded-full py-3 px-6 bg-[#01FF8B] text-[#070707] flex items-center gap-x-2 text-xs lg:text-sm font-medium">
+          <Loader2 size={14} className="animate-spin" />
+          Checking...
+        </div>
+      </div>
+    );
+  }
 
   if (status === "not_whitelisted") {
     return (

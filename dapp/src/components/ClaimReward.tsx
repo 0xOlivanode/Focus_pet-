@@ -1,30 +1,31 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { usePublicClient, useWalletClient } from "wagmi";
-import { createWalletClient, custom, formatEther } from "viem";
-import { celo } from "wagmi/chains";
-import { useIdentitySDK } from "@goodsdks/identity-sdk";
+import React, { useEffect, useState, useMemo } from "react";
+import { usePublicClient } from "wagmi";
+import { formatEther } from "viem";
+import { useIdentitySDK, IdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gift, ArrowRight, Loader2, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { useIdentity } from "@/hooks/useIdentity";
 import { useAuth } from "@/hooks/useAuth";
-import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
+import { useUnifiedWalletClient } from "@/hooks/useUnifiedWalletClient";
 import { IdentityModal } from "./IdentityModal";
 
 export function ClaimReward() {
   const { address } = useAuth();
   const publicClient = usePublicClient();
-  const { data: wagmiWalletClient } = useWalletClient();
-  const identitySDK = useIdentitySDK("production");
+  const walletClient = useUnifiedWalletClient();
+  const identitySDKFromHook = useIdentitySDK("production");
 
-  const getWalletClient = () => {
-    if (wagmiWalletClient) return wagmiWalletClient;
-    const w3aProvider = getWeb3AuthProvider();
-    if (w3aProvider) return createWalletClient({ chain: celo, transport: custom(w3aProvider) });
-    return null;
-  };
+  // Fallback: build IdentitySDK manually if the hook returns null (Web3Auth users
+  // before wagmi syncs). Mirrors delulu's pattern to ensure identitySDK is never
+  // stuck as null when the user is actually connected.
+  const identitySDK = useMemo(() => {
+    if (identitySDKFromHook) return identitySDKFromHook;
+    if (!publicClient || !walletClient) return null;
+    return new (IdentitySDK as any)(publicClient, walletClient, "production");
+  }, [identitySDKFromHook, publicClient, walletClient]);
 
   const [entitlement, setEntitlement] = useState<bigint>(BigInt(0));
   const [isLoading, setIsLoading] = useState(false);
@@ -44,16 +45,24 @@ export function ClaimReward() {
     setIsVerifying,
   } = useIdentity();
 
-  useEffect(() => { setIsMounted(true); }, []);
+  useEffect(() => {
+    setIsMounted(true);
+    // Safety net: surface verify button after 4s if identitySDK never initializes
+    const t = setTimeout(
+      () => setStatus((s) => (s === "loading" ? "not_whitelisted" : s)),
+      4000,
+    );
+    return () => clearTimeout(t);
+  }, []);
 
   const checkEntitlement = async () => {
-    if (!address || !publicClient || !identitySDK || !isMounted) return;
+    if (!address || !publicClient || !identitySDK || !walletClient?.account?.address || !isMounted) return;
     try {
       setIsLoading(true);
       const claimSDK = new ClaimSDK({
         account: address,
         publicClient: publicClient as any,
-        walletClient: (getWalletClient() as any) || undefined,
+        walletClient: walletClient as any,
         identitySDK: identitySDK as any,
         env: "production",
       });
@@ -72,10 +81,9 @@ export function ClaimReward() {
     checkEntitlement();
     const interval = setInterval(checkEntitlement, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [address, !!publicClient, !!identitySDK, isMounted]);
+  }, [address, !!publicClient, !!identitySDK, !!walletClient?.account?.address, isMounted]);
 
   const handleClaim = async () => {
-    const walletClient = getWalletClient();
     if (!address || !publicClient || !walletClient || !identitySDK) return;
     if (status === "not_whitelisted") { setIsVerifying(true); return; }
     try {
@@ -100,7 +108,7 @@ export function ClaimReward() {
 
   if (!isMounted || !address) return null;
 
-  const amountDisplay = isLoading
+  const amountDisplay = isLoading || status === "loading"
     ? "—"
     : parseFloat(formatEther(entitlement)).toFixed(2);
 
@@ -143,7 +151,17 @@ export function ClaimReward() {
           {/* Right: CTA */}
           <div className="flex flex-col items-stretch sm:items-end gap-2 sm:min-w-[160px]">
             <AnimatePresence mode="wait">
-              {status === "not_whitelisted" ? (
+              {status === "loading" ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center justify-center gap-2 bg-white/15 text-white px-5 py-3 rounded-2xl font-bold text-sm border border-white/20 backdrop-blur-sm"
+                >
+                  <Loader2 size={15} className="animate-spin" />
+                  Checking…
+                </motion.div>
+              ) : status === "not_whitelisted" ? (
                 <motion.button
                   key="verify"
                   initial={{ opacity: 0, y: 8 }}
