@@ -18,10 +18,10 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
 import { useIdentity } from "@/hooks/useIdentity";
 
-import { useAccount, useBalance } from "wagmi";
+import { useAccount } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { formatEther, parseEther } from "viem";
+import { formatEther } from "viem";
 import { PrivyConnectButton } from "@/components/PrivyConnectButton";
 import { SocialShare } from "@/components/SocialShare";
 import { OnboardingModal } from "@/components/OnboardingModal";
@@ -131,15 +131,8 @@ function AppPageContent() {
     isNight,
   } = useFocusPet();
 
-  // Poll aggressively only while waiting for faucet gas on the hatch screen.
-  // MiniPay users pay gas via cUSD — no need to poll CELO balance for them.
-  // Once user has a pet, drop back to default (no continuous polling).
   const isMiniPayEnv =
     typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-  const { data: celoBalance } = useBalance({
-    address,
-    query: { refetchInterval: !hasPet && !isMiniPayEnv ? 3000 : false },
-  });
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
   const { isVerifying, setIsVerifying, isVerified } = useIdentity();
@@ -180,16 +173,16 @@ function AppPageContent() {
     if (petName) setTempPetName(petName);
   }, [username, petName]);
 
-  // Safety timeout: if authenticated but wagmi never connects after 15s, the user
-  // likely has an external wallet or their iOS Safari cleared Privy's IndexedDB key shares.
+  // Safety timeout: if authenticated (Privy or Web3Auth) but wagmi never connects
+  // after 15s, show the refresh prompt so the user isn't stuck forever.
   useEffect(() => {
-    if (!authenticated || isConnected) {
+    if (!isAuthenticated || isConnected) {
       setWalletConnectTimedOut(false);
       return;
     }
     const t = setTimeout(() => setWalletConnectTimedOut(true), 15000);
     return () => clearTimeout(t);
-  }, [authenticated, isConnected]);
+  }, [isAuthenticated, isConnected]);
 
   // Safety timeout: if connected but contract reads never resolve after 15s,
   // the RPC is down or unreachable. Force-proceed so the user isn't stuck forever.
@@ -262,7 +255,6 @@ function AppPageContent() {
   };
 
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
-  const [gasTimedOut, setGasTimedOut] = useState(false);
 
   useEffect(() => {
     if (username) setTempUsername(username);
@@ -290,25 +282,6 @@ function AppPageContent() {
     hasAutoOpened,
   ]);
 
-  // If the user has no pet and no gas arrives within 40 s, stop spinning and
-  // show a fallback message so they're never stuck forever.
-  // MiniPay users pay gas via cUSD — skip this timer entirely.
-  useEffect(() => {
-    if (hasPet) return;
-    const isMiniPay =
-      typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-    if (isMiniPay) {
-      setGasTimedOut(false);
-      return;
-    }
-    const hasGas = (celoBalance?.value ?? 0n) >= parseEther("0.003");
-    if (hasGas) {
-      setGasTimedOut(false);
-      return;
-    }
-    const t = setTimeout(() => setGasTimedOut(true), 40_000);
-    return () => clearTimeout(t);
-  }, [hasPet, celoBalance]);
 
   // No redirect on logout or connection drop — /app handles its own disconnected state.
   // The "Your pet is waiting" screen is the correct destination for returning users.
@@ -521,7 +494,7 @@ function AppPageContent() {
         isReconnecting ||
         miniPay ||
         !isReady ||
-        (isReady && authenticated));
+        (isReady && isAuthenticated)); // covers both Privy and Web3Auth users
 
     if (isAutoConnecting) {
       return <AppLoadingScreen miniPay={miniPay} />;
@@ -530,7 +503,7 @@ function AppPageContent() {
     // Wallet never connected after timeout — silently sign out and send them
     // back to the login screen. This is the actual recovery path and avoids
     // showing technical jargon about browser extensions to mobile users.
-    if (authenticated && walletConnectTimedOut) {
+    if (isAuthenticated && walletConnectTimedOut) {
       return <AppLoadingScreen />;
     }
 
@@ -544,8 +517,6 @@ function AppPageContent() {
   if (!hasPet) {
     const isMiniPayHatch =
       typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-    const hasGas =
-      isMiniPayHatch || (celoBalance?.value ?? 0n) >= parseEther("0.003");
 
     return (
       <div className="min-h-screen w-full bg-black flex flex-col">
@@ -587,6 +558,23 @@ function AppPageContent() {
             </p>
           </motion.div>
 
+          {/* Wallet address — shown immediately for non-MiniPay users to share for gas */}
+          {!isMiniPayHatch && address && (
+            <motion.button
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.28, duration: 0.5 }}
+              onClick={() => {
+                navigator.clipboard.writeText(address);
+                toast.success("Address copied!");
+              }}
+              className="w-full max-w-sm px-4 py-3 rounded-xl bg-[#111111] hover:bg-[#1a1a1a] border border-neutral-800 flex items-center justify-between gap-2 transition-all mb-2"
+            >
+              <span className="font-mono text-xs text-neutral-400 truncate">{address}</span>
+              <Copy size={13} className="shrink-0 text-neutral-500" />
+            </motion.button>
+          )}
+
           {/* Action */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -594,49 +582,16 @@ function AppPageContent() {
             transition={{ delay: 0.35, duration: 0.5 }}
             className="w-full max-w-sm flex flex-col gap-4"
           >
-            {hasGas ? (
-              <button
-                onClick={async () => {
-                  playSound("hatch");
-                  await handleSessionComplete(0);
-                }}
-                disabled={isProcessing}
-                className="w-full py-3.5 rounded-full bg-white hover:bg-neutral-100 text-black font-semibold text-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Get pet
-              </button>
-            ) : gasTimedOut ? (
-              <div className="flex flex-col gap-3">
-                <p className="text-neutral-500 text-sm text-center leading-relaxed">
-                  We couldn't cover your gas fee. Send a small amount of CELO to your address to continue.
-                </p>
-                <button
-                  onClick={() => {
-                    if (address) {
-                      navigator.clipboard.writeText(address);
-                      toast.success("Address copied!");
-                    }
-                  }}
-                  className="w-full px-4 py-3 rounded-xl bg-[#111111] hover:bg-[#1a1a1a] text-white font-mono text-xs transition-all border border-neutral-800 text-left flex items-center justify-between gap-2"
-                >
-                  <span className="truncate text-neutral-400">{address}</span>
-                  <Copy size={13} className="shrink-0 text-neutral-500" />
-                </button>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="w-full py-3 rounded-full bg-[#111111] hover:bg-[#1a1a1a] text-white text-sm font-medium transition-all border border-neutral-800"
-                >
-                  Refresh & retry
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-3">
-                <Loader2 className="w-4 h-4 animate-spin text-neutral-500 shrink-0" />
-                <p className="text-neutral-500 text-sm">
-                  Getting ready…
-                </p>
-              </div>
-            )}
+            <button
+              onClick={async () => {
+                playSound("hatch");
+                await handleSessionComplete(0);
+              }}
+              disabled={isProcessing}
+              className="w-full py-3.5 rounded-full bg-white hover:bg-neutral-100 text-black font-semibold text-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Get pet
+            </button>
 
             <button
               onClick={() => setShowOnboarding(true)}

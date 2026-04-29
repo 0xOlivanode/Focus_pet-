@@ -32,11 +32,14 @@ const web3AuthConfig: Web3AuthContextConfig = {
     uiConfig: {
       appName: "FocusPet",
       mode: "dark",
+      // popup keeps auth inside the modal; redirect causes a full page reload
+      // which drops Web3Auth session state and lands the user back on the email form
+      uxMode: "popup",
       logoDark: "/focus-pet-logo.svg",
       logoLight: "/focus-pet-logo.svg",
       theme: {
-        primary: "#ffffff",   // white — matches our button/accent colour
-        onPrimary: "#000000", // black text on white elements
+        primary: "#ffffff",
+        onPrimary: "#000000",
       },
     },
     chains: [
