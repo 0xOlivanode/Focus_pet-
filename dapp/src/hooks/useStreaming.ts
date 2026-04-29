@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  useAccount,
   useReadContract,
-  useWriteContract,
   usePublicClient,
 } from "wagmi";
+import { useUnifiedWriteContract } from "@/hooks/useUnifiedWriteContract";
+import { useAuth } from "@/hooks/useAuth";
 import {
   CFAv1ForwarderAbi,
   G_DOLLAR_CELO,
@@ -23,8 +23,8 @@ import { CONTRACT_ADDRESS, UBI_POOL_ADDRESS_CELO } from "@/config/contracts";
 const TRUST_FUND_ADDRESS = UBI_POOL_ADDRESS_CELO;
 
 export function useStreaming() {
-  const { address } = useAccount();
-  const { writeContractAsync } = useWriteContract();
+  const { address } = useAuth();
+  const { writeContractAsync } = useUnifiedWriteContract();
   const publicClient = usePublicClient();
   const [isStreamPending, setIsStreamPending] = useState(false);
 

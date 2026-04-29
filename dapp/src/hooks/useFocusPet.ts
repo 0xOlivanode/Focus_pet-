@@ -2,9 +2,9 @@
 
 import {
   useReadContracts,
-  useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
+import { useUnifiedWriteContract } from "@/hooks/useUnifiedWriteContract";
 import { FocusPetABI } from "@/config/abi";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -41,10 +41,11 @@ export function useFocusPet() {
 
   const {
     writeContract,
+    writeContractAsync,
     data: singleHash,
     isPending: isSinglePending,
     error: writeError,
-  } = useWriteContract();
+  } = useUnifiedWriteContract();
 
   const {
     isLoading: isConfirming,
@@ -301,19 +302,16 @@ export function useFocusPet() {
       setIsSigning(true);
       // Engagement rewards removed for simplicity/gas efficiency
 
-      // Send Transaction
-      writeContract(
-        {
-          ...txOverrides,
-          address: CONTRACT_ADDRESS,
-          abi: FocusPetABI,
-          functionName: "focusSession",
-          args: [BigInt(Math.max(1, Math.round(minutes * 60)))],
-        },
-        {
-          onSettled: () => setIsSigning(false), // Stop signing state when wallet opens/fails
-        },
-      );
+      // Send Transaction — useUnifiedWriteContract doesn't support wagmi callbacks,
+      // so we use async/finally to clear the signing state when the wallet prompt
+      // opens or the call fails.
+      writeContractAsync({
+        ...txOverrides,
+        address: CONTRACT_ADDRESS,
+        abi: FocusPetABI,
+        functionName: "focusSession",
+        args: [BigInt(Math.max(1, Math.round(minutes * 60)))],
+      }).finally(() => setIsSigning(false));
     } catch (e) {
       console.error("Session Record Error:", e);
       setIsSigning(false);
@@ -537,27 +535,20 @@ export function useFocusPet() {
   }, [rawHealth, rawXp, lastInteraction, hasPet]);
 
   // Write: Sync Impact
-  const { writeContract: writeSyncImpact, isPending: isSyncImpactLoading } =
-    useWriteContract();
+  const { writeContractAsync: writeSyncImpact, isPending: isSyncImpactLoading } =
+    useUnifiedWriteContract();
 
   const handleSyncImpact = async () => {
     setLastAction("sync");
     try {
-      writeSyncImpact(
-        {
-          address: CONTRACT_ADDRESS,
-          abi: FocusPetABI,
-          functionName: "syncImpact",
-        },
-        {
-          onError: (error: any) => {
-            console.error("Sync impact failed:", error);
-            toast.error("Sync failed\nPlease try again later.");
-          },
-        },
-      );
-    } catch (error) {
-      console.error("Sync catch block hit:", error);
+      await writeSyncImpact({
+        address: CONTRACT_ADDRESS,
+        abi: FocusPetABI,
+        functionName: "syncImpact",
+      });
+    } catch (error: any) {
+      console.error("Sync impact failed:", error);
+      toast.error("Sync failed\nPlease try again later.");
     }
   };
 

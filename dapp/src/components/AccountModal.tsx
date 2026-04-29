@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useBalance, useWriteContract } from "wagmi";
+import { useBalance } from "wagmi";
+import { useUnifiedWriteContract } from "@/hooks/useUnifiedWriteContract";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -62,7 +63,7 @@ export function AccountModal({
     address,
     token: GOOD_DOLLAR_ADDRESSES.CELO_MAINNET,
   });
-  const { writeContract, isPending: isGSPending } = useWriteContract();
+  const { writeContractAsync, isPending: isGSPending } = useUnifiedWriteContract();
 
   // Close on outside click
   useEffect(() => {
@@ -90,28 +91,25 @@ export function AccountModal({
     await logout();
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!recipient || !amount) {
       toast.error("Please fill in all fields.");
       return;
     }
-    writeContract(
-      {
+    try {
+      await writeContractAsync({
         address: GOOD_DOLLAR_ADDRESSES.CELO_MAINNET,
         abi: ERC20ABI,
         functionName: "transfer",
         args: [recipient as `0x${string}`, parseUnits(amount, 18)],
-      },
-      {
-        onSuccess: () => {
-          toast.success("G$ sent!");
-          setView("overview");
-          setAmount("");
-          setRecipient("");
-        },
-        onError: (err) => toast.error(err.message),
-      },
-    );
+      });
+      toast.success("G$ sent!");
+      setView("overview");
+      setAmount("");
+      setRecipient("");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Send failed. Try again.");
+    }
   };
 
   const formatAddress = (addr: string) =>
