@@ -41,13 +41,6 @@ const web3AuthConfig: Web3AuthContextConfig = {
     clientId:
       "BBsmG9D18eB6w5Mg3IXctRX2KTpNvao2o3slTS5A1q2Ce91XCckXz2Uc39H64zyiNXPUZ0ghHuUT6Ira1WPuqSE",
     web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
-    uiConfig: {
-      appName: "FocusPet",
-      // popup keeps auth inside the modal; redirect causes a full page reload
-      // which drops Web3Auth session state and returns the user to the email form.
-      // mode/theme/logo are whitelabel-only (paid plan) — do not add them back.
-      uxMode: "popup",
-    },
     chains: [
       {
         chainNamespace: "eip155",
