@@ -3,7 +3,14 @@
 import * as React from "react";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAccount, useConnect, useConnectors, useDisconnect, fallback, http } from "wagmi";
+import {
+  useAccount,
+  useConnect,
+  useConnectors,
+  useDisconnect,
+  fallback,
+  http,
+} from "wagmi";
 import { injected } from "wagmi/connectors";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider, createConfig } from "@privy-io/wagmi";
@@ -13,7 +20,10 @@ import { Web3AuthProvider, useWeb3Auth } from "@web3auth/modal/react";
 import type { Web3AuthContextConfig } from "@web3auth/modal/react";
 import { WEB3AUTH_NETWORK } from "@web3auth/modal";
 import type { EIP1193Provider } from "viem";
-import { web3AuthConnector, setWeb3AuthProvider } from "@/lib/web3AuthConnector";
+import {
+  web3AuthConnector,
+  setWeb3AuthProvider,
+} from "@/lib/web3AuthConnector";
 
 if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
   (BigInt.prototype as any).toJSON = function () {
@@ -27,7 +37,8 @@ const HIDDEN = { showOnModal: false } as const;
 
 const web3AuthConfig: Web3AuthContextConfig = {
   web3AuthOptions: {
-    clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID!,
+    clientId:
+      "BBsmG9D18eB6w5Mg3IXctRX2KTpNvao2o3slTS5A1q2Ce91XCckXz2Uc39H64zyiNXPUZ0ghHuUT6Ira1WPuqSE",
     web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
     uiConfig: {
       appName: "FocusPet",
@@ -60,18 +71,18 @@ const web3AuthConfig: Web3AuthContextConfig = {
         auth: {
           label: "auth",
           loginMethods: {
-            google:    HIDDEN,
-            twitter:   HIDDEN,
-            facebook:  HIDDEN,
-            discord:   HIDDEN,
-            apple:     HIDDEN,
-            github:    HIDDEN,
-            reddit:    HIDDEN,
-            twitch:    HIDDEN,
-            linkedin:  HIDDEN,
-            line:      HIDDEN,
-            kakao:     HIDDEN,
-            wechat:    HIDDEN,
+            google: HIDDEN,
+            twitter: HIDDEN,
+            facebook: HIDDEN,
+            discord: HIDDEN,
+            apple: HIDDEN,
+            github: HIDDEN,
+            reddit: HIDDEN,
+            twitch: HIDDEN,
+            linkedin: HIDDEN,
+            line: HIDDEN,
+            kakao: HIDDEN,
+            wechat: HIDDEN,
             farcaster: HIDDEN,
           },
         },
@@ -185,7 +196,8 @@ function Web3AuthWagmiSync() {
   const syncedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (status !== "connected" || !provider || isConnected || syncedRef.current) return;
+    if (status !== "connected" || !provider || isConnected || syncedRef.current)
+      return;
     syncedRef.current = true;
 
     setWeb3AuthProvider(provider as EIP1193Provider);
