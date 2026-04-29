@@ -80,6 +80,7 @@ export function useFocusPet() {
     data: multicallData,
     refetch: refetchAll,
     isLoading: isLoadingPet,
+    isError: isPetLoadError,
   } = useReadContracts({
     contracts: [
       {
@@ -585,6 +586,7 @@ export function useFocusPet() {
     isSigning,
     isProcessing: isSigning || finalIsPending || finalIsConfirming,
     isLoadingPet,
+    isPetLoadError,
     xp,
     totalTime,
     health,

@@ -104,6 +104,7 @@ function AppPageContent() {
     isSigning,
     isProcessing,
     isLoadingPet,
+    isPetLoadError,
     setNames,
     xp,
     totalTime,
@@ -418,11 +419,13 @@ function AppPageContent() {
     }
   }, [xp, isLoadingPet, pet, prevStage]);
 
+  // Use isAuthenticated (not just authenticated) so Web3Auth users are also
+  // recovered — without this they stay on the loading screen forever.
   useEffect(() => {
-    if (authenticated && walletConnectTimedOut) {
+    if (isAuthenticated && walletConnectTimedOut) {
       logout();
     }
-  }, [authenticated, walletConnectTimedOut]);
+  }, [isAuthenticated, walletConnectTimedOut]);
 
   // Close profile modal as soon as the tx is submitted (not waiting for confirmation).
   // The full-screen processing overlay covers the wait from here.
@@ -512,17 +515,18 @@ function AppPageContent() {
       return <AppLoadingScreen miniPay={miniPay} />;
     }
 
-    // Wallet never connected after timeout — silently sign out and send them
-    // back to the login screen. This is the actual recovery path and avoids
-    // showing technical jargon about browser extensions to mobile users.
-    if (isAuthenticated && walletConnectTimedOut) {
+    // walletConnectTimedOut fired — the logout effect above handles sign-out.
+    // Show loading while logout() runs (brief, then welcome screen renders).
+    if (walletConnectTimedOut) {
       return <AppLoadingScreen />;
     }
 
-    return <AppLoadingScreen />;
+    // Unauthenticated and not connecting — shouldn't reach here normally
+    // (welcome screen guard above catches this), but safe fallback.
+    return <AppWelcome />;
   }
 
-  if (isLoadingPet && !petLoadTimedOut) {
+  if (isLoadingPet && !petLoadTimedOut && !isPetLoadError) {
     return <AppLoadingScreen />;
   }
 
