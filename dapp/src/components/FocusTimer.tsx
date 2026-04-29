@@ -15,7 +15,8 @@ import {
   Moon,
 } from "lucide-react";
 import { useFocusPet } from "@/hooks/useFocusPet";
-import { useBlockNumber, useAccount } from "wagmi";
+import { useBlockNumber } from "wagmi";
+import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -71,7 +72,7 @@ export function FocusTimer({
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const endTimeRef = useRef<number | null>(null);
-  const { address } = useAccount();
+  const { address } = useAuth();
 
   // ── Focus reminder helpers (QStash for iOS + SW fallback for Android/desktop) ──
 

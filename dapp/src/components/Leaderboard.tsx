@@ -1,5 +1,5 @@
 import { useLeaderboard } from "@/hooks/useLeaderboard";
-import { useAccount } from "wagmi";
+import { useAuth } from "@/hooks/useAuth";
 import { SocialShare } from "./SocialShare";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import { VerifiedBadge } from "./VerifiedBadge";
@@ -21,7 +21,7 @@ function formatXP(xp: number): string {
 }
 
 export function Leaderboard() {
-  const { address } = useAccount();
+  const { address } = useAuth();
   const { topTen, isLoading, totalUsers } = useLeaderboard();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAccount } from "wagmi";
+import { useAuth } from "@/hooks/useAuth";
 import { usePrivy } from "@privy-io/react-auth";
 import { useEngagementRewards } from "@goodsdks/engagement-sdk";
 import { useIdentity } from "./useIdentity";
@@ -26,7 +26,7 @@ export type EngagementRewardState =
   | "error";
 
 export function useEngagementReward() {
-  const { address } = useAccount();
+  const { address } = useAuth();
   const { getAccessToken } = usePrivy();
   const { isVerified, setIsVerifying } = useIdentity();
   const sdk = useEngagementRewards(ENGAGEMENT_REWARDS_CONTRACT);

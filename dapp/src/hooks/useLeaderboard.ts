@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { usePublicClient, useAccount } from "wagmi";
+import { usePublicClient } from "wagmi";
+import { useAuth } from "@/hooks/useAuth";
 import { fetchLeaderboard } from "@/lib/subgraph";
 import {
   UBI_POOL_ADDRESS_CELO,
@@ -26,7 +27,7 @@ export type LeaderboardEntry = {
 
 export function useLeaderboard() {
   const publicClient = usePublicClient();
-  const { address: accountAddress } = useAccount();
+  const { address: accountAddress } = useAuth();
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [topTen, setTopTen] = useState<LeaderboardEntry[]>([]);

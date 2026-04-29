@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Bell, BellOff, BellRing } from "lucide-react";
-import { useAccount } from "wagmi";
+import { useAuth } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
 
 type PermissionState = "default" | "granted" | "denied" | "unsupported";
@@ -31,7 +31,7 @@ async function subscribe(
 }
 
 export function NotificationBell() {
-  const { address } = useAccount();
+  const { address } = useAuth();
   const [permission, setPermission] = useState<PermissionState>("default");
   const [isLoading, setIsLoading] = useState(false);
 
