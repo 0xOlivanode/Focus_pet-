@@ -34,10 +34,14 @@ export function useIdentity() {
       // Don't set loading if we're polling in the background
       if (!isVerifying) setStatus("loading");
 
+      const w3aProvider = getWeb3AuthProvider();
+      const resolvedWalletClient = wagmiWalletClient
+        ?? (w3aProvider ? createWalletClient({ chain: celo, transport: custom(w3aProvider) }) : undefined);
+
       const claimSDK = new ClaimSDK({
         account: address,
         publicClient: publicClient as any,
-        walletClient: wagmiWalletClient as any,
+        walletClient: resolvedWalletClient as any,
         identitySDK: identitySDK as any,
         env: "production",
       });
