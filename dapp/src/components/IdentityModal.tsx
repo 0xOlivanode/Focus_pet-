@@ -22,6 +22,10 @@ export function IdentityModal({
   const [iframeLoaded, setIframeLoaded] = useState(false);
 
   useEffect(() => {
+    setIframeLoaded(false);
+  }, [fvLink]);
+
+  useEffect(() => {
     if (status === "verified" && isOpen) {
       setTimeout(() => onClose(), 2000);
     }

@@ -5,7 +5,7 @@ import { usePublicClient } from "wagmi";
 import { formatEther } from "viem";
 import { useIdentitySDK, IdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
-import { useIdentity } from "@/hooks/useIdentity";
+import { useIdentityContext } from "@/contexts/IdentityContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnifiedWalletClient } from "@/hooks/useUnifiedWalletClient";
 import { IdentityModal } from "./IdentityModal";
@@ -49,7 +49,7 @@ export function DailyActionButton() {
     isVerifying,
     setIsVerifying,
     isPendingVerification,
-  } = useIdentity();
+  } = useIdentityContext();
 
   useEffect(() => {
     setIsMounted(true);

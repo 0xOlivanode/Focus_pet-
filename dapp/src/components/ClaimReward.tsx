@@ -7,7 +7,7 @@ import { useIdentitySDK, IdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gift, ArrowRight, Loader2, ShieldCheck, CheckCircle2 } from "lucide-react";
-import { useIdentity } from "@/hooks/useIdentity";
+import { useIdentityContext } from "@/contexts/IdentityContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnifiedWalletClient } from "@/hooks/useUnifiedWalletClient";
 import { IdentityModal } from "./IdentityModal";
@@ -43,7 +43,7 @@ export function ClaimReward() {
     generateLink: generateIdentityLink,
     isVerifying,
     setIsVerifying,
-  } = useIdentity();
+  } = useIdentityContext();
 
   useEffect(() => {
     setIsMounted(true);

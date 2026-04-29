@@ -16,7 +16,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
-import { useIdentity } from "@/hooks/useIdentity";
+import { useIdentityContext } from "@/contexts/IdentityContext";
 
 import { useAccount, useBalance } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -143,7 +143,7 @@ function AppPageContent() {
     typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
-  const { isVerifying, setIsVerifying, isVerified } = useIdentity();
+  const { isVerifying, setIsVerifying, isVerified } = useIdentityContext();
   const {
     isStreaming,
     isStreamPending,

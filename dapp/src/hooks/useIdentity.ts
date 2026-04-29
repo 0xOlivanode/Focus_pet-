@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { usePublicClient } from "wagmi";
 import { useIdentitySDK, IdentitySDK } from "@goodsdks/identity-sdk";
 import { ClaimSDK } from "@goodsdks/citizen-sdk";
@@ -31,12 +31,11 @@ export function useIdentity() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
-  // Tracks the timestamp when the user last opened the verification modal.
+  // Timestamp when the user last opened the verification modal.
   // Polling continues for GRACE_PERIOD_MS after they close it, so a slow
   // GoodDollar blockchain confirmation doesn't leave them stuck.
   const [verificationAttemptedAt, setVerificationAttemptedAt] = useState<number | null>(null);
 
-  // Whether background polling is running after the modal was closed
   const isPendingVerification =
     !isVerifying &&
     verificationAttemptedAt !== null &&
@@ -49,7 +48,7 @@ export function useIdentity() {
     }
 
     try {
-      // Don't flash "loading" while background polling — only show it on foreground checks
+      // Don't flash "loading" during background polling
       if (!isVerifying && !isPendingVerification) setStatus("loading");
 
       const claimSDK = new ClaimSDK({
@@ -67,7 +66,7 @@ export function useIdentity() {
       } else {
         setStatus("verified");
         setIsVerifying(false);
-        setVerificationAttemptedAt(null); // clear grace period — we're done
+        setVerificationAttemptedAt(null);
       }
     } catch (error) {
       console.error("Identity check failed:", error);
@@ -87,9 +86,12 @@ export function useIdentity() {
         "production",
       );
 
+      // Use pathname only — avoids appending isVerified=true to existing query params
+      const callbackUrl = window.location.origin + window.location.pathname;
+
       const linkResult = await idSDK.generateFVLink(
         false,
-        window.location.href,
+        callbackUrl,
         42220,
       );
 
@@ -110,12 +112,12 @@ export function useIdentity() {
     }
   };
 
-  // Initial check
+  // Initial check + re-check when key deps change
   useEffect(() => {
     checkVerification();
   }, [address, !!publicClient, !!identitySDK, !!walletClient?.account?.address]);
 
-  // Record when user opens the modal so we can keep polling after they close it
+  // Record when user opens the modal
   useEffect(() => {
     if (isVerifying) {
       setVerificationAttemptedAt(Date.now());
@@ -130,23 +132,30 @@ export function useIdentity() {
   }, [isVerifying, !!fvLink, isGeneratingLink, address, publicClient, walletClient, identitySDK]);
 
   // Polling: runs while modal is open OR during grace period after close.
-  // This means a slow GoodDollar confirmation (~10-60s) is still detected
-  // even after the user closes the modal thinking they're done.
+  // The interval checks the grace period on each tick so it self-terminates
+  // after GRACE_PERIOD_MS even if React deps don't change.
   useEffect(() => {
     if (status === "verified") return;
 
-    const withinGracePeriod =
-      verificationAttemptedAt !== null &&
-      Date.now() - verificationAttemptedAt < GRACE_PERIOD_MS;
+    const attemptedAt = verificationAttemptedAt; // capture at effect-run time
+    const withinGracePeriodNow =
+      attemptedAt !== null && Date.now() - attemptedAt < GRACE_PERIOD_MS;
 
-    if (!isVerifying && !withinGracePeriod) return;
+    if (!isVerifying && !withinGracePeriodNow) return;
 
     const interval = setInterval(() => {
+      // Self-terminate once grace period expires (prevents indefinite polling)
+      if (!isVerifying && attemptedAt !== null) {
+        if (Date.now() - attemptedAt >= GRACE_PERIOD_MS) {
+          clearInterval(interval);
+          return;
+        }
+      }
       checkVerification();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isVerifying, verificationAttemptedAt, status, address, publicClient, identitySDK]);
+  }, [isVerifying, verificationAttemptedAt, status, address, !!publicClient, !!identitySDK, !!walletClient?.account?.address]);
 
   // Track successful referral once verified
   useEffect(() => {
@@ -186,6 +195,6 @@ export function useIdentity() {
     isVerifying,
     setIsVerifying,
     isGeneratingLink,
-    isPendingVerification, // true while background-polling after modal close
+    isPendingVerification,
   };
 }
