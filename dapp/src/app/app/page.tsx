@@ -21,6 +21,7 @@ import { useIdentity } from "@/hooks/useIdentity";
 import { useAccount } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useWeb3AuthUser } from "@web3auth/modal/react";
 import { formatEther } from "viem";
 import { PrivyConnectButton } from "@/components/PrivyConnectButton";
 import { SocialShare } from "@/components/SocialShare";
@@ -81,6 +82,7 @@ const TIMERS = {
 function AppPageContent() {
   const { isConnected, isConnecting, isReconnecting, address } = useAccount();
   const { isAuthenticated, isReady, logout, authType, authenticated } = useAuth();
+  const { userInfo } = useWeb3AuthUser();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -429,17 +431,24 @@ function AppPageContent() {
 
   // Register Web3Auth and MiniPay users in Supabase on first connection.
   // Privy users are pre-seeded from CSV; this handles new users only.
+  // For web3auth email users, wait until userInfo is populated so we capture their email.
   const hasRegistered = useRef(false);
   useEffect(() => {
     if (!address || !authType || hasRegistered.current) return;
     if (authType !== "web3auth" && authType !== "minipay") return;
+    // Web3Auth: delay until userInfo resolves so we get the email
+    if (authType === "web3auth" && userInfo === null) return;
     hasRegistered.current = true;
     fetch("/api/auth/register-user", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ walletAddress: address, authType }),
+      body: JSON.stringify({
+        walletAddress: address,
+        authType,
+        email: userInfo?.email ?? null,
+      }),
     }).catch(() => {});
-  }, [authType, address]);
+  }, [authType, address, userInfo]);
 
   const handleSessionComplete = (minutes: number) => {
     setLastSessionDuration(minutes);
