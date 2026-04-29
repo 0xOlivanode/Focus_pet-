@@ -9,6 +9,17 @@ import { IOSInstallPrompt } from "./IOSInstallPrompt";
 type AuthRouteResult = "privy" | "web3auth" | "new" | null;
 type View = "email" | "otp";
 
+// Shown immediately after Web3Auth OTP resolves, while the SDK propagates
+// its "connected" state back to React context. Prevents the welcome form
+// flashing back before the parent re-renders with isAuthenticated = true.
+function ConnectingScreen() {
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <Loader2 size={24} className="text-white animate-spin" />
+    </div>
+  );
+}
+
 export function AppWelcome() {
   const { sendCode, loginWithCode } = useLoginWithEmail();
   const { connect, connectTo } = useWeb3AuthConnect();
@@ -21,6 +32,9 @@ export function AppWelcome() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isWalletConnecting, setIsWalletConnecting] = useState(false);
   const [error, setError] = useState("");
+  // Set true after connectTo resolves so we show a spinner instead of the form
+  // while the Web3Auth context propagates "connected" to the parent.
+  const [hasWeb3AuthConnected, setHasWeb3AuthConnected] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const otpInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +94,11 @@ export function AppWelcome() {
           authConnection: "email_passwordless",
           loginHint: email,
         });
+        // OTP verified — show spinner immediately while the Web3Auth SDK propagates
+        // its "connected" state to React context (happens asynchronously). Without
+        // this the form re-renders with isConnecting=false before the parent knows
+        // the user is authenticated, causing a brief flash back to the welcome screen.
+        setHasWeb3AuthConnected(true);
       }
     } catch (err: any) {
       const msg = err?.message?.toLowerCase() ?? "";
@@ -158,6 +177,8 @@ export function AppWelcome() {
         : authRoute === "new"
           ? "New here — we'll get you set up."
           : "";
+
+  if (hasWeb3AuthConnected) return <ConnectingScreen />;
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col overflow-x-hidden">
