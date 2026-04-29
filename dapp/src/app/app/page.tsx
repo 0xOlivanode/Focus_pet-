@@ -714,8 +714,8 @@ function AppPageContent() {
 
           {/* Right – stats bar + info/timer card */}
           <div className="flex-1 min-w-0 w-full lg:w-auto flex flex-col gap-4">
-            {streak > 0 && (
-              <div className="flex items-center gap-3 lg:justify-between">
+            <div className="flex items-center gap-3 lg:justify-between">
+              {streak > 0 && (
                 <div
                   className="rounded-full flex items-center gap-2 py-2.5 px-5 border border-dashed border-[#664600] text-white text-sm font-medium whitespace-nowrap"
                   style={{ background: "linear-gradient(90deg, #322000, #8B4500, #322000)" }}
@@ -726,10 +726,9 @@ function AppPageContent() {
                     {` ${streak}`} day streak
                   </span>
                 </div>
-
-                <DailyActionButton />
-              </div>
-            )}
+              )}
+              <DailyActionButton />
+            </div>
             {/* Stats bar */}
             <div className="flex flex-wrap gap-3 items-center">
               {/* Supercharge */}

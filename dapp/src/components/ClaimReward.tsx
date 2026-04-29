@@ -62,6 +62,7 @@ export function ClaimReward() {
       setStatus(walletStatus.status as any);
     } catch (error) {
       console.error("Entitlement check failed:", error);
+      setStatus("not_whitelisted");
     } finally {
       setIsLoading(false);
     }

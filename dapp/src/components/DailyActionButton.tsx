@@ -71,7 +71,7 @@ export function DailyActionButton() {
       setEntitlement(result.entitlement);
       setStatus(result.status as ClaimStatus);
     } catch {
-      // silently fail — button stays hidden
+      setStatus("not_whitelisted");
     }
   };
 
