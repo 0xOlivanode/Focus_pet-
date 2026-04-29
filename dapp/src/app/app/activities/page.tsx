@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
@@ -122,8 +121,7 @@ function XPChart({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function ActivitiesPage() {
-  const { address, isConnected } = useAccount();
-  const { isAuthenticated, isReady } = useAuth();
+  const { isAuthenticated, isReady, address } = useAuth();
   const router = useRouter();
   const { globalUbiBalance, isStreaming, flowRate, lastUpdated } =
     useStreaming();
@@ -141,7 +139,7 @@ export default function ActivitiesPage() {
       .then(setHistory)
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, [address, isConnected, isReady, isAuthenticated]);
+  }, [address, isReady, isAuthenticated]);
 
   // Live stream ticker
   useEffect(() => {

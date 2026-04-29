@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import Image from "next/image";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
-import { useAccount } from "wagmi";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
@@ -38,8 +37,7 @@ const getPetLevel = (xp: number) => {
 };
 
 export default function LeaderboardPage() {
-  const { address: userAddress } = useAccount();
-  const { isAuthenticated, isReady } = useAuth();
+  const { isAuthenticated, isReady, address: userAddress } = useAuth();
   const { leaderboard, userEntry, isLoading, totalUsers } = useLeaderboard();
   const router = useRouter();
   const [search, setSearch] = useState("");
