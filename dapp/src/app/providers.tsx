@@ -11,6 +11,7 @@ import {
   fallback,
   http,
 } from "wagmi";
+// useAccount / useConnectors / useDisconnect are used by MiniPayConnector below
 import { injected } from "wagmi/connectors";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider, createConfig } from "@privy-io/wagmi";
@@ -187,40 +188,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Bridges Web3Auth's EIP1193 provider into wagmi so all wagmi hooks work for Web3Auth users
+// Bridges Web3Auth's EIP1193 provider into wagmi so all wagmi hooks work for Web3Auth users.
+// Pattern mirrors the Delulu reference implementation exactly:
+//   - use connect() (fire-and-forget), NOT connectAsync() — async throws on failure and
+//     its catch block can corrupt state, leaving the user stuck on the loading screen
+//   - get connectors from useConnect(), not a separate useConnectors() call
+//   - no syncedRef needed; wagmi's connect() is idempotent when already connected
 function Web3AuthWagmiSync() {
-  const { provider, isConnected: web3authIsConnected, status } = useWeb3Auth();
-  const connectors = useConnectors();
-  const { connectAsync } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { isConnected } = useAccount();
-  const syncedRef = React.useRef(false);
+  const { provider, isConnected: web3authIsConnected } = useWeb3Auth();
+  const { connect, connectors } = useConnect();
 
   React.useEffect(() => {
-    if (!web3authIsConnected || !provider || isConnected || syncedRef.current) return;
-    // Must pass the connector INSTANCE (from useConnectors), not the factory function.
-    // createConnector() returns a factory; wagmi calls it to create the instance.
-    // Passing the factory to connectAsync fails silently and isConnected never becomes true.
-    const instance = connectors.find((c) => c.id === "web3auth");
-    if (!instance) return;
-    syncedRef.current = true;
-
+    if (!web3authIsConnected || !provider) return;
     setWeb3AuthProvider(provider as EIP1193Provider);
-    // @privy-io/wagmi narrows connectAsync's types to its own connectors; cast to bypass
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (connectAsync as any)({ connector: instance }).catch(() => {
-      syncedRef.current = false;
-      setWeb3AuthProvider(null);
-    });
-  }, [web3authIsConnected, provider, isConnected, connectors]);
+    const connector = connectors.find((c) => c.id === "web3auth");
+    if (connector) connect({ connector });
+  }, [web3authIsConnected, provider, connect, connectors]);
 
   React.useEffect(() => {
-    if (status === "disconnected") {
-      if (syncedRef.current && isConnected) disconnect();
-      setWeb3AuthProvider(null);
-      syncedRef.current = false;
-    }
-  }, [status]);
+    if (!web3authIsConnected) setWeb3AuthProvider(null);
+  }, [web3authIsConnected]);
 
   return null;
 }
