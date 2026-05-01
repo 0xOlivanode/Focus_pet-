@@ -96,10 +96,12 @@ export default function RootLayout({
       <body
         className={`${dmSans.variable} ${dmMono.variable} ${anton.variable} ${outfit.variable} antialiased overflow-x-hidden`}
       >
-        <Suspense fallback={null}>
-          <ReferralTracker />
-        </Suspense>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Suspense fallback={null}>
+            <ReferralTracker />
+          </Suspense>
+          {children}
+        </Providers>
       </body>
     </html>
   );

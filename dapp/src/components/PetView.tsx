@@ -643,20 +643,21 @@ export function PetView({
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-[90%] mx-auto mt-3 flex items-center justify-between gap-3 px-4 py-3 bg-red-950/30 border border-red-800/50 rounded-2xl"
+          className="w-[90%] mx-auto mt-3 flex items-center justify-between gap-3 px-4 py-3 bg-[#110808] border border-red-900/40 rounded-2xl"
         >
           <div className="flex items-center gap-2.5">
             <motion.div
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ repeat: Infinity, duration: 1.4 }}
             >
-              <Heart size={16} className="text-red-500" fill="currentColor" />
+              <Heart size={15} className="text-red-500" fill="currentColor" />
             </motion.div>
-            <span className="text-xs font-black text-red-400">
-              Your pet is struggling! ({health}% health)
+            <span className="text-xs font-black text-white">
+              Your pet is struggling!{" "}
+              <span className="text-[#A9A9A9] font-medium">({health}% health)</span>
             </span>
           </div>
-          <span className="text-[10px] font-bold text-red-500 uppercase tracking-wide whitespace-nowrap">
+          <span className="text-[10px] font-bold text-[#A9A9A9] uppercase tracking-widest whitespace-nowrap">
             Feed it now →
           </span>
         </motion.div>

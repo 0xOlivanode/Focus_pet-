@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createWalletClient, createPublicClient, http, isAddress } from "viem";
+import {
+  createWalletClient,
+  createPublicClient,
+  http,
+  isAddress,
+  verifyTypedData,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { celo } from "viem/chains";
+import { createClient } from "@supabase/supabase-js";
 import { EngagementRewardsSDK } from "@goodsdks/engagement-sdk";
-import { PrivyClient } from "@privy-io/server-auth";
 import { fetchUserHistory } from "@/lib/subgraph";
+import {
+  ENGAGEMENT_APP_ADDRESS,
+  ENGAGEMENT_MIN_DAYS,
+} from "@/config/contracts";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const REWARDS_CONTRACT = (
@@ -12,107 +22,152 @@ const REWARDS_CONTRACT = (
   "0x25db74CF4E7BA120526fd87e159CF656d94bAE43"
 ) as `0x${string}`;
 
-const MIN_SESSION_DAYS = 2;
-
 const pkRaw = process.env.APP_PRIVATE_KEY;
 const PRIVATE_KEY = pkRaw
   ? pkRaw.startsWith("0x") ? pkRaw : `0x${pkRaw}`
   : undefined;
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
+
+// Reads the stored inviter for a given wallet address from Supabase.
+async function getInviterFromDB(userAddress: string): Promise<`0x${string}`> {
+  const { data } = await supabase
+    .from("referrals")
+    .select("inviter_address")
+    .eq("invitee_address", userAddress.toLowerCase())
+    .maybeSingle();
+  return (data?.inviter_address as `0x${string}`) || ZERO_ADDRESS;
+}
+
 // ── Handler ──────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    // ── 1. Require app private key ──────────────────────────────────────────
     if (!PRIVATE_KEY) {
       console.error("APP_PRIVATE_KEY not configured");
       return NextResponse.json({ error: "Server not configured" }, { status: 500 });
     }
 
-    // ── 2. Privy auth — must be a logged-in user ────────────────────────────
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!ENGAGEMENT_APP_ADDRESS) {
+      console.error("NEXT_PUBLIC_APP_ADDRESS not configured");
+      return NextResponse.json({ error: "Server not configured" }, { status: 500 });
     }
 
-    let privyUserId: string;
-    let claimerAddress: string;
+    // ── 1. Parse and validate body ──────────────────────────────────────────
+    let body: any;
     try {
-      const privy = new PrivyClient(
-        process.env.NEXT_PUBLIC_PRIVY_APP_ID!,
-        process.env.PRIVY_APP_SECRET!,
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
+    const { user: userAddress, validUntilBlock, userSignature } = body;
+
+    if (
+      !userAddress ||
+      !validUntilBlock ||
+      !userSignature ||
+      !isAddress(userAddress)
+    ) {
+      return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
+    }
+
+    // ── 2. Read authoritative inviter from DB ───────────────────────────────
+    // Inviter is always server-determined — not accepted from the client.
+    // The frontend fetches this same value from GET /api/referrals before signing,
+    // so both sides use the same inviter when building/verifying the EIP-712 message.
+    const inviter = await getInviterFromDB(userAddress);
+
+    // ── 3. Verify the user's EIP-712 claim signature ────────────────────────
+    // Works for all auth types (Privy, Web3Auth, MiniPay) — no third-party
+    // auth token needed. The same signature is used on-chain by nonContractAppClaim.
+    try {
+      const publicClient = createPublicClient({
+        chain: celo,
+        transport: http(
+          process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL || "https://forno.celo.org",
+        ),
+      });
+      const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
+      const walletClient = createWalletClient({
+        account,
+        chain: celo,
+        transport: http(
+          process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL || "https://forno.celo.org",
+        ),
+      });
+
+      const sdk = new EngagementRewardsSDK(
+        publicClient as any,
+        walletClient as any,
+        REWARDS_CONTRACT,
       );
-      const claims = await privy.verifyAuthToken(token);
-      privyUserId = claims.userId;
 
-      // Fetch user to cross-check the address belongs to this Privy account
-      const user = await privy.getUser(privyUserId);
-      const ownedAddresses = (user.linkedAccounts ?? [])
-        .filter((a: any) => a.type === "wallet" || a.type === "smart_wallet")
-        .map((a: any) => (a.address as string).toLowerCase());
+      // Reconstruct the exact typed data the frontend signed over.
+      const appInfo = await sdk.getAppInfo(ENGAGEMENT_APP_ADDRESS);
+      const appDescription = appInfo[9] as string;
 
-      const body = await req.json();
-      const { user: userAddress, validUntilBlock, inviter } = body;
+      const { domain, types, message } = await sdk.prepareClaimSignature(
+        ENGAGEMENT_APP_ADDRESS,
+        inviter,
+        BigInt(validUntilBlock),
+        appDescription,
+      );
 
-      if (!userAddress || !validUntilBlock || !isAddress(userAddress)) {
-        return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
+      const isValid = await verifyTypedData({
+        address: userAddress as `0x${string}`,
+        domain: domain as any,
+        types,
+        primaryType: "Claim",
+        message: message as any,
+        signature: userSignature as `0x${string}`,
+      });
+
+      if (!isValid) {
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
       }
 
-      if (!ownedAddresses.includes(userAddress.toLowerCase())) {
-        return NextResponse.json(
-          { error: "Address not associated with your account" },
-          { status: 403 },
-        );
-      }
-
-      claimerAddress = userAddress;
-
-      // ── 3. Verify minimum session days via subgraph ─────────────────────
+      // ── 4. Verify minimum session days via subgraph ─────────────────────
       try {
-        const history = await fetchUserHistory(claimerAddress, 30);
+        const history = await fetchUserHistory(userAddress, 30);
         const sessionDays = history?.dailyActivities?.length ?? 0;
-        if (sessionDays < MIN_SESSION_DAYS) {
+        if (sessionDays < ENGAGEMENT_MIN_DAYS) {
           return NextResponse.json(
-            { error: `Need at least ${MIN_SESSION_DAYS} days of focus sessions.` },
+            { error: `Need at least ${ENGAGEMENT_MIN_DAYS} days of focus sessions.` },
             { status: 403 },
           );
         }
       } catch (subgraphErr) {
-        // Non-blocking: if subgraph is down, let the contract enforce it
+        // Non-blocking: if subgraph is down let the contract enforce it
         console.warn("Subgraph check failed, proceeding:", subgraphErr);
       }
 
-      // ── 4. Sign the claim with app private key ──────────────────────────
-      const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
-      const publicClient = createPublicClient({ chain: celo, transport: http() });
-      const walletClient = createWalletClient({ account, chain: celo, transport: http() });
-
-      const sdk = new EngagementRewardsSDK(publicClient as any, walletClient as any, REWARDS_CONTRACT);
-
-      const { domain, types, message } = await sdk.prepareAppSignature(
-        account.address,
-        claimerAddress as `0x${string}`,
-        BigInt(validUntilBlock),
-      );
+      // ── 5. Sign the claim with app private key ──────────────────────────
+      const { domain: appDomain, types: appTypes, message: appMessage } =
+        await sdk.prepareAppSignature(
+          ENGAGEMENT_APP_ADDRESS,
+          userAddress as `0x${string}`,
+          BigInt(validUntilBlock),
+        );
 
       const signature = await walletClient.signTypedData({
-        domain,
-        types,
+        domain: appDomain,
+        types: appTypes,
         primaryType: "AppClaim",
-        message,
+        message: appMessage,
       });
 
-      console.log(`Engagement reward signed for ${claimerAddress} (privy: ${privyUserId})`);
+      console.log(`Engagement reward signed for ${userAddress} (inviter: ${inviter})`);
 
-      return NextResponse.json({
-        signature,
-        appAddress: account.address,
-      });
-    } catch (authErr: any) {
-      if (authErr?.status === 400 || authErr?.status === 401) {
-        return NextResponse.json({ error: "Invalid auth token" }, { status: 401 });
-      }
-      throw authErr;
+      // Return inviter so the frontend can pass the exact same value to nonContractAppClaim.
+      return NextResponse.json({ signature, appAddress: account.address, inviter });
+    } catch (innerErr: any) {
+      console.error("Sign reward inner error:", innerErr);
+      throw innerErr;
     }
   } catch (error: any) {
     console.error("Sign reward error:", error);

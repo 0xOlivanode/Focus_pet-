@@ -17,6 +17,7 @@ import { useFocusPet } from "@/hooks/useFocusPet";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
 import { useIdentityContext } from "@/contexts/IdentityContext";
+import { EngagementRewardBanner } from "@/components/EngagementRewardBanner";
 
 import { useAccount, useBalance } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -80,8 +81,13 @@ const TIMERS = {
 };
 
 function AppPageContent() {
-  const { isConnected: wagmiConnected, isConnecting, isReconnecting } = useAccount();
-  const { isAuthenticated, isReady, logout, authType, authenticated, address } = useAuth();
+  const {
+    isConnected: wagmiConnected,
+    isConnecting,
+    isReconnecting,
+  } = useAccount();
+  const { isAuthenticated, isReady, logout, authType, authenticated, address } =
+    useAuth();
   // Compound isConnected: true as soon as any auth provider (wagmi, Web3Auth, Privy)
   // has established a connection. Using wagmi-only isConnected leaves Web3Auth users
   // stuck on the loading screen while the wagmi bridge completes (up to 15 s → logout).
@@ -280,7 +286,6 @@ function AppPageContent() {
     isSyncing,
     hasAutoOpened,
   ]);
-
 
   // No redirect on logout or connection drop — /app handles its own disconnected state.
   // The "Your pet is waiting" screen is the correct destination for returning users.
@@ -562,7 +567,9 @@ function AppPageContent() {
               }}
               className="w-full max-w-sm px-4 py-3 rounded-xl bg-[#111111] hover:bg-[#1a1a1a] border border-neutral-800 flex items-center justify-between gap-2 transition-all mb-2"
             >
-              <span className="font-mono text-xs text-neutral-400 truncate">{address}</span>
+              <span className="font-mono text-xs text-neutral-400 truncate">
+                {address}
+              </span>
               <Copy size={13} className="shrink-0 text-neutral-500" />
             </motion.button>
           )}
@@ -577,7 +584,9 @@ function AppPageContent() {
             <button
               onClick={async () => {
                 if (!celoBalance || celoBalance.value < BigInt(1e15)) {
-                  toast.error("You need a small amount of CELO for gas. Share your address to receive some.");
+                  toast.error(
+                    "You need a small amount of CELO for gas. Share your address to receive some.",
+                  );
                   return;
                 }
                 playSound("hatch");
@@ -650,7 +659,6 @@ function AppPageContent() {
                         : "Almost there…"}
                 </p>
               </div>
-
             </motion.div>
           )}
         </AnimatePresence>
@@ -718,9 +726,17 @@ function AppPageContent() {
               {streak > 0 && (
                 <div
                   className="rounded-full flex items-center gap-2 py-2.5 px-5 border border-dashed border-[#664600] text-white text-sm font-medium whitespace-nowrap"
-                  style={{ background: "linear-gradient(90deg, #322000, #8B4500, #322000)" }}
+                  style={{
+                    background:
+                      "linear-gradient(90deg, #322000, #8B4500, #322000)",
+                  }}
                 >
-                  <Image src="/streak-flame.png" width={20} height={20} alt="" />
+                  <Image
+                    src="/streak-flame.png"
+                    width={20}
+                    height={20}
+                    alt=""
+                  />
                   <span className="flex items-center gap-x-1">
                     <span className="hidden lg:flex">You are on a </span>
                     {` ${streak}`} day streak
@@ -737,7 +753,11 @@ function AppPageContent() {
                 className="px-5 py-3 rounded-full text-sm font-medium whitespace-nowrap"
                 style={
                   isStreaming
-                    ? { background: "linear-gradient(90deg, #342804, #E73B74, #342804)", color: "#ffffff" }
+                    ? {
+                        background:
+                          "linear-gradient(90deg, #342804, #E73B74, #342804)",
+                        color: "#ffffff",
+                      }
                     : { background: "#ffffff", color: "#000000" }
                 }
               >
@@ -762,7 +782,11 @@ function AppPageContent() {
                     className="flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium whitespace-nowrap"
                     style={
                       boostActive
-                        ? { background: "linear-gradient(90deg, #063D49, #3B4CE7, #063D49)", color: "#ffffff" }
+                        ? {
+                            background:
+                              "linear-gradient(90deg, #063D49, #3B4CE7, #063D49)",
+                            color: "#ffffff",
+                          }
                         : { background: "#ffffff", color: "#000000" }
                     }
                   >
@@ -828,7 +852,14 @@ function AppPageContent() {
                             {username || "focuser"}
                           </p>
                         </button>
-                        {isVerified && <Image src="/SealCheck.svg" width={16} height={16} alt="Verified" />}
+                        {isVerified && (
+                          <Image
+                            src="/SealCheck.svg"
+                            width={16}
+                            height={16}
+                            alt="Verified"
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -867,7 +898,14 @@ function AppPageContent() {
                           {username || "focuser"}
                         </p>
                       </button>
-                      {isVerified && <Image src="/SealCheck.svg" width={16} height={16} alt="Verified" />}
+                      {isVerified && (
+                        <Image
+                          src="/SealCheck.svg"
+                          width={16}
+                          height={16}
+                          alt="Verified"
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -930,44 +968,7 @@ function AppPageContent() {
             </div>
           </div>
         </div>
-
-        {/* ── Sections below the fold ──────────────────────────────────── */}
-        {/* <ClaimReward /> */}
-
-        {/* <ImpactDashboard
-          totalDonated={totalDonated}
-          xp={xp}
-          isStreaming={isStreaming}
-          flowRate={flowRate}
-          lastUpdated={lastUpdated}
-          globalUbiBalance={globalUbiBalance}
-          onSync={handleSyncImpact}
-          isSyncing={isSyncImpactLoading}
-        /> */}
-
-        {/* <PetShop
-          gBalance={gBalance as bigint | undefined}
-          health={health}
-          isPending={isPending}
-          isSuccess={isConfirmed}
-          writeError={writeError}
-          receiptError={receiptError}
-          onBuyFood={buyFood}
-          onBuySuperFood={buySuperFood}
-          onBuyEnergyDrink={buyEnergyDrink}
-          onBuyShield={buyShield}
-          onBuyCosmetic={buyCosmetic}
-          onToggleCosmetic={toggleCosmetic}
-          inventory={inventory}
-          onRevive={revivePet}
-          playSound={playSound}
-          showToast={showToast}
-          boostEndTime={boostEndTime}
-          shieldCount={shieldCount}
-          equippedCosmetics={equippedCosmetics}
-        /> */}
-
-        {/* <Leaderboard /> */}
+        <EngagementRewardBanner />
       </main>
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
@@ -1062,7 +1063,6 @@ function AppPageContent() {
                           : "Almost there…"}
               </p>
             </div>
-
           </motion.div>
         )}
       </AnimatePresence>

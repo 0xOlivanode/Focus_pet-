@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { usePrivy } from "@privy-io/react-auth";
 import { useEngagementRewards } from "@goodsdks/engagement-sdk";
-import { useIdentity } from "./useIdentity";
+import { useIdentityContext } from "@/contexts/IdentityContext";
 import { fetchUserHistory } from "@/lib/subgraph";
 import {
   ENGAGEMENT_REWARDS_CONTRACT,
@@ -13,7 +12,6 @@ import {
 } from "@/config/contracts";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
-const GD_INVITER_KEY = "focuspet_gd_inviter";
 
 export type EngagementRewardState =
   | "loading"
@@ -27,8 +25,11 @@ export type EngagementRewardState =
 
 export function useEngagementReward() {
   const { address } = useAuth();
-  const { getAccessToken } = usePrivy();
-  const { isVerified, setIsVerifying } = useIdentity();
+
+  // Use the shared identity context — prevents a second useIdentity() instance
+  // that would have its own separate verification state out of sync with the rest of the app.
+  const { isVerified, setIsVerifying } = useIdentityContext();
+
   const sdk = useEngagementRewards(ENGAGEMENT_REWARDS_CONTRACT);
 
   const [state, setState] = useState<EngagementRewardState>("loading");
@@ -36,22 +37,37 @@ export function useEngagementReward() {
   const [rewardAmount, setRewardAmount] = useState<bigint>(0n);
   const [error, setError] = useState<string | null>(null);
   const checkedRef = useRef(false);
+  const prevAddressRef = useRef(address);
 
-  // ── Invite link (GoodDollar pattern: ?invite=base64({inviter:address})) ──
+  // ── Invite link ──────────────────────────────────────────────────────────
   const inviteLink =
     address && typeof window !== "undefined"
       ? `${window.location.origin}/app?invite=${btoa(JSON.stringify({ inviter: address }))}`
       : "";
 
-  const getInviter = (): `0x${string}` => {
-    if (typeof window === "undefined") return ZERO_ADDRESS;
-    const stored = localStorage.getItem(GD_INVITER_KEY);
-    return (stored as `0x${string}`) || ZERO_ADDRESS;
+  // Fetch the authoritative inviter from the server — never from localStorage.
+  // This prevents client-side manipulation and works cross-device.
+  const fetchInviter = async (): Promise<`0x${string}`> => {
+    if (!address) return ZERO_ADDRESS;
+    try {
+      const res = await fetch(`/api/referrals?address=${address}`);
+      if (!res.ok) return ZERO_ADDRESS;
+      const { inviter } = await res.json();
+      return (inviter as `0x${string}`) || ZERO_ADDRESS;
+    } catch {
+      return ZERO_ADDRESS;
+    }
   };
 
   // ── Eligibility check ────────────────────────────────────────────────────
   const checkEligibility = useCallback(async () => {
-    if (!address || !sdk || !ENGAGEMENT_APP_ADDRESS) return;
+    if (!address || !sdk) return;
+
+    // Feature guard — if app address isn't configured, hide the banner silently.
+    if (!ENGAGEMENT_APP_ADDRESS) {
+      setState("unavailable");
+      return;
+    }
 
     setState("loading");
     setError(null);
@@ -74,7 +90,7 @@ export function useEngagementReward() {
         return;
       }
 
-      // 3. Fetch reward amount for display
+      // 3. Fetch reward amount for display (non-critical)
       try {
         const amount = await sdk.getRewardAmount();
         setRewardAmount(amount);
@@ -97,21 +113,30 @@ export function useEngagementReward() {
     }
   }, [address, sdk, isVerified]);
 
+  // Reset on wallet change so a new address always gets a fresh check.
   useEffect(() => {
+    if (prevAddressRef.current !== address) {
+      prevAddressRef.current = address;
+      checkedRef.current = false;
+    }
     if (!checkedRef.current) {
       checkEligibility();
     }
   }, [checkEligibility]);
 
-  // Re-check when identity status changes
+  // Re-check immediately when identity verification confirms
   useEffect(() => {
     if (checkedRef.current) {
       checkedRef.current = false;
       checkEligibility();
     }
-  }, [isVerified]);
+  }, [isVerified]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Claim ────────────────────────────────────────────────────────────────
+  // Auth approach: the userSignature from sdk.signClaim (EIP-712 over the claim
+  // parameters) IS the proof of wallet ownership. The backend reconstructs the
+  // same typed data and verifies it with verifyTypedData — no Privy token needed.
+  // This works identically for Privy, Web3Auth, and MiniPay users.
   const claim = useCallback(async () => {
     if (!address || !sdk || state !== "eligible") return;
 
@@ -119,29 +144,27 @@ export function useEngagementReward() {
     setError(null);
 
     try {
-      const inviter = getInviter();
+      // Fetch authoritative inviter from DB — server-determined, tamper-proof.
+      // The same inviter the server will use when verifying the signature.
+      const inviter = await fetchInviter();
       const currentBlock = await sdk.getCurrentBlockNumber();
       const validUntilBlock = currentBlock + 600n; // ~50 minutes on Celo
 
-      // User signature (wallet prompt — signs once every 180 days)
       const userSignature = await sdk.signClaim(
         ENGAGEMENT_APP_ADDRESS,
         inviter,
         validUntilBlock,
       );
 
-      // App signature from backend
-      const token = await getAccessToken();
+      // Backend re-reads inviter from DB, verifies userSignature, co-signs.
+      // No inviter in body — client cannot override what the server determined.
       const res = await fetch("/api/sign-reward", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user: address,
           validUntilBlock: validUntilBlock.toString(),
-          inviter,
+          userSignature,
         }),
       });
 
@@ -150,31 +173,29 @@ export function useEngagementReward() {
         throw new Error(msg || "Backend signing failed");
       }
 
-      const { signature: appSignature } = await res.json();
+      // Backend returns the inviter it used — use it for the on-chain call
+      // to guarantee the inviter matches both signatures.
+      const { signature: appSignature, inviter: authorizedInviter } = await res.json();
 
-      // Submit on-chain
       await sdk.nonContractAppClaim(
         ENGAGEMENT_APP_ADDRESS,
-        inviter,
+        (authorizedInviter as `0x${string}`) || inviter,
         validUntilBlock,
         userSignature,
         appSignature,
       );
 
-      // Clear stored inviter — reward is claimed
-      localStorage.removeItem(GD_INVITER_KEY);
       setState("claimed");
     } catch (e: any) {
       console.error("Engagement reward claim failed:", e);
-      // User rejected wallet prompt
       if (e?.code === 4001 || e?.message?.includes("rejected")) {
-        setState("eligible"); // Let them try again
+        setState("eligible");
       } else {
         setState("error");
         setError(e?.message || "Claim failed");
       }
     }
-  }, [address, sdk, state, getAccessToken]);
+  }, [address, sdk, state]);
 
   return {
     state,
