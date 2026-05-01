@@ -48,6 +48,16 @@ function formatXp(n: number) {
   return n.toLocaleString();
 }
 
+function formatLocalTs(ts: number) {
+  return new Date(ts * 1000).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+}
+
 function rankMedal(rank: number) {
   if (rank === 1) return "🥇";
   if (rank === 2) return "🥈";
@@ -325,7 +335,7 @@ export default function CompetitionPage() {
                 {COMPETITION.tagline}
               </p>
               <p className="text-neutral-700 text-xs mt-1">
-                May 4, 7am — May 8, 10pm (Nigerian Time)
+                {formatLocalTs(COMPETITION.startTs)} — {formatLocalTs(COMPETITION.endTs)}
               </p>
             </div>
 
