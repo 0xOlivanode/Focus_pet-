@@ -28,7 +28,7 @@ export function useEngagementReward() {
 
   // Use the shared identity context — prevents a second useIdentity() instance
   // that would have its own separate verification state out of sync with the rest of the app.
-  const { isVerified, setIsVerifying } = useIdentityContext();
+  const { isVerified, isLoading: identityLoading, setIsVerifying } = useIdentityContext();
 
   const sdk = useEngagementRewards(ENGAGEMENT_REWARDS_CONTRACT);
 
@@ -62,6 +62,10 @@ export function useEngagementReward() {
   // ── Eligibility check ────────────────────────────────────────────────────
   const checkEligibility = useCallback(async () => {
     if (!address || !sdk) return;
+
+    // Wait for the identity check to finish before evaluating — prevents
+    // flicker where isVerified is briefly false while useIdentity is loading.
+    if (identityLoading) return;
 
     // Feature guard — if app address isn't configured, hide the banner silently.
     if (!ENGAGEMENT_APP_ADDRESS) {
@@ -111,7 +115,7 @@ export function useEngagementReward() {
       setState("error");
       setError(e?.message || "Could not check eligibility");
     }
-  }, [address, sdk, isVerified]);
+  }, [address, sdk, isVerified, identityLoading]);
 
   // Reset on wallet change so a new address always gets a fresh check.
   useEffect(() => {
