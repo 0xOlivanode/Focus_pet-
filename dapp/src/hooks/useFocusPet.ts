@@ -298,25 +298,77 @@ export function useFocusPet() {
     setLastAction("focus");
     setPendingSession({ minutes, multiplier: superchargeMultiplier });
 
+    // Persist before attempting so the user can retry if the tx fails
+    // (e.g. provider went stale after a long session, network blip, etc.)
+    try {
+      localStorage.setItem(
+        "pending-focus-session",
+        JSON.stringify({ minutes, multiplier: superchargeMultiplier, timestamp: Date.now() }),
+      );
+    } catch {}
+
     try {
       setIsSigning(true);
-      // Engagement rewards removed for simplicity/gas efficiency
-
-      // Send Transaction — useUnifiedWriteContract doesn't support wagmi callbacks,
-      // so we use async/finally to clear the signing state when the wallet prompt
-      // opens or the call fails.
-      writeContractAsync({
+      await writeContractAsync({
         ...txOverrides,
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: "focusSession",
         args: [BigInt(Math.max(1, Math.round(minutes * 60)))],
-      }).finally(() => setIsSigning(false));
+        // Hard gas limit — skips eth_estimateGas which can time out after
+        // mobile backgrounding (the most common failure on long sessions).
+        gas: BigInt(400_000),
+      });
+      // Clear the pending session on successful submission
+      try { localStorage.removeItem("pending-focus-session"); } catch {}
     } catch (e) {
       console.error("Session Record Error:", e);
+      // Surface a retry toast so the user doesn't silently lose their session.
+      // The pending-focus-session key stays in localStorage — if they reload,
+      // the mount effect below will offer to retry again.
+      toast.error(
+        "Couldn't record your session. Tap here to retry.",
+        {
+          duration: Infinity,
+          id: "session-retry",
+          onClick: () => {
+            toast.dismiss("session-retry");
+            recordSession(minutes, superchargeMultiplier);
+          },
+        } as any,
+      );
+    } finally {
       setIsSigning(false);
     }
   };
+
+  // On mount: if a previous session submission was interrupted (provider died,
+  // network dropped, user closed mid-signing), offer to retry it.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("pending-focus-session");
+      if (!raw) return;
+      const { minutes, multiplier, timestamp } = JSON.parse(raw);
+      // Only offer retry if the pending session is less than 2 hours old
+      if (Date.now() - timestamp > 2 * 60 * 60 * 1000) {
+        localStorage.removeItem("pending-focus-session");
+        return;
+      }
+      toast(
+        `You have an unrecorded session (${Math.round(minutes)} min). Tap to save it.`,
+        {
+          duration: 20_000,
+          id: "session-restore",
+          icon: "⚠️",
+          onClick: () => {
+            toast.dismiss("session-restore");
+            recordSession(minutes, multiplier ?? 1);
+          },
+        } as any,
+      );
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- Automated Buy Logic (Sequential Transactions) ---
   useEffect(() => {

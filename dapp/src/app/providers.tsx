@@ -204,6 +204,23 @@ function Web3AuthWagmiSync() {
     if (!web3authIsConnected) setWeb3AuthProvider(null);
   }, [web3authIsConnected]);
 
+  // Re-sync the provider every time the tab regains visibility.
+  // On mobile, locking the screen or switching apps suspends the browser tab.
+  // Web3Auth's internal signing transport dies during suspension — the _provider
+  // reference in the module-level store stays alive but the underlying connection
+  // is dead. Without this, any transaction fired immediately after the user returns
+  // (e.g. a long focus timer completing) uses a dead provider and fails silently.
+  React.useEffect(() => {
+    if (!web3authIsConnected || !provider) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        setWeb3AuthProvider(provider as EIP1193Provider);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [web3authIsConnected, provider]);
+
   return null;
 }
 
