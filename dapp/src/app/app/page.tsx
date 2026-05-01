@@ -72,6 +72,7 @@ import { Navbar } from "@/components/Navbar";
 import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
 import { AppWelcome } from "@/components/AppWelcome";
 import { DailyActionButton } from "@/components/DailyActionButton";
+import { InviteButton } from "@/components/InviteButton";
 
 import { Suspense } from "react";
 
@@ -683,7 +684,7 @@ function AppPageContent() {
     <div className="min-h-screen bg-black text-white">
       <Navbar onOpenProfile={() => setIsEditModalOpen(true)} />
 
-      <main className="px-5 sm:px-10 lg:px-[80px] py-[80px] pb-24">
+      <main className="px-5 sm:px-10 lg:px-[80px] py-[40px] pb-24">
         <CompetitionBanner />
         {/* ── Hero: Pet card + stats/timer ─────────────────────────────── */}
         <div className="flex flex-col lg:flex-row gap-5 items-center mb-10 gap-x-[107px]">
@@ -803,6 +804,8 @@ function AppPageContent() {
                   </button>
                 );
               })()}
+
+              <InviteButton />
 
               <div className="rounded-full flex lg:text-sm text-xs items-center basis-full md:basis-auto md:flex-1 bg-[#0F0F0F] p-1">
                 <div className="py-3 px-6 whitespace-nowrap">

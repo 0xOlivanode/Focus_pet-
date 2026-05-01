@@ -8,6 +8,7 @@ import {
   Flame, Star, ChevronUp,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { InviteButton } from "@/components/InviteButton";
 import { useAuth } from "@/hooks/useAuth";
 import { COMPETITION, getCompetitionStatus, type CompetitionStatus } from "@/config/competition";
 import type { CompetitionEntry } from "@/app/api/competition/leaderboard/route";
@@ -100,23 +101,23 @@ function FormulaBadge() {
         How points are calculated
       </p>
       <div className="font-mono text-sm text-white mb-3 leading-relaxed">
-        <span className="text-[#01FF8B]">XP</span>
+        <span className="text-[#C48E57]">XP</span>
         <span className="text-neutral-500"> × </span>
-        <span className="text-[#C48E57]">(1 + streak × 0.2)</span>
+        <span className="text-[#d4a26a]">(1 + streak × 0.2)</span>
         <span className="text-neutral-500"> + </span>
-        <span className="text-[#01FF8B]">sessions</span>
+        <span className="text-[#C48E57]">sessions</span>
         <span className="text-neutral-500"> × </span>
         <span className="text-white">200</span>
         <span className="text-neutral-500"> + </span>
-        <span className="text-[#01FF8B]">referrals</span>
+        <span className="text-[#C48E57]">referrals</span>
         <span className="text-neutral-500"> × </span>
         <span className="text-white">1500</span>
       </div>
       <div className="grid grid-cols-3 gap-2 text-[11px]">
         {[
           { label: "5-day streak", desc: "2× your XP score", color: "text-[#C48E57]" },
-          { label: "Per session", desc: "+200 pts", color: "text-[#01FF8B]" },
-          { label: "Per referral", desc: "+1,500 pts", color: "text-[#01FF8B]" },
+          { label: "Per session", desc: "+200 pts", color: "text-[#C48E57]" },
+          { label: "Per referral", desc: "+1,500 pts", color: "text-[#C48E57]" },
         ].map((tip) => (
           <div key={tip.label} className="bg-[#0d0d0d] border border-neutral-800/60 rounded-xl p-2.5">
             <p className={`font-bold ${tip.color}`}>{tip.desc}</p>
@@ -163,7 +164,7 @@ function LeaderboardTable({
               transition={{ delay: Math.min(i * 0.03, 0.3) }}
               className={`grid grid-cols-[48px_1fr] sm:grid-cols-[56px_1fr_72px_80px_80px_72px_56px_88px] items-center px-5 py-3.5 gap-3 sm:gap-0 transition-colors ${
                 isMe
-                  ? "bg-[#01FF8B08] border-l-2 border-l-[#01FF8B]/40"
+                  ? "bg-[#C48E5708] border-l-2 border-l-[#C48E57]/40"
                   : entry.rank <= 3
                   ? "bg-[#C48E5705]"
                   : "hover:bg-white/[0.015]"
@@ -187,7 +188,7 @@ function LeaderboardTable({
                     {entry.username || formatAddress(entry.address)}
                   </span>
                   {isMe && (
-                    <span className="text-[10px] bg-[#01FF8B20] text-[#01FF8B] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tight shrink-0">
+                    <span className="text-[10px] bg-[#C48E5720] text-[#C48E57] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tight shrink-0">
                       you
                     </span>
                   )}
@@ -200,7 +201,9 @@ function LeaderboardTable({
                   <span>·</span>
                   <span className="text-[#C48E57] font-semibold">{entry.compStreak}🔥</span>
                   <span>·</span>
-                  <span className="text-[#01FF8B] font-bold">{entry.points.toLocaleString()} pts</span>
+                  <span>· {entry.compReferrals} refs</span>
+                  <span>·</span>
+                  <span className="text-[#C48E57] font-bold">{entry.points.toLocaleString()} pts</span>
                 </div>
               </div>
 
@@ -224,7 +227,7 @@ function LeaderboardTable({
                 <span className="text-neutral-300 text-sm tabular-nums">{entry.compReferrals}</span>
               </div>
               <div className="hidden sm:block">
-                <span className="text-[#01FF8B] text-sm font-black tabular-nums">
+                <span className="text-[#C48E57] text-sm font-black tabular-nums">
                   {entry.points.toLocaleString()}
                 </span>
               </div>
@@ -303,27 +306,18 @@ export default function CompetitionPage() {
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <div className="flex items-center gap-1.5 bg-[#111111] border border-neutral-800 px-3 py-1 rounded-full">
-                  <Zap size={12} className="text-[#C48E57]" fill="currentColor" />
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#C48E57]">
-                    Focus Blitz
+              {status === "ended" && (
+                <div className="flex items-center gap-1.5 bg-neutral-800/50 border border-neutral-700 px-3 py-1 rounded-full mb-2 w-fit">
+                  <Trophy size={11} className="text-[#C48E57]" />
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
+                    Ended
                   </span>
                 </div>
-
-                {status === "ended" && (
-                  <div className="flex items-center gap-1.5 bg-neutral-800/50 border border-neutral-700 px-3 py-1 rounded-full">
-                    <Trophy size={11} className="text-[#C48E57]" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
-                      Ended
-                    </span>
-                  </div>
-                )}
-              </div>
+              )}
 
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none mb-2">
                 Focus{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C48E57] to-[#01FF8B]">
+                <span className="text-[#C48E57]">
                   Blitz
                 </span>
               </h1>
@@ -335,6 +329,7 @@ export default function CompetitionPage() {
               </p>
             </div>
 
+            <InviteButton variant="gold" />
           </div>
         </div>
 
@@ -364,9 +359,9 @@ export default function CompetitionPage() {
             {/* What to expect */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
-                { icon: <Clock size={18} className="text-[#01FF8B]" />, title: "5 Days", desc: "May 4 – May 8, compete nonstop" },
+                { icon: <Clock size={18} className="text-[#C48E57]" />, title: "5 Days", desc: "May 4 – May 8, compete nonstop" },
                 { icon: <Star size={18} className="text-[#C48E57]" />, title: "Streak Bonus", desc: "Perfect attendance doubles your XP score" },
-                { icon: <Users size={18} className="text-[#01FF8B]" />, title: "Referrals Count", desc: "Each friend you bring = +1,500 pts" },
+                { icon: <Users size={18} className="text-[#C48E57]" />, title: "Referrals Count", desc: "Each friend you bring = +1,500 pts" },
               ].map((card) => (
                 <div
                   key={card.title}
@@ -429,13 +424,13 @@ export default function CompetitionPage() {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-4 px-5 py-4 bg-[#01FF8B08] border border-[#01FF8B]/20 rounded-2xl"
+                className="flex items-center gap-4 px-5 py-4 bg-[#C48E5708] border border-[#C48E57]/20 rounded-2xl"
               >
                 <div className="flex items-center gap-1">
                   {rankMedal(userEntry.rank) ? (
                     <span className="text-xl">{rankMedal(userEntry.rank)}</span>
                   ) : (
-                    <span className="inline-flex items-center justify-center min-w-[44px] h-8 px-3 bg-[#01FF8B] text-black text-xs font-black rounded-full tabular-nums">
+                    <span className="inline-flex items-center justify-center min-w-[44px] h-8 px-3 bg-[#C48E57] text-black text-xs font-black rounded-full tabular-nums">
                       #{userEntry.rank}
                     </span>
                   )}
@@ -447,7 +442,7 @@ export default function CompetitionPage() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[#01FF8B] font-black text-lg tabular-nums">
+                  <p className="text-[#C48E57] font-black text-lg tabular-nums">
                     {userEntry.points.toLocaleString()}
                   </p>
                   <p className="text-neutral-600 text-[10px] uppercase tracking-wide">pts</p>

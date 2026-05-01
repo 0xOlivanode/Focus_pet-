@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Zap, ArrowRight, Clock } from "lucide-react";
+import { ArrowRight, Clock } from "lucide-react";
 import { COMPETITION, getCompetitionStatus, type CompetitionStatus } from "@/config/competition";
 
 function useCountdownShort(targetTs: number) {
@@ -47,8 +47,8 @@ export function CompetitionBanner() {
       onClick={() => router.push("/app/competition")}
       className="w-full mb-6 rounded-3xl overflow-hidden relative group cursor-pointer text-left active:scale-[0.99] transition-transform"
     >
-      {/* Gold → mint gradient border via wrapper */}
-      <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-[#C48E57]/30 via-transparent to-[#01FF8B]/30 p-px">
+      {/* Gold border */}
+      <div className="absolute inset-0 rounded-3xl bg-[#C48E57]/25 p-px">
         <div className="absolute inset-[1px] rounded-3xl bg-[#0c0c0c]" />
       </div>
 
@@ -56,30 +56,13 @@ export function CompetitionBanner() {
       <div className="relative bg-[#0c0c0c] rounded-3xl px-5 py-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            {/* Label row */}
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <div className="flex items-center gap-1.5 bg-[#C48E57]/10 border border-[#C48E57]/20 px-2.5 py-1 rounded-full">
-                <Zap size={10} className="text-[#C48E57]" fill="currentColor" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#C48E57]">
-                  Focus Blitz
-                </span>
-              </div>
-
-              {status === "live" && (
-                <div className="flex items-center gap-1 bg-[#01FF8B12] border border-[#01FF8B]/20 px-2.5 py-1 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#01FF8B] animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#01FF8B]">
-                    Live now
-                  </span>
-                </div>
-              )}
-            </div>
-
             {/* Title */}
             <p className="text-white font-black text-base leading-tight mb-1">
-              {status === "live"
-                ? "Competition is live — go focus!"
-                : "Competition starts soon"}
+              {status === "live" ? (
+                <><span className="text-[#C48E57]">Focus Blitz</span> is live — go focus!</>
+              ) : (
+                <><span className="text-[#C48E57]">Focus Blitz</span> starts soon</>
+              )}
             </p>
 
             {/* Countdown */}
