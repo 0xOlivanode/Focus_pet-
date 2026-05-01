@@ -140,11 +140,11 @@ async function buildLeaderboard(): Promise<CompetitionEntry[]> {
     });
   }
 
-  // Sort by points descending, assign ranks
+  // Sort by points descending, assign ranks, cap at 100
   entries.sort((a, b) => b.points - a.points);
   entries.forEach((e, i) => { e.rank = i + 1; });
 
-  return entries;
+  return entries.slice(0, 100);
 }
 
 export async function GET() {

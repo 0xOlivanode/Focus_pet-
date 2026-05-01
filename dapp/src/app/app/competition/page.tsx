@@ -5,12 +5,28 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Trophy, RefreshCw, Clock, Users,
-  Flame, Star, Share2, ChevronUp,
+  Flame, Star, ChevronUp,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { COMPETITION, getCompetitionStatus, type CompetitionStatus } from "@/config/competition";
 import type { CompetitionEntry } from "@/app/api/competition/leaderboard/route";
+
+// ── Mock preview (set false before go-live) ───────────────────────────────────
+const MOCK_MODE = false;
+
+const MOCK_ENTRIES: CompetitionEntry[] = [
+  { rank: 1, address: "0xAbCd1234EF567890abcd1234ef567890ABCD1234", username: "zenmaster", petName: "Blaze", compXp: 4200, compFocusTime: 18340, compSessions: 14, compStreak: 5, compReferrals: 3, points: 14540 },
+  { rank: 2, address: "0x1111222233334444555566667777888899990000", username: "nightowl", petName: "Nova", compXp: 3800, compFocusTime: 15600, compSessions: 12, compStreak: 5, compReferrals: 1, points: 11960 },
+  { rank: 3, address: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", username: "focusking", petName: "Titan", compXp: 3100, compFocusTime: 13200, compSessions: 10, compStreak: 4, compReferrals: 2, points: 10420 },
+  { rank: 4, address: "0xaaaa1111bbbb2222cccc3333dddd4444eeee5555", username: "grindset", petName: "Rex", compXp: 2700, compFocusTime: 11400, compSessions: 9, compStreak: 4, compReferrals: 0, points: 8244 },
+  { rank: 5, address: "0x9999888877776666555544443333222211110000", username: "flowstate", petName: "Aura", compXp: 2300, compFocusTime: 9800, compSessions: 8, compStreak: 3, compReferrals: 1, points: 7390 },
+  { rank: 6, address: "0x1234567890abcdef1234567890abcdef12345678", username: "quietforce", petName: "Vex", compXp: 1900, compFocusTime: 8200, compSessions: 7, compStreak: 3, compReferrals: 0, points: 5282 },
+  { rank: 7, address: "0xfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed", username: "", petName: "Ghost", compXp: 1600, compFocusTime: 6900, compSessions: 6, compStreak: 2, compReferrals: 1, points: 4572 },
+  { rank: 8, address: "0xcafe000011112222333344445555666677778888", username: "deepwork", petName: "Shard", compXp: 1200, compFocusTime: 5100, compSessions: 5, compStreak: 2, compReferrals: 0, points: 3240 },
+  { rank: 9, address: "0x0101010101010101010101010101010101010101", username: "latenight", petName: "Crypt", compXp: 900, compFocusTime: 3800, compSessions: 4, compStreak: 1, compReferrals: 0, points: 1980 },
+  { rank: 10, address: "0xf0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0", username: "starter", petName: "Pip", compXp: 500, compFocusTime: 1800, compSessions: 2, compStreak: 1, compReferrals: 0, points: 1000 },
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -226,8 +242,8 @@ export default function CompetitionPage() {
   const { isAuthenticated, isReady, address } = useAuth();
   const router = useRouter();
 
-  const [status, setStatus] = useState<CompetitionStatus>(getCompetitionStatus);
-  const [entries, setEntries] = useState<CompetitionEntry[]>([]);
+  const [status, setStatus] = useState<CompetitionStatus>(MOCK_MODE ? "live" : getCompetitionStatus);
+  const [entries, setEntries] = useState<CompetitionEntry[]>(MOCK_MODE ? MOCK_ENTRIES : []);
   const [isLoading, setIsLoading] = useState(false);
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -243,7 +259,7 @@ export default function CompetitionPage() {
   }, []);
 
   const fetchLeaderboard = useCallback(async (force = false) => {
-    if (status === "upcoming") return;
+    if (MOCK_MODE || status === "upcoming") return;
     if (force) setIsRefreshing(true);
     else setIsLoading(true);
     setError(null);
@@ -277,15 +293,6 @@ export default function CompetitionPage() {
     (e) => address && e.address.toLowerCase() === address.toLowerCase(),
   );
 
-  const share = () => {
-    const text = `🔥 Focus Blitz is ${status === "live" ? "LIVE" : "coming"}! 5 days of intense focus competition on FocusPet.\n\nJoin me → ${window.location.origin}/app/competition`;
-    if (navigator.share) {
-      navigator.share({ text, url: `${window.location.origin}/app/competition` }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(text);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar onOpenProfile={() => router.push("/app?openProfile=true")} />
@@ -303,15 +310,6 @@ export default function CompetitionPage() {
                     Focus Blitz
                   </span>
                 </div>
-
-                {status === "live" && (
-                  <div className="flex items-center gap-1.5 bg-[#01FF8B15] border border-[#01FF8B]/20 px-3 py-1 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#01FF8B] animate-pulse" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#01FF8B]">
-                      Live
-                    </span>
-                  </div>
-                )}
 
                 {status === "ended" && (
                   <div className="flex items-center gap-1.5 bg-neutral-800/50 border border-neutral-700 px-3 py-1 rounded-full">
@@ -337,13 +335,6 @@ export default function CompetitionPage() {
               </p>
             </div>
 
-            <button
-              onClick={share}
-              className="flex items-center gap-2 bg-[#111111] hover:bg-neutral-800 border border-neutral-800 text-neutral-300 px-4 py-2.5 rounded-full font-semibold text-sm transition-all active:scale-95 shrink-0"
-            >
-              <Share2 size={14} />
-              Share
-            </button>
           </div>
         </div>
 
@@ -509,7 +500,7 @@ export default function CompetitionPage() {
             )}
 
             {/* Scroll to top */}
-            {entries.length > 10 && (
+            {entries.length > 20 && (
               <div className="flex justify-center pt-2">
                 <button
                   onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
