@@ -6,7 +6,7 @@ import {
 } from "wagmi";
 import { useUnifiedWriteContract } from "@/hooks/useUnifiedWriteContract";
 import { FocusPetABI } from "@/config/abi";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
@@ -327,15 +327,19 @@ export function useFocusPet() {
       // The pending-focus-session key stays in localStorage — if they reload,
       // the mount effect below will offer to retry again.
       toast.error(
-        "Couldn't record your session. Tap here to retry.",
-        {
-          duration: Infinity,
-          id: "session-retry",
-          onClick: () => {
-            toast.dismiss("session-retry");
-            recordSession(minutes, superchargeMultiplier);
-          },
-        } as any,
+        () =>
+          React.createElement(
+            "span",
+            {
+              style: { cursor: "pointer" },
+              onClick: () => {
+                toast.dismiss("session-retry");
+                recordSession(minutes, superchargeMultiplier);
+              },
+            },
+            "Session not recorded — tap to retry.",
+          ),
+        { duration: Infinity, id: "session-retry" },
       );
     } finally {
       setIsSigning(false);
@@ -355,16 +359,19 @@ export function useFocusPet() {
         return;
       }
       toast(
-        `You have an unrecorded session (${Math.round(minutes)} min). Tap to save it.`,
-        {
-          duration: 20_000,
-          id: "session-restore",
-          icon: "⚠️",
-          onClick: () => {
-            toast.dismiss("session-restore");
-            recordSession(minutes, multiplier ?? 1);
-          },
-        } as any,
+        () =>
+          React.createElement(
+            "span",
+            {
+              style: { cursor: "pointer" },
+              onClick: () => {
+                toast.dismiss("session-restore");
+                recordSession(minutes, multiplier ?? 1);
+              },
+            },
+            `⚠️ Unrecorded session (${Math.round(minutes)} min) — tap to save it.`,
+          ),
+        { duration: 20_000, id: "session-restore" },
       );
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
