@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMiniPay } from "@/hooks/useMiniPay";
 import {
@@ -10,7 +10,9 @@ import {
   Trophy,
   ShoppingBag,
   Home,
+  Zap,
 } from "lucide-react";
+import { getCompetitionStatus, type CompetitionStatus } from "@/config/competition";
 import Link from "next/link";
 import { SoundMenu } from "./SoundMenu";
 import { PrivyConnectButton } from "./PrivyConnectButton";
@@ -76,7 +78,14 @@ export function Navbar({
   const APP_HOME = "/app";
   const { playSound } = useAudio();
   const isMiniPay = useIsMiniPay();
+  const [compStatus, setCompStatus] = useState<CompetitionStatus>(getCompetitionStatus);
+  const showBlitz = compStatus === "upcoming" || compStatus === "live";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setCompStatus(getCompetitionStatus()), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isMiniPayModalOpen, setIsMiniPayModalOpen] = useState(false);
 
@@ -185,6 +194,22 @@ export function Navbar({
                   {l.label}
                 </Link>
               ))}
+              {showBlitz && (
+                <Link
+                  href="/app/competition"
+                  className="relative ml-1 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-black transition-all font-outfit"
+                  style={{
+                    background: "linear-gradient(135deg, #C48E57 0%, #d4a26a 100%)",
+                    color: "#000",
+                  }}
+                >
+                  <Zap size={13} fill="currentColor" />
+                  Blitz
+                  {compStatus === "live" && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#01FF8B] border-2 border-black animate-pulse" />
+                  )}
+                </Link>
+              )}
             </nav>
 
             {/* Right side */}
@@ -249,12 +274,35 @@ export function Navbar({
               className="md:hidden overflow-hidden border-t border-neutral-900 bg-black"
             >
               <div className="px-5 py-4 flex flex-col gap-0.5">
+                {showBlitz && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0, duration: 0.2 }}
+                  >
+                    <Link
+                      href="/app/competition"
+                      onClick={closeMenu}
+                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-black transition-colors"
+                      style={{ color: "#C48E57" }}
+                    >
+                      <Zap size={16} fill="currentColor" />
+                      Focus Blitz
+                      {compStatus === "live" && (
+                        <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-[#01FF8B] bg-[#01FF8B15] px-2 py-0.5 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#01FF8B] animate-pulse" />
+                          LIVE
+                        </span>
+                      )}
+                    </Link>
+                  </motion.div>
+                )}
                 {MOBILE_LINKS.map((l, i) => (
                   <motion.div
                     key={l.label}
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05, duration: 0.2 }}
+                    transition={{ delay: (i + (showBlitz ? 1 : 0)) * 0.05, duration: 0.2 }}
                   >
                     <Link
                       href={l.href}

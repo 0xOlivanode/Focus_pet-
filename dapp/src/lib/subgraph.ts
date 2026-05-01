@@ -217,3 +217,69 @@ export async function fetchUserHistory(
   if (!data.user) return null;
   return { user: data.user, dailyActivities: data.dailyActivities };
 }
+
+// ─── Competition queries ──────────────────────────────────────────────────────
+
+export type CompDailyActivity = {
+  date: string;
+  xp: string;
+  focusTime: string;
+  totalSessions: string;
+  user: {
+    id: string;
+    address: string;
+    username: string;
+    petName: string;
+  };
+};
+
+const COMP_ACTIVITIES_QUERY = /* graphql */ `
+  query CompActivities($dateGte: BigInt!, $dateLte: BigInt!, $first: Int!, $skip: Int!) {
+    dailyActivities(
+      where: { date_gte: $dateGte, date_lte: $dateLte }
+      orderBy: date
+      orderDirection: asc
+      first: $first
+      skip: $skip
+    ) {
+      date
+      xp
+      focusTime
+      totalSessions
+      user {
+        id
+        address
+        username
+        petName
+      }
+    }
+  }
+`;
+
+/**
+ * Fetches all DailyActivity records within a date range across all users.
+ * Paginates automatically in batches of 1000.
+ */
+export async function fetchCompetitionActivities(
+  dateGte: number,
+  dateLte: number,
+): Promise<CompDailyActivity[]> {
+  const results: CompDailyActivity[] = [];
+  const PAGE = 1000;
+  let skip = 0;
+
+  while (true) {
+    const data = await query<{ dailyActivities: CompDailyActivity[] }>(
+      COMP_ACTIVITIES_QUERY,
+      { dateGte: dateGte.toString(), dateLte: dateLte.toString(), first: PAGE, skip },
+    );
+
+    const page = data.dailyActivities;
+    results.push(...page);
+
+    if (page.length < PAGE) break;
+    skip += PAGE;
+  }
+
+  return results;
+}

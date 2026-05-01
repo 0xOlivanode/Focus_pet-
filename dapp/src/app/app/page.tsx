@@ -18,6 +18,7 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { PetShop } from "@/components/PetShop";
 import { useIdentityContext } from "@/contexts/IdentityContext";
 import { EngagementRewardBanner } from "@/components/EngagementRewardBanner";
+import { CompetitionBanner } from "@/components/CompetitionBanner";
 
 import { useAccount, useBalance } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -683,6 +684,7 @@ function AppPageContent() {
       <Navbar onOpenProfile={() => setIsEditModalOpen(true)} />
 
       <main className="px-5 sm:px-10 lg:px-[80px] py-[80px] pb-24">
+        <CompetitionBanner />
         {/* ── Hero: Pet card + stats/timer ─────────────────────────────── */}
         <div className="flex flex-col lg:flex-row gap-5 items-center mb-10 gap-x-[107px]">
           {/* Left – XP/Health + PetView + level progress */}
@@ -968,7 +970,7 @@ function AppPageContent() {
             </div>
           </div>
         </div>
-        <EngagementRewardBanner />
+        {/* <EngagementRewardBanner /> */}
       </main>
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}

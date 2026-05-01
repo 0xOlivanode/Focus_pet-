@@ -53,8 +53,9 @@ id = "{userAddress}-{dayTimestamp}" where dayTimestamp = floor(blockTimestamp / 
 type DailyActivity @entity {
   id: ID!
   user: User!
-  date: BigInt!          # Unix timestamp of the start of the UTC day
-  xp: BigInt!            # XP at the last event of this day
-  focusTime: BigInt!     # Cumulative focus time at the last event of this day
-  lastUpdatedAt: BigInt! # Block timestamp of the last update
+  date: BigInt!             # Unix timestamp of the start of the UTC day
+  xp: BigInt!               # XP at the last event of this day
+  focusTime: BigInt!        # Cumulative focus time at the last event of this day
+  totalSessions: BigInt!    # Cumulative session count at the last event of this day
+  lastUpdatedAt: BigInt!    # Block timestamp of the last update
 }

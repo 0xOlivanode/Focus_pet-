@@ -20,7 +20,7 @@ dataSources:
         - DailyActivity
       abis:
         - name: FocusPet
-          file: FocusPet/abis/FocusPet.json
+          file: FocusPet/FocusPet.json
       eventHandlers:
         - event: PetBorn(indexed address)
           handler: handlePetBorn

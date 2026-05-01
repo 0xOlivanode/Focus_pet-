@@ -446,6 +446,19 @@ export class DailyActivity extends Entity {
     this.set("focusTime", Value.fromBigInt(value));
   }
 
+  get totalSessions(): BigInt {
+    let value = this.get("totalSessions");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalSessions(value: BigInt) {
+    this.set("totalSessions", Value.fromBigInt(value));
+  }
+
   get lastUpdatedAt(): BigInt {
     let value = this.get("lastUpdatedAt");
     if (!value || value.kind == ValueKind.NULL) {

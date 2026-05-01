@@ -7,6 +7,7 @@ const SUBDOMAIN_REWRITES: Record<string, string> = {
   "/activities": "/app/activities",
   "/shop": "/app/shop",
   "/guide": "/app/guide",
+  "/competition": "/app/competition",
 };
 
 export function proxy(request: NextRequest) {
@@ -35,7 +36,7 @@ export function proxy(request: NextRequest) {
 
   // On focus-pet.xyz, redirect any app routes to app.focus-pet.xyz
   if (host === "focus-pet.xyz") {
-    const appPaths = ["/app", "/leaderboard", "/activities", "/shop", "/guide"];
+    const appPaths = ["/app", "/leaderboard", "/activities", "/shop", "/guide", "/competition"];
     const isAppRoute = appPaths.some(
       (r) => pathname === r || pathname.startsWith(r + "/"),
     );

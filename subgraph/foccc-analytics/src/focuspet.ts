@@ -103,10 +103,12 @@ function upsertDailyActivity(user: User, blockTimestamp: BigInt): void {
     activity = new DailyActivity(id);
     activity.user = user.id;
     activity.date = dayTimestamp;
+    activity.totalSessions = BigInt.fromI32(0);
   }
 
   activity.xp = user.xp;
   activity.focusTime = user.totalFocusTime;
+  activity.totalSessions = user.totalSessions;
   activity.lastUpdatedAt = blockTimestamp;
   activity.save();
 }
@@ -148,6 +150,7 @@ export function handlePetFed(event: PetFedEvent): void {
 export function handleFocusSessionRecorded(event: FocusSessionRecordedEvent): void {
   let user = getOrCreateUser(event.params.owner);
   user.totalSessions = user.totalSessions.plus(BigInt.fromI32(1));
+  user.xp = user.xp.plus(event.params.xpEarned); // accumulate XP from this session
   user.totalFocusTime = event.params.newTotalFocusTime;
   user.streak = event.params.streak;
   user.health = event.params.newHealth;
