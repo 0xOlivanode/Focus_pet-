@@ -99,15 +99,15 @@ async function buildLeaderboard(): Promise<CompetitionEntry[]> {
 
   const { data: referralRows } = await supabase
     .from("referrals")
-    .select("referrer")
+    .select("inviter_address")
     .gte("created_at", compStart)
     .lte("created_at", compEnd);
 
   // Count referrals per referrer address
   const referralCounts = new Map<string, number>();
   for (const row of referralRows ?? []) {
-    if (!row.referrer) continue;
-    const key = (row.referrer as string).toLowerCase();
+    if (!row.inviter_address) continue;
+    const key = (row.inviter_address as string).toLowerCase();
     referralCounts.set(key, (referralCounts.get(key) ?? 0) + 1);
   }
 

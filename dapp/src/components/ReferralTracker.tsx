@@ -6,6 +6,7 @@ import { isAddress } from "viem";
 import { useAuth } from "@/hooks/useAuth";
 
 const GD_INVITER_KEY = "focuspet_gd_inviter";
+const REF_KEY = "focuspet_referrer";
 
 export function ReferralTracker() {
   const searchParams = useSearchParams();
@@ -36,7 +37,9 @@ export function ReferralTracker() {
   useEffect(() => {
     if (!address || persistedRef.current) return;
 
-    const inviter = localStorage.getItem(GD_INVITER_KEY);
+    // Prefer ?ref= link (InviteButton) over ?invite= (GoodDollar flow)
+    const inviter =
+      localStorage.getItem(REF_KEY) || localStorage.getItem(GD_INVITER_KEY);
     if (!inviter || !isAddress(inviter)) return;
     if (inviter.toLowerCase() === address.toLowerCase()) return; // no self-referral
 
@@ -48,8 +51,12 @@ export function ReferralTracker() {
       body: JSON.stringify({ invitee: address, inviter }),
     })
       .then((res) => {
-        if (res.ok) localStorage.removeItem(GD_INVITER_KEY);
-        else persistedRef.current = false;
+        if (res.ok) {
+          localStorage.removeItem(REF_KEY);
+          localStorage.removeItem(GD_INVITER_KEY);
+        } else {
+          persistedRef.current = false;
+        }
       })
       .catch(() => {
         // Network failure — leave localStorage intact so next mount retries
