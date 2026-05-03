@@ -117,6 +117,8 @@ async function buildLeaderboard(): Promise<CompetitionEntry[]> {
   for (const [userId, bucket] of buckets) {
     if (bucket.compDays.length === 0) continue;
 
+    // Sort ascending by date so lastDay is always the latest snapshot
+    bucket.compDays.sort((a, b) => a.date - b.date);
     const lastDay = bucket.compDays[bucket.compDays.length - 1];
     const base = bucket.baseline ?? { xp: 0, focusTime: 0, sessions: 0 };
 
