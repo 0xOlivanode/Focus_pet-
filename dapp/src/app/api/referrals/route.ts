@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error("[referrals POST]", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ error: "Server error", detail: error.message, code: error.code }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
