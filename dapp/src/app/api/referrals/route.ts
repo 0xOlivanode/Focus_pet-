@@ -57,13 +57,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const { error } = await supabase.from("referrals").upsert(
-    {
-      invitee_address: invitee.toLowerCase(),
-      inviter_address: inviter.toLowerCase(),
-    },
-    { onConflict: "invitee_address", ignoreDuplicates: true },
-  );
+  // Check if this invitee already has a referral (first referral wins)
+  const { data: existing } = await supabase
+    .from("referrals")
+    .select("invitee_address")
+    .eq("invitee_address", invitee.toLowerCase())
+    .maybeSingle();
+
+  if (existing) return NextResponse.json({ ok: true });
+
+  const { error } = await supabase.from("referrals").insert({
+    invitee_address: invitee.toLowerCase(),
+    inviter_address: inviter.toLowerCase(),
+  });
 
   if (error) {
     console.error("[referrals POST]", error);
