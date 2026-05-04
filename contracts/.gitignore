@@ -43,3 +43,6 @@ gasReporterOutput.json
 # Environment
 .env
 
+# Lock files
+yarn.lock
+
