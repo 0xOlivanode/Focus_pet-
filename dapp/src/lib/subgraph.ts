@@ -283,3 +283,70 @@ export async function fetchCompetitionActivities(
 
   return results;
 }
+
+// Relationship-field filtering (`where: { user: $userId }`) is unreliable in
+// specVersion 0.0.5. Instead, we construct entity IDs directly using the known
+// format "{userId}-{dayTimestamp}" and query by `id_in` — no relationship needed.
+const BASELINES_BY_IDS_QUERY = /* graphql */ `
+  query BaselinesByIds($ids: [ID!]!, $first: Int!) {
+    dailyActivities(where: { id_in: $ids }, first: $first) {
+      id
+      date
+      xp
+      focusTime
+      totalSessions
+    }
+  }
+`;
+
+/**
+ * For a batch of users, returns their most recent pre-competition DailyActivity.
+ * Looks back up to `lookbackDays` days before `beforeDayTs`.
+ * Returns a Map from lowercase userId → baseline stats.
+ */
+export async function fetchUserBaselinesById(
+  userIds: string[],
+  beforeDayTs: number,
+  lookbackDays = 28,
+): Promise<Map<string, { xp: number; focusTime: number; sessions: number }>> {
+  if (userIds.length === 0) return new Map();
+
+  const result = new Map<string, { xp: number; focusTime: number; sessions: number }>();
+
+  // Process in batches of 30 users (30 × 28 = 840 IDs, safely under 1000)
+  const BATCH_SIZE = 30;
+  for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+    const batchUsers = userIds.slice(i, i + BATCH_SIZE);
+    const ids: string[] = [];
+    for (const userId of batchUsers) {
+      for (let d = 1; d <= lookbackDays; d++) {
+        ids.push(`${userId}-${beforeDayTs - d * 86400}`);
+      }
+    }
+
+    const data = await query<{
+      dailyActivities: { id: string; date: string; xp: string; focusTime: string; totalSessions: string }[];
+    }>(BASELINES_BY_IDS_QUERY, { ids, first: ids.length });
+
+    // Keep the most recent record per user (parse userId from the id field)
+    const bestByUser = new Map<string, { date: number; xp: number; focusTime: number; sessions: number }>();
+    for (const act of data.dailyActivities) {
+      const userId = act.id.split("-")[0]; // "{userId}-{dayTs}" → userId
+      const date = Number(act.date);
+      const existing = bestByUser.get(userId);
+      if (!existing || date > existing.date) {
+        bestByUser.set(userId, {
+          date,
+          xp: Number(act.xp),
+          focusTime: Number(act.focusTime),
+          sessions: Number(act.totalSessions ?? 0),
+        });
+      }
+    }
+    for (const [userId, entry] of bestByUser) {
+      result.set(userId, { xp: entry.xp, focusTime: entry.focusTime, sessions: entry.sessions });
+    }
+  }
+
+  return result;
+}

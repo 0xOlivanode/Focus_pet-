@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { fetchCompetitionActivities } from "@/lib/subgraph";
+import { fetchCompetitionActivities, fetchUserBaselinesById } from "@/lib/subgraph";
 import { COMPETITION, calcPoints } from "@/config/competition";
 
 export const revalidate = 0; // no static caching — we handle it ourselves
@@ -13,6 +13,9 @@ const supabase = createClient(
 // ── In-memory cache (5-minute TTL) ───────────────────────────────────────────
 let cache: { data: CompetitionEntry[]; ts: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000;
+
+// Bust cache on startup so a fresh deploy always rebuilds immediately
+cache = null;
 
 export type CompetitionEntry = {
   rank: number;
@@ -50,9 +53,9 @@ function calcStreak(activeDayTimestamps: number[]): number {
 }
 
 async function buildLeaderboard(): Promise<CompetitionEntry[]> {
-  // Fetch DailyActivity from May 3 (baseline) through May 8 (end of comp)
+  // Pass 1: only competition days (May 4–8)
   const activities = await fetchCompetitionActivities(
-    COMPETITION.baselineDayTs,
+    COMPETITION.startDayTs,
     COMPETITION.endDayTs,
   );
 
@@ -61,6 +64,7 @@ async function buildLeaderboard(): Promise<CompetitionEntry[]> {
     address: string;
     username: string;
     petName: string;
+    baselineDate: number;
     baseline: { xp: number; focusTime: number; sessions: number } | null;
     compDays: { date: number; xp: number; focusTime: number; sessions: number }[];
   };
@@ -74,6 +78,7 @@ async function buildLeaderboard(): Promise<CompetitionEntry[]> {
         address: act.user.address,
         username: act.user.username,
         petName: act.user.petName,
+        baselineDate: 0,
         baseline: null,
         compDays: [],
       });
@@ -85,12 +90,29 @@ async function buildLeaderboard(): Promise<CompetitionEntry[]> {
     const focusTime = Number(act.focusTime);
     const sessions = Number(act.totalSessions ?? 0);
 
-    if (date === COMPETITION.baselineDayTs) {
-      // May 3 — baseline snapshot before competition
-      bucket.baseline = { xp, focusTime, sessions };
-    } else if (date >= COMPETITION.startDayTs && date <= COMPETITION.endDayTs) {
+    if (date >= COMPETITION.startDayTs && date <= COMPETITION.endDayTs) {
       bucket.compDays.push({ date, xp, focusTime, sessions });
     }
+  }
+
+  // Pass 2: fetch pre-competition baselines by entity ID.
+  // Relationship-field filtering is broken in specVersion 0.0.5, so we construct
+  // DailyActivity IDs directly ("{userId}-{dayTimestamp}") and query via id_in.
+  const competitionUserIds = [...buckets.entries()]
+    .filter(([, b]) => b.compDays.length > 0)
+    .map(([userId]) => userId);
+
+  if (competitionUserIds.length > 0) {
+    const baselines = await fetchUserBaselinesById(competitionUserIds, COMPETITION.startDayTs);
+    let foundCount = 0;
+    for (const userId of competitionUserIds) {
+      const baseline = baselines.get(userId);
+      if (baseline) {
+        foundCount++;
+        buckets.get(userId)!.baseline = baseline;
+      }
+    }
+    console.log(`[competition] baselines: ${foundCount}/${competitionUserIds.length} users have pre-comp data`);
   }
 
   // Fetch competition-window referrals from Supabase
