@@ -217,6 +217,18 @@ export function LandingPage() {
           </span>
         </Link>
       </section>
+
+      <footer className="px-5 sm:px-10 lg:px-20 py-8 border-t border-neutral-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <p className="text-sm text-neutral-400">© {new Date().getFullYear()} FocusPet. All rights reserved.</p>
+        <div className="flex items-center gap-6">
+          <Link href="/terms" className="text-sm text-neutral-400 hover:text-black transition-colors">
+            Terms of Service
+          </Link>
+          <Link href="/privacy" className="text-sm text-neutral-400 hover:text-black transition-colors">
+            Privacy Policy
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -587,7 +587,7 @@ function AppPageContent() {
               onClick={async () => {
                 if (!celoBalance || celoBalance.value < BigInt(1e15)) {
                   toast.error(
-                    "You need a small amount of CELO for gas. Share your address to receive some.",
+                    "You need a small amount of CELO for network fees. Share your address to receive some.",
                   );
                   return;
                 }

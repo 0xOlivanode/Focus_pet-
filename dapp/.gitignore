@@ -20,6 +20,8 @@ node_modules
 # production
 /build
 
+/users.csv
+
 # misc
 .DS_Store
 *.pem
