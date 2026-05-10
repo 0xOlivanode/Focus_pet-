@@ -63,7 +63,8 @@ export function AccountModal({
     address,
     token: GOOD_DOLLAR_ADDRESSES.CELO_MAINNET,
   });
-  const { writeContractAsync, isPending: isGSPending } = useUnifiedWriteContract();
+  const { writeContractAsync, isPending: isGSPending } =
+    useUnifiedWriteContract();
 
   // Close on outside click
   useEffect(() => {
@@ -217,7 +218,7 @@ export function AccountModal({
                   className="w-full flex items-center gap-3 py-3 text-red-500 hover:text-red-400 transition-colors text-sm"
                 >
                   <LogOut size={17} className="text-red-500" />
-                  Disconnect
+                  Logout
                 </button>
               </div>
             </>
