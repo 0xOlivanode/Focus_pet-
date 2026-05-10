@@ -4,7 +4,8 @@ import { injected } from "wagmi/connectors";
 
 // Primary: Alchemy (from env). Fallback: public Ankr endpoint.
 // Never use forno.celo.org as primary — it rate-limits heavy eth_getLogs calls.
-const ALCHEMY_RPC = process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL;
+const ALCHEMY_RPC =
+  "https://celo-mainnet.g.alchemy.com/v2/0gjKvBc8IJsMYVEJKT2_vmjM2AKN2RWs";
 
 export const config = createConfig({
   chains: [celo, celoAlfajores],

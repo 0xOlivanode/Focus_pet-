@@ -47,7 +47,7 @@ const web3AuthConfig: Web3AuthContextConfig = {
         chainNamespace: "eip155",
         chainId: "0xa4ec",
         rpcTarget:
-          process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL ?? "https://forno.celo.org",
+          "https://celo-mainnet.g.alchemy.com/v2/0gjKvBc8IJsMYVEJKT2_vmjM2AKN2RWs",
         displayName: "Celo Mainnet",
         ticker: "CELO",
         tickerName: "Celo",
@@ -86,6 +86,9 @@ const web3AuthConfig: Web3AuthContextConfig = {
 // injected() covers MiniPay + MetaMask.
 // web3AuthConnector bridges Web3Auth into wagmi via the module-level provider store.
 
+let alch_key =
+  "https://celo-mainnet.g.alchemy.com/v2/0gjKvBc8IJsMYVEJKT2_vmjM2AKN2RWs";
+
 export const wagmiConfig = createConfig({
   chains: [celo],
   connectors: [injected(), web3AuthConnector],
@@ -93,8 +96,12 @@ export const wagmiConfig = createConfig({
     [celo.id]: fallback([
       // Alchemy is the primary — authenticated, fastest, rate-limit protected.
       // Public RPCs are fallbacks only; http() with no URL omitted (redundant with forno).
-      ...(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL
-        ? [http(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL)]
+      ...(alch_key
+        ? [
+            http(
+              "https://celo-mainnet.g.alchemy.com/v2/0gjKvBc8IJsMYVEJKT2_vmjM2AKN2RWs",
+            ),
+          ]
         : []),
       http("https://forno.celo.org"),
       http("https://rpc.ankr.com/celo"),
@@ -218,7 +225,8 @@ function Web3AuthWagmiSync() {
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, [web3authIsConnected, provider]);
 
   return null;
