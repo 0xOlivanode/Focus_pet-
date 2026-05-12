@@ -17,17 +17,18 @@ import {
 } from "@/config/contracts";
 
 // ── Config ───────────────────────────────────────────────────────────────────
-const REWARDS_CONTRACT = (
-  process.env.NEXT_PUBLIC_ENGAGEMENT_REWARDS_CONTRACT ||
-  "0x25db74CF4E7BA120526fd87e159CF656d94bAE43"
-) as `0x${string}`;
+const REWARDS_CONTRACT = (process.env.NEXT_PUBLIC_ENGAGEMENT_REWARDS_CONTRACT ||
+  "0x25db74CF4E7BA120526fd87e159CF656d94bAE43") as `0x${string}`;
 
 const pkRaw = process.env.APP_PRIVATE_KEY;
 const PRIVATE_KEY = pkRaw
-  ? pkRaw.startsWith("0x") ? pkRaw : `0x${pkRaw}`
+  ? pkRaw.startsWith("0x")
+    ? pkRaw
+    : `0x${pkRaw}`
   : undefined;
 
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
+const ZERO_ADDRESS =
+  "0x0000000000000000000000000000000000000000" as `0x${string}`;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,12 +50,18 @@ export async function POST(req: NextRequest) {
   try {
     if (!PRIVATE_KEY) {
       console.error("APP_PRIVATE_KEY not configured");
-      return NextResponse.json({ error: "Server not configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Server not configured" },
+        { status: 500 },
+      );
     }
 
     if (!ENGAGEMENT_APP_ADDRESS) {
       console.error("NEXT_PUBLIC_APP_ADDRESS not configured");
-      return NextResponse.json({ error: "Server not configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Server not configured" },
+        { status: 500 },
+      );
     }
 
     // ── 1. Parse and validate body ──────────────────────────────────────────
@@ -73,7 +80,10 @@ export async function POST(req: NextRequest) {
       !userSignature ||
       !isAddress(userAddress)
     ) {
-      return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid parameters" },
+        { status: 400 },
+      );
     }
 
     // ── 2. Read authoritative inviter from DB ───────────────────────────────
@@ -89,7 +99,7 @@ export async function POST(req: NextRequest) {
       const publicClient = createPublicClient({
         chain: celo,
         transport: http(
-          process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL || "https://forno.celo.org",
+          "https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17",
         ),
       });
       const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
@@ -97,7 +107,7 @@ export async function POST(req: NextRequest) {
         account,
         chain: celo,
         transport: http(
-          process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL || "https://forno.celo.org",
+          "https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17",
         ),
       });
 
@@ -128,7 +138,10 @@ export async function POST(req: NextRequest) {
       });
 
       if (!isValid) {
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+        return NextResponse.json(
+          { error: "Invalid signature" },
+          { status: 401 },
+        );
       }
 
       // ── 4. Verify minimum session days via subgraph ─────────────────────
@@ -137,7 +150,9 @@ export async function POST(req: NextRequest) {
         const sessionDays = history?.dailyActivities?.length ?? 0;
         if (sessionDays < ENGAGEMENT_MIN_DAYS) {
           return NextResponse.json(
-            { error: `Need at least ${ENGAGEMENT_MIN_DAYS} days of focus sessions.` },
+            {
+              error: `Need at least ${ENGAGEMENT_MIN_DAYS} days of focus sessions.`,
+            },
             { status: 403 },
           );
         }
@@ -147,12 +162,15 @@ export async function POST(req: NextRequest) {
       }
 
       // ── 5. Sign the claim with app private key ──────────────────────────
-      const { domain: appDomain, types: appTypes, message: appMessage } =
-        await sdk.prepareAppSignature(
-          ENGAGEMENT_APP_ADDRESS,
-          userAddress as `0x${string}`,
-          BigInt(validUntilBlock),
-        );
+      const {
+        domain: appDomain,
+        types: appTypes,
+        message: appMessage,
+      } = await sdk.prepareAppSignature(
+        ENGAGEMENT_APP_ADDRESS,
+        userAddress as `0x${string}`,
+        BigInt(validUntilBlock),
+      );
 
       const signature = await walletClient.signTypedData({
         domain: appDomain,
@@ -161,16 +179,25 @@ export async function POST(req: NextRequest) {
         message: appMessage,
       });
 
-      console.log(`Engagement reward signed for ${userAddress} (inviter: ${inviter})`);
+      console.log(
+        `Engagement reward signed for ${userAddress} (inviter: ${inviter})`,
+      );
 
       // Return inviter so the frontend can pass the exact same value to nonContractAppClaim.
-      return NextResponse.json({ signature, appAddress: account.address, inviter });
+      return NextResponse.json({
+        signature,
+        appAddress: account.address,
+        inviter,
+      });
     } catch (innerErr: any) {
       console.error("Sign reward inner error:", innerErr);
       throw innerErr;
     }
   } catch (error: any) {
     console.error("Sign reward error:", error);
-    return NextResponse.json({ error: "Failed to sign reward" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to sign reward" },
+      { status: 500 },
+    );
   }
 }

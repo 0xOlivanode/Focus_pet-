@@ -69,6 +69,7 @@ export function useEngagementReward() {
 
     // Feature guard — if app address isn't configured, hide the banner silently.
     if (!ENGAGEMENT_APP_ADDRESS) {
+      console.warn("[EngagementReward] ENGAGEMENT_APP_ADDRESS not set — hiding banner");
       setState("unavailable");
       return;
     }
@@ -103,7 +104,11 @@ export function useEngagementReward() {
       }
 
       // 4. Can claim? (checks whitelisting + cooldown + app eligibility)
-      const eligible = await sdk.canClaim(ENGAGEMENT_APP_ADDRESS, address).catch(() => false);
+      const eligible = await sdk.canClaim(ENGAGEMENT_APP_ADDRESS, address).catch((e) => {
+        console.error("[EngagementReward] canClaim error:", e);
+        return false;
+      });
+      console.log("[EngagementReward] canClaim result:", eligible, "app:", ENGAGEMENT_APP_ADDRESS, "user:", address);
       if (!eligible) {
         setState("unavailable");
         return;

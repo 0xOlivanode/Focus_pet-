@@ -35,14 +35,6 @@ const ClaimReward = dynamic(
   () => import("@/components/ClaimReward").then((mod) => mod.ClaimReward),
   { ssr: false },
 );
-// TODO: Engagement rewards — uncomment when cleared for launch
-// const EngagementRewardBanner = dynamic(
-//   () =>
-//     import("@/components/EngagementRewardBanner").then(
-//       (mod) => mod.EngagementRewardBanner,
-//     ),
-//   { ssr: false },
-// );
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
@@ -973,7 +965,9 @@ function AppPageContent() {
             </div>
           </div>
         </div>
-        {/* <EngagementRewardBanner /> */}
+        <div className="max-w-2xl mx-auto">
+          <EngagementRewardBanner />
+        </div>
       </main>
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
