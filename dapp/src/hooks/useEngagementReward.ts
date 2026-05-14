@@ -94,10 +94,18 @@ export function useEngagementReward() {
         return;
       }
 
-      // 3. Fetch reward amount for display (non-critical)
+      // 3. Fetch the user's actual share for display (non-critical).
+      // rewardAmount is the total pool per claim; the user only receives
+      // their slice after the app's userAndInviterPercentage / userPercentage split.
       try {
-        const amount = await sdk.getRewardAmount();
-        setRewardAmount(amount);
+        const [totalAmount, appInfo] = await Promise.all([
+          sdk.getRewardAmount(),
+          sdk.getAppInfo(ENGAGEMENT_APP_ADDRESS),
+        ]);
+        const userAndInviterPct = BigInt(appInfo[5]); // userAndInviterPercentage
+        const userPct = BigInt(appInfo[6]);            // userPercentage
+        const userShare = (totalAmount * userAndInviterPct * userPct) / 10000n;
+        setRewardAmount(userShare);
       } catch {
         // Non-critical — display will fall back to empty
       }
