@@ -3,8 +3,6 @@
 import {
   useAccount,
   useBalance,
-  usePublicClient,
-  useWalletClient,
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
@@ -17,8 +15,6 @@ import {
   Send,
   ArrowLeft,
   Loader2,
-  CheckCircle2,
-  Gift,
   ScanLine,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,12 +22,10 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { parseUnits, isAddress } from "viem";
-import { useIdentitySDK } from "@goodsdks/identity-sdk";
-import { ClaimSDK } from "@goodsdks/citizen-sdk";
-import { GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
 import { miniPayScanQrCode, miniPayGetExchangeRate } from "@/hooks/useMiniPay";
 
-const USDm_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a";
+const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
+const USDT_DECIMALS = 6;
 
 const ERC20_TRANSFER_ABI = [
   {
@@ -55,23 +49,15 @@ interface MiniPayAccountModalProps {
 
 export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProps) {
   const { address } = useAccount();
-  const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
-  const identitySDK = useIdentitySDK("production");
 
   const [view, setView] = useState<View>("main");
   const [copied, setCopied] = useState(false);
 
-  const { data: gDollarBalance, refetch: refetchGBalance } = useBalance({
+  const { data: usdtBalance } = useBalance({
     address,
-    token: GOOD_DOLLAR_ADDRESSES.CELO_MAINNET as `0x${string}`,
-  });
-  const { data: usdmBalance } = useBalance({
-    address,
-    token: USDm_ADDRESS as `0x${string}`,
+    token: USDT_ADDRESS as `0x${string}`,
   });
 
-  // Local currency equivalent for USDm
   const [localRate, setLocalRate] = useState<number | null>(null);
   const [localCurrency, setLocalCurrency] = useState("USD");
   useEffect(() => {
@@ -80,21 +66,12 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
     const currency = tz.startsWith("Africa/Lagos") ? "NGN" : "USD";
     setLocalCurrency(currency);
     if (currency !== "USD") {
-      miniPayGetExchangeRate("USDm", currency).then((r) => {
+      miniPayGetExchangeRate("USDT", currency).then((r) => {
         if (r) setLocalRate(r);
       });
     }
   }, [isOpen]);
 
-  // G$ claim
-  const [claimStatus, setClaimStatus] = useState<
-    "loading" | "can_claim" | "already_claimed" | "not_whitelisted"
-  >("loading");
-  const [entitlement, setEntitlement] = useState<bigint>(BigInt(0));
-  const [isClaiming, setIsClaiming] = useState(false);
-  const [isCheckingClaim, setIsCheckingClaim] = useState(false);
-
-  // Send state
   const [recipient, setRecipient] = useState("");
   const [sendAmount, setSendAmount] = useState("");
   const [sendError, setSendError] = useState("");
@@ -120,15 +97,12 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
     }
   }, [isOpen]);
 
-  // After send → native MiniPay receipt with confetti
   useEffect(() => {
     if (isSendSuccess && sendTxHash) {
-      refetchGBalance();
       window.location.href = `https://link.minipay.xyz/receipt?tx=${sendTxHash}&celebrate`;
     }
   }, [isSendSuccess, sendTxHash]);
 
-  // Error by code/name — not message text
   useEffect(() => {
     if (!sendWriteError) return;
     const name = (sendWriteError as any)?.name ?? "";
@@ -141,59 +115,6 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
       setSendError("Failed — try again");
     }
   }, [sendWriteError]);
-
-  const checkEntitlement = async () => {
-    if (!address || !publicClient || !identitySDK) return;
-    try {
-      setIsCheckingClaim(true);
-      const claimSDK = new ClaimSDK({
-        account: address,
-        publicClient: publicClient as any,
-        walletClient: (walletClient as any) || undefined,
-        identitySDK: identitySDK as any,
-        env: "production",
-      });
-      const walletStatus = await claimSDK.getWalletClaimStatus();
-      setEntitlement(walletStatus.entitlement);
-      setClaimStatus(walletStatus.status as any);
-    } catch {
-      setClaimStatus("not_whitelisted");
-    } finally {
-      setIsCheckingClaim(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen && address && publicClient && identitySDK) checkEntitlement();
-  }, [isOpen, address, !!publicClient, !!identitySDK]);
-
-  const handleClaim = async () => {
-    if (!address || !publicClient || !walletClient || !identitySDK) return;
-    try {
-      setIsClaiming(true);
-      const claimSDK = new ClaimSDK({
-        account: address,
-        publicClient: publicClient as any,
-        walletClient: walletClient as any,
-        identitySDK: identitySDK as any,
-        env: "production",
-      });
-      await claimSDK.claim();
-      toast.success("G$ claimed!");
-      await refetchGBalance();
-      await checkEntitlement();
-    } catch (err: any) {
-      const name = err?.name ?? "";
-      const code = err?.code ?? 0;
-      toast.error(
-        name === "UserRejectedRequestError" || code === 4001
-          ? "Cancelled"
-          : "Claim failed — try again",
-      );
-    } finally {
-      setIsClaiming(false);
-    }
-  };
 
   const copyAddress = () => {
     if (!address) return;
@@ -224,30 +145,24 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
     if (!isAddress(recipient)) { setSendError("Invalid wallet address"); return; }
     const amt = parseFloat(sendAmount);
     if (!sendAmount || isNaN(amt) || amt <= 0) { setSendError("Enter a valid amount"); return; }
-    const balance = gDollarBalance ? parseFloat(gDollarBalance.formatted) : 0;
-    if (amt > balance) { setSendError("Insufficient G$ balance"); return; }
+    const balance = usdtBalance ? parseFloat(usdtBalance.formatted) : 0;
+    if (amt > balance) { setSendError("Insufficient USDT balance"); return; }
     writeContract({
-      address: GOOD_DOLLAR_ADDRESSES.CELO_MAINNET as `0x${string}`,
+      address: USDT_ADDRESS as `0x${string}`,
       abi: ERC20_TRANSFER_ABI,
       functionName: "transfer",
-      args: [recipient as `0x${string}`, parseUnits(sendAmount, gDollarBalance?.decimals ?? 2)],
+      args: [recipient as `0x${string}`, parseUnits(sendAmount, USDT_DECIMALS)],
     });
   };
 
-  const gBalance = gDollarBalance
-    ? parseFloat(gDollarBalance.formatted).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  const usdtFormatted = usdtBalance
+    ? parseFloat(usdtBalance.formatted).toLocaleString(undefined, { maximumFractionDigits: 2 })
     : "—";
 
-  const usdmFormatted = usdmBalance
-    ? parseFloat(usdmBalance.formatted).toLocaleString(undefined, { maximumFractionDigits: 2 })
-    : "—";
-
-  const usdmLocalValue =
-    usdmBalance && localRate && localCurrency !== "USD"
-      ? (parseFloat(usdmBalance.formatted) * localRate).toLocaleString(undefined, { maximumFractionDigits: 0 })
+  const usdtLocalValue =
+    usdtBalance && localRate && localCurrency !== "USD"
+      ? (parseFloat(usdtBalance.formatted) * localRate).toLocaleString(undefined, { maximumFractionDigits: 0 })
       : null;
-
-  const claimAmountDisplay = parseFloat((Number(entitlement) / 1e18).toFixed(2));
 
   return (
     <AnimatePresence>
@@ -293,7 +208,7 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                   />
                 )}
                 <span className="font-bold text-white">
-                  {view === "send" ? "Send G$" : "My Wallet"}
+                  {view === "send" ? "Send USDT" : "My Wallet"}
                 </span>
               </div>
               <button
@@ -333,66 +248,24 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                     />
                   </button>
 
-                  {/* Balances grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* USDm */}
-                    <div className="p-4 rounded-3xl border border-neutral-800 bg-neutral-800/30">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
-                          <span className="text-[9px] text-white font-black">$</span>
-                        </div>
-                        <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
-                          USDm
-                        </span>
+                  {/* USDT balance card */}
+                  <div className="p-5 rounded-3xl border border-neutral-800 bg-neutral-800/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <span className="text-[9px] text-white font-black">$</span>
                       </div>
-                      <div className="font-bold text-lg text-white">
-                        {usdmFormatted}
-                      </div>
-                      {usdmLocalValue && (
-                        <div className="text-[10px] font-medium text-neutral-500 mt-0.5">
-                          ≈ {localCurrency} {usdmLocalValue}
-                        </div>
-                      )}
+                      <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
+                        USDT
+                      </span>
                     </div>
-
-                    {/* G$ */}
-                    <div className="p-4 rounded-3xl border border-neutral-800 bg-neutral-800/30">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                          <span className="text-[9px] text-white font-black">G</span>
-                        </div>
-                        <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
-                          G$
-                        </span>
-                      </div>
-                      <div className="font-bold text-lg text-white">
-                        {gBalance}
-                      </div>
-                      {/* Claim CTA inline */}
-                      <div className="mt-2">
-                        {isCheckingClaim ? (
-                          <Loader2 size={11} className="animate-spin text-neutral-600" />
-                        ) : claimStatus === "can_claim" ? (
-                          <button
-                            onClick={handleClaim}
-                            disabled={isClaiming || entitlement === BigInt(0)}
-                            className="flex items-center gap-1 text-[10px] font-black text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50 uppercase tracking-widest"
-                          >
-                            {isClaiming ? (
-                              <Loader2 size={10} className="animate-spin" />
-                            ) : (
-                              <Gift size={10} />
-                            )}
-                            Claim {claimAmountDisplay > 0 ? `${claimAmountDisplay} G$` : "daily"}
-                          </button>
-                        ) : claimStatus === "already_claimed" ? (
-                          <span className="flex items-center gap-1 text-[10px] font-black text-neutral-600 uppercase tracking-widest">
-                            <CheckCircle2 size={10} />
-                            Claimed today
-                          </span>
-                        ) : null}
-                      </div>
+                    <div className="font-bold text-2xl text-white">
+                      {usdtFormatted}
                     </div>
+                    {usdtLocalValue && (
+                      <div className="text-[10px] font-medium text-neutral-500 mt-0.5">
+                        ≈ {localCurrency} {usdtLocalValue}
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
@@ -441,7 +314,7 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                         <Send size={16} className="text-neutral-300" />
                       </div>
                       <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wide">
-                        Send G$
+                        Send
                       </span>
                     </button>
                   </div>
@@ -463,7 +336,7 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                   <div className="flex items-center justify-between p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a]">
                     <span className="text-xs text-neutral-500 uppercase tracking-widest">Available</span>
                     <span className="font-bold text-white">
-                      {gBalance} <span className="text-neutral-500 font-medium">G$</span>
+                      {usdtFormatted} <span className="text-neutral-500 font-medium">USDT</span>
                     </span>
                   </div>
 
@@ -500,21 +373,19 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                         Amount
                       </label>
                       <button
-                        onClick={() => setSendAmount(gDollarBalance?.formatted ?? "")}
+                        onClick={() => setSendAmount(usdtBalance?.formatted ?? "")}
                         className="text-[10px] font-black text-indigo-400 uppercase tracking-widest"
                       >
-                        Max: {gBalance} G$
+                        Max: {usdtFormatted} USDT
                       </button>
                     </div>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        placeholder="0.00"
-                        value={sendAmount}
-                        onChange={(e) => { setSendAmount(e.target.value); setSendError(""); }}
-                        className="w-full px-5 py-5 bg-[#1a1a1a] border border-neutral-800 rounded-2xl outline-hidden focus:ring-1 focus:ring-indigo-500 font-bold text-3xl text-white placeholder:text-neutral-700 transition-all"
-                      />
-                    </div>
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      value={sendAmount}
+                      onChange={(e) => { setSendAmount(e.target.value); setSendError(""); }}
+                      className="w-full px-5 py-5 bg-[#1a1a1a] border border-neutral-800 rounded-2xl outline-hidden focus:ring-1 focus:ring-indigo-500 font-bold text-3xl text-white placeholder:text-neutral-700 transition-all"
+                    />
                   </div>
 
                   {sendError && (
@@ -530,7 +401,7 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                       {isSending || isSendConfirming ? (
                         <Loader2 size={22} className="animate-spin" />
                       ) : (
-                        <span>Send G$</span>
+                        <span>Send USDT</span>
                       )}
                     </button>
                     <button

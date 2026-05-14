@@ -358,6 +358,9 @@ export function useFocusPet() {
         localStorage.removeItem("pending-focus-session");
         return;
       }
+      // Remove immediately so this toast never loops — if retry also fails,
+      // recordSession will re-save the key for the next mount.
+      localStorage.removeItem("pending-focus-session");
       toast(
         () =>
           React.createElement(

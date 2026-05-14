@@ -965,9 +965,11 @@ function AppPageContent() {
             </div>
           </div>
         </div>
-        <div className="max-w-2xl mx-auto">
-          <EngagementRewardBanner />
-        </div>
+        {!isMiniPayEnv && (
+          <div className="max-w-2xl mx-auto">
+            <EngagementRewardBanner />
+          </div>
+        )}
       </main>
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}

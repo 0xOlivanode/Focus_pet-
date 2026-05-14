@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMiniPay } from "@/hooks/useMiniPay";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,6 +28,7 @@ interface ShopItem {
 export default function ShopPage() {
   const { isAuthenticated, isReady } = useAuth();
   const router = useRouter();
+  const isMiniPay = useIsMiniPay();
   const [category, setCategory] = useState<Category>("consumables");
 
   const {
@@ -221,13 +223,26 @@ export default function ShopPage() {
           <h1 className="text-3xl sm:text-[40px] font-medium tracking-tight">
             Pet Shop
           </h1>
-          <div className="flex items-center gap-2 px-5 py-2.5 bg-[#111111] border border-neutral-800 rounded-full">
-            <span className="text-neutral-500 text-sm">Balance</span>
-            <span className="text-white text-sm font-semibold tabular-nums">
-              {balanceFormatted} G$
-            </span>
-          </div>
+          {!isMiniPay && (
+            <div className="flex items-center gap-2 px-5 py-2.5 bg-[#111111] border border-neutral-800 rounded-full">
+              <span className="text-neutral-500 text-sm">Balance</span>
+              <span className="text-white text-sm font-semibold tabular-nums">
+                {balanceFormatted} G$
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* MiniPay notice */}
+        {isMiniPay && (
+          <div className="flex items-start gap-3 px-5 py-4 mb-6 rounded-2xl border border-neutral-800 bg-[#111111]">
+            <span className="text-lg leading-none mt-0.5">🛍️</span>
+            <div>
+              <p className="text-white text-sm font-semibold mb-0.5">Shop coming soon for MiniPay</p>
+              <p className="text-neutral-500 text-xs">USDT purchases are on the way. You can still equip cosmetics you already own.</p>
+            </div>
+          </div>
+        )}
 
         {/* Active effects */}
         {(isBoostActive || shieldCount > 0) && (
@@ -273,8 +288,10 @@ export default function ShopPage() {
           <AnimatePresence mode="wait">
             {items[category].map((item, i) => {
               const affordable = canAfford(item.price);
+              // In MiniPay: block purchases but allow equip/unequip on owned cosmetics
               const blocked =
-                isPending || item.disabled || (!item.owned && !affordable);
+                isPending || item.disabled || (!item.owned && !affordable) ||
+                (isMiniPay && !item.owned);
 
               return (
                 <motion.div
@@ -305,7 +322,7 @@ export default function ShopPage() {
                         {item.disabledLabel}
                       </span>
                     )}
-                    {!item.owned && !affordable && !item.disabled && (
+                    {!isMiniPay && !item.owned && !affordable && !item.disabled && (
                       <span className="absolute top-3 right-3 text-[11px] font-medium px-2.5 py-1 bg-black/60 border border-neutral-700 rounded-full text-neutral-500">
                         Insufficient G$
                       </span>
