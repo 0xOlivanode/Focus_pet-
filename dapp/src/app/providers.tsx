@@ -10,11 +10,12 @@ import {
   useDisconnect,
   fallback,
   http,
+  createConfig,
 } from "wagmi";
 // useAccount / useConnectors / useDisconnect are used by MiniPayConnector below
 import { injected } from "wagmi/connectors";
 import { PrivyProvider } from "@privy-io/react-auth";
-import { WagmiProvider, createConfig } from "@privy-io/wagmi";
+import { WagmiProvider } from "@privy-io/wagmi";
 import { celo } from "wagmi/chains";
 import { AudioProvider } from "@/hooks/useAudio";
 import { IdentityProvider } from "@/contexts/IdentityContext";
