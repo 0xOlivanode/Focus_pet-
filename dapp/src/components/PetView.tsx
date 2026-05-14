@@ -285,7 +285,7 @@ export function PetView({
                           : "translate-y-[-30px] scale-110"
                 }`}
               >
-                <Image src="/assets/shop/cool-shades.png" width={64} height={64} alt="sunglasses" className="object-contain drop-shadow-lg" />
+                <Image src="https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778747/cool-shades_txvqei.png" width={64} height={64} alt="sunglasses" className="object-contain drop-shadow-lg" />
               </motion.div>
             )}
             {equippedCosmetics.crown && (
@@ -306,7 +306,7 @@ export function PetView({
                           : "translate-y-[-110px] scale-120"
                 } ${isNight ? "brightness-[0.7] contrast-[1.1] drop-shadow-[0_0_15px_rgba(165,180,252,0.4)]" : ""}`}
               >
-                <Image src="/assets/shop/crown.png" width={64} height={64} alt="crown" className="object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
+                <Image src="https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778752/crown_xs1nxk.png" width={64} height={64} alt="crown" className="object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
               </motion.div>
             )}
           </AnimatePresence>

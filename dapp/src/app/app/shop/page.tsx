@@ -83,7 +83,7 @@ export default function ShopPage() {
       {
         id: "apple",
         name: "Cyber Apple",
-        image: "/assets/shop/cyber-apple.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778748/cyber-apple_rn3ksq.png",
         price: 10,
         tag: "+20 Health",
         action: buyFood,
@@ -93,7 +93,7 @@ export default function ShopPage() {
       {
         id: "golden_apple",
         name: "Golden Apple",
-        image: "/assets/shop/golden-apple.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778750/golden-apple_a1ra1b.png",
         price: 30,
         tag: "Max Health",
         action: buySuperFood,
@@ -105,7 +105,7 @@ export default function ShopPage() {
       {
         id: "energy_drink",
         name: "Energy Drink",
-        image: "/assets/shop/energy-drink.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778743/energy-drink_hzoqsb.png",
         price: 25,
         tag: "2x XP (24h)",
         action: buyEnergyDrink,
@@ -115,7 +115,7 @@ export default function ShopPage() {
       {
         id: "shield",
         name: "Streak Shield",
-        image: "/assets/shop/streak-shield.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778745/streak-shield_kepght.png",
         price: 100,
         tag: "Streak Protection",
         action: buyShield,
@@ -127,7 +127,7 @@ export default function ShopPage() {
       {
         id: "sunglasses",
         name: "Cool Shades",
-        image: "/assets/shop/cool-shades.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778747/cool-shades_txvqei.png",
         price: 50,
         tag: "Cosmetic",
         action: () =>
@@ -141,7 +141,7 @@ export default function ShopPage() {
       {
         id: "crown",
         name: "Royal Crown",
-        image: "/assets/shop/crown.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778752/crown_xs1nxk.png",
         price: 500,
         tag: "Legendary",
         action: () =>

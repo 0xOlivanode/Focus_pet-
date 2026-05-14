@@ -15,7 +15,6 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
-import { PetShop } from "@/components/PetShop";
 import { useIdentityContext } from "@/contexts/IdentityContext";
 import { EngagementRewardBanner } from "@/components/EngagementRewardBanner";
 import { CompetitionBanner } from "@/components/CompetitionBanner";
@@ -523,7 +522,7 @@ function AppPageContent() {
             className="relative mb-12 flex items-center justify-center"
           >
             <motion.img
-              src="/assets/pets/cyber_dino/egg_sunny.png"
+              src="https://res.cloudinary.com/dmpulmnb9/image/upload/v1778777438/egg_sunny_tqcx2g.png"
               alt="Your egg"
               animate={{ y: [0, -6, 0] }}
               transition={{

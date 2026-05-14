@@ -36,26 +36,27 @@ export const getPetEmoji = (stage: PetStage): string => {
   }
 };
 
+const CYBER_DINO_ASSETS: Record<string, string> = {
+  egg: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778777438/egg_sunny_tqcx2g.png",
+  baby: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778777435/baby_sunny_jmplzw.png",
+  adult: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778777434/adult_sunny_g4ards.png",
+};
+
 export const getPetAsset = (
   stage: PetStage,
-  weather: WeatherType,
+  _weather: WeatherType,
   species: string = "cyber_dino",
 ): string | null => {
-  // Map internal stages to file names
   const stageMap: Record<PetStage, string> = {
     egg: "egg",
     baby: "baby",
-    teen: "adult", // Using adult for teen/elder for now
+    teen: "adult",
     adult: "adult",
     elder: "adult",
   };
 
-  const fileName = stageMap[stage];
-
-  // For now, the user only has 'sunny' variants
-  // We'll fall back to 'sunny' if requested weather is not available
-  // In the future, this would be: `${fileName}_${weather}.png`
-  return `/assets/pets/${species}/${fileName}_sunny.png`;
+  const key = stageMap[stage];
+  return CYBER_DINO_ASSETS[key] ?? null;
 };
 
 export const getStageName = (stage: PetStage): string => {
