@@ -65,6 +65,7 @@ import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
 import { AppWelcome } from "@/components/AppWelcome";
 import { DailyActionButton } from "@/components/DailyActionButton";
 import { InviteButton } from "@/components/InviteButton";
+import { useIsMiniPay } from "@/hooks/useMiniPay";
 
 import { Suspense } from "react";
 
@@ -139,8 +140,8 @@ function AppPageContent() {
     isNight,
   } = useFocusPet();
 
-  const isMiniPayEnv =
-    typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+  // useIsMiniPay uses useEffect so it reacts after MiniPay injects window.ethereum
+  const isMiniPayEnv = useIsMiniPay();
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
   const { isVerifying, setIsVerifying, isVerified } = useIdentityContext();
@@ -738,7 +739,7 @@ function AppPageContent() {
                   </span>
                 </div>
               )}
-              <DailyActionButton />
+              {!isMiniPayEnv && <DailyActionButton />}
             </div>
             {/* Stats bar */}
             <div className="flex flex-wrap gap-3 items-center">
