@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 
-export function useIsMiniPay(): boolean {
-  const [isMiniPay, setIsMiniPay] = useState(false);
+export function useIsMiniPay(): boolean | null {
+  const [isMiniPay, setIsMiniPay] = useState<boolean | null>(null);
 
   useEffect(() => {
     setIsMiniPay(!!(window.ethereum as any)?.isMiniPay);

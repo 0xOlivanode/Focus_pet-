@@ -754,12 +754,12 @@ function AppPageContent() {
                   </span>
                 </div>
               )}
-              {!isMiniPayEnv && <DailyActionButton />}
+              {isMiniPayEnv === false && <DailyActionButton />}
             </div>
             {/* Stats bar */}
             <div className="flex flex-wrap gap-3 items-center">
               {/* Supercharge — hidden for MiniPay (G$ streaming feature) */}
-              {!isMiniPayEnv && (
+              {isMiniPayEnv === false && (
                 <button
                   onClick={() => setIsSuperchargeOpen(true)}
                   className="px-5 py-3 rounded-full text-sm font-medium whitespace-nowrap"
@@ -867,7 +867,7 @@ function AppPageContent() {
                             {username || "focuser"}
                           </p>
                         </button>
-                        {isVerified && !isMiniPayEnv && (
+                        {isVerified && isMiniPayEnv === false && (
                           <Image
                             src="/SealCheck.svg"
                             width={16}
@@ -913,7 +913,7 @@ function AppPageContent() {
                           {username || "focuser"}
                         </p>
                       </button>
-                      {isVerified && !isMiniPayEnv && (
+                      {isVerified && isMiniPayEnv === false && (
                         <Image
                           src="/SealCheck.svg"
                           width={16}
@@ -983,7 +983,7 @@ function AppPageContent() {
             </div>
           </div>
         </div>
-        {!isMiniPayEnv && (
+        {isMiniPayEnv === false && (
           <div className="max-w-2xl mx-auto">
             <EngagementRewardBanner />
           </div>
@@ -1017,7 +1017,7 @@ function AppPageContent() {
         shieldCount={shieldCount}
       />
 
-      {!isMiniPayEnv && (
+      {isMiniPayEnv === false && (
         <SuperchargeModal
           isOpen={isSuperchargeOpen}
           onClose={() => setIsSuperchargeOpen(false)}

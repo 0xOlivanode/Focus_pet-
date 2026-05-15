@@ -296,7 +296,7 @@ export default function ShopPage() {
               // In MiniPay: block purchases but allow equip/unequip on owned cosmetics
               const blocked =
                 isPending || item.disabled || (!item.owned && !affordable) ||
-                (isMiniPay && !item.owned);
+                (isMiniPay === true && !item.owned);
 
               return (
                 <motion.div
