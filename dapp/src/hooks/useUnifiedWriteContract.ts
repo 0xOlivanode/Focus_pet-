@@ -6,7 +6,7 @@ import { celo } from "wagmi/chains";
 import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { useWeb3Auth } from "@web3auth/modal/react";
 import { useState, useCallback, useRef } from "react";
-import { IS_MINIPAY } from "@/lib/miniPayEthereum";
+import { IS_MINIPAY, nativeMiniPayEthereum } from "@/lib/miniPayEthereum";
 
 type WriteContractParams = {
   address: `0x${string}`;
@@ -15,16 +15,9 @@ type WriteContractParams = {
   args?: readonly unknown[];
   gas?: bigint;
   value?: bigint;
-  feeCurrency?: `0x${string}`; // used by Web3Auth/Privy paths; stripped for MiniPay
+  feeCurrency?: `0x${string}`; // used by Web3Auth/Privy; stripped for MiniPay
 };
 
-/**
- * Drop-in replacement for wagmi's useWriteContract that works for all auth types.
- *
- * Priority order: MiniPay → Web3Auth → Privy
- * IS_MINIPAY is captured at module-load time (before Privy/Web3Auth can override
- * window.ethereum) so MiniPay detection is immune to provider injection.
- */
 export function useUnifiedWriteContract() {
   const {
     writeContractAsync: wagmiWriteAsync,
@@ -34,7 +27,6 @@ export function useUnifiedWriteContract() {
     reset: wagmiReset,
   } = useWriteContract();
 
-  // Live provider from React context — always current even after tab resume.
   const { provider: liveWeb3AuthProvider, isConnected: web3authIsConnected } = useWeb3Auth();
   const liveProviderRef = useRef(liveWeb3AuthProvider);
   liveProviderRef.current = liveWeb3AuthProvider;
@@ -54,24 +46,43 @@ export function useUnifiedWriteContract() {
 
       if (IS_MINIPAY) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Use wagmi's standard writeContract with type:"legacy" — exactly the
-        // pattern Blokaz uses (see blokaz/src/hooks/useBlokzGame.ts).
+        // Use nativeMiniPayEthereum directly — do NOT route through wagmi's
+        // writeContractAsync, which requires a connected account in wagmi's
+        // store and throws "MetaMask not connected" if the connector hasn't
+        // fully registered yet after the provider-tree switch.
         //
-        // type:"legacy" — MiniPay only supports type-0 (legacy) transactions.
+        // 1. eth_requestAccounts — auto-authorizes in MiniPay (no popup),
+        //    returns the address instantly, and ensures the provider is ready.
         //
-        // feeCurrency is intentionally stripped — MiniPay handles fee
-        // abstraction natively by picking from the user's stablecoin balance.
-        // feeCurrency requires CIP-64 (type 0x7b). Sending both type:"legacy"
-        // AND feeCurrency is a protocol contradiction that breaks the tx.
+        // 2. walletClient.writeContract with type:"legacy" —
+        //    MiniPay only supports type-0 (legacy) transactions.
+        //    feeCurrency is stripped: it requires CIP-64 (type 0x7b), which is
+        //    incompatible with type:"legacy". MiniPay selects the fee token
+        //    from the user's balance automatically.
         //
-        // gas is forwarded when provided by callers to skip eth_estimateGas.
+        // 3. gas forwarded when provided — skips eth_estimateGas.
+        if (!nativeMiniPayEthereum) throw new Error("MiniPay provider not found");
         setIsPending(true);
         try {
+          const accounts = await (nativeMiniPayEthereum as any).request({
+            method: "eth_requestAccounts",
+          }) as string[];
+          const account = accounts[0] as `0x${string}`;
+          if (!account) throw new Error("MiniPay not connected — reload and try again");
+
+          const walletClient = createWalletClient({
+            chain: celo,
+            transport: custom(nativeMiniPayEthereum as any),
+          });
+
           const { feeCurrency: _stripped, ...rest } = params as any;
-          const txHash = await wagmiWriteAsync({
-            ...rest,
+          const txHash = await walletClient.writeContract({
+            ...(rest as any),
+            account,
+            chain: celo,
             type: "legacy",
-          } as Parameters<typeof wagmiWriteAsync>[0]);
+          } as Parameters<typeof walletClient.writeContract>[0]);
+
           setHash(txHash);
           return txHash;
         } catch (err) {
@@ -84,7 +95,6 @@ export function useUnifiedWriteContract() {
 
       } else if (w3aProvider) {
         // ── Web3Auth ─────────────────────────────────────────────────────────
-        // Bypass wagmi entirely; sign with the Web3Auth EIP1193 provider.
         setIsPending(true);
         try {
           const walletClient = createWalletClient({
