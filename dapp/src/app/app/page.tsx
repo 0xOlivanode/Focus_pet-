@@ -3,7 +3,6 @@ import React from "react";
 import Image from "next/image";
 import { FocusTimer } from "@/components/FocusTimer";
 import { PetView } from "@/components/PetView";
-import { ImpactDashboard } from "@/components/ImpactDashboard";
 import {
   PetStage,
   PetMood,
@@ -656,6 +655,23 @@ function AppPageContent() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* MiniPay required footer links */}
+        {isMiniPayEnv && (
+          <div className="pb-8 pt-2 flex items-center justify-center gap-3 flex-wrap px-4">
+            <a href="/privacy" className="text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors">
+              Privacy Policy
+            </a>
+            <span className="text-neutral-800 text-[11px]">·</span>
+            <a href="/terms" className="text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors">
+              Terms & Conditions
+            </a>
+            <span className="text-neutral-800 text-[11px]">·</span>
+            <a href="mailto:salaki1902@gmail.com" className="text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors">
+              Support
+            </a>
+          </div>
+        )}
       </div>
     );
   }
@@ -742,29 +758,31 @@ function AppPageContent() {
             </div>
             {/* Stats bar */}
             <div className="flex flex-wrap gap-3 items-center">
-              {/* Supercharge */}
-              <button
-                onClick={() => setIsSuperchargeOpen(true)}
-                className="px-5 py-3 rounded-full text-sm font-medium whitespace-nowrap"
-                style={
-                  isStreaming
-                    ? {
-                        background:
-                          "linear-gradient(90deg, #342804, #E73B74, #342804)",
-                        color: "#ffffff",
-                      }
-                    : { background: "#ffffff", color: "#000000" }
-                }
-              >
-                {isStreaming ? (
-                  <span className="flex items-center gap-2">
-                    <Zap size={14} fill="#E1AA02" color="#E1AA02" />
-                    Supercharged
-                  </span>
-                ) : (
-                  "Supercharge"
-                )}
-              </button>
+              {/* Supercharge — hidden for MiniPay (G$ streaming feature) */}
+              {!isMiniPayEnv && (
+                <button
+                  onClick={() => setIsSuperchargeOpen(true)}
+                  className="px-5 py-3 rounded-full text-sm font-medium whitespace-nowrap"
+                  style={
+                    isStreaming
+                      ? {
+                          background:
+                            "linear-gradient(90deg, #342804, #E73B74, #342804)",
+                          color: "#ffffff",
+                        }
+                      : { background: "#ffffff", color: "#000000" }
+                  }
+                >
+                  {isStreaming ? (
+                    <span className="flex items-center gap-2">
+                      <Zap size={14} fill="#E1AA02" color="#E1AA02" />
+                      Supercharged
+                    </span>
+                  ) : (
+                    "Supercharge"
+                  )}
+                </button>
+              )}
 
               {/* Boosts */}
               {(() => {
@@ -849,7 +867,7 @@ function AppPageContent() {
                             {username || "focuser"}
                           </p>
                         </button>
-                        {isVerified && (
+                        {isVerified && !isMiniPayEnv && (
                           <Image
                             src="/SealCheck.svg"
                             width={16}
@@ -895,7 +913,7 @@ function AppPageContent() {
                           {username || "focuser"}
                         </p>
                       </button>
-                      {isVerified && (
+                      {isVerified && !isMiniPayEnv && (
                         <Image
                           src="/SealCheck.svg"
                           width={16}
@@ -970,6 +988,23 @@ function AppPageContent() {
             <EngagementRewardBanner />
           </div>
         )}
+
+        {/* MiniPay required footer links */}
+        {isMiniPayEnv && (
+          <div className="pt-6 pb-10 flex items-center justify-center gap-3 flex-wrap px-4">
+            <a href="/privacy" className="text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors">
+              Privacy Policy
+            </a>
+            <span className="text-neutral-800 text-[11px]">·</span>
+            <a href="/terms" className="text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors">
+              Terms & Conditions
+            </a>
+            <span className="text-neutral-800 text-[11px]">·</span>
+            <a href="mailto:salaki1902@gmail.com" className="text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors">
+              Support
+            </a>
+          </div>
+        )}
       </main>
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
@@ -982,14 +1017,16 @@ function AppPageContent() {
         shieldCount={shieldCount}
       />
 
-      <SuperchargeModal
-        isOpen={isSuperchargeOpen}
-        onClose={() => setIsSuperchargeOpen(false)}
-        isStreaming={isStreaming}
-        flowRate={flowRate ?? undefined}
-        onStart={startSupercharge}
-        onStop={stopSupercharge}
-      />
+      {!isMiniPayEnv && (
+        <SuperchargeModal
+          isOpen={isSuperchargeOpen}
+          onClose={() => setIsSuperchargeOpen(false)}
+          isStreaming={isStreaming}
+          flowRate={flowRate ?? undefined}
+          onStart={startSupercharge}
+          onStop={stopSupercharge}
+        />
+      )}
 
       <NamingModal
         isOpen={isEditModalOpen}

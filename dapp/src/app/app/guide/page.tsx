@@ -10,10 +10,10 @@ import {
   ShoppingBag,
   ShieldCheck,
   Trophy,
-  Star,
   Globe,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { useIsMiniPay } from "@/hooks/useMiniPay";
 
 const sections = [
   {
@@ -78,7 +78,47 @@ const sections = [
   },
 ];
 
+const miniPaySections = [
+  {
+    id: "core",
+    nav: "The core loop",
+    title: "Focus. Earn. Evolve.",
+    description:
+      "FocusPet turns your deep work into a living creature. Complete focus sessions to hatch your egg, earn XP, and evolve your pet from a baby all the way to an Elder.",
+    stats: [
+      { icon: Zap, label: "10 min minimum to earn XP" },
+      { icon: Coins, label: "Earn rewards for every session" },
+      { icon: ArrowRight, label: "5 evolution stages to unlock" },
+    ],
+  },
+  {
+    id: "consistent",
+    nav: "Stay consistent",
+    title: "Your Pet Can Die",
+    description:
+      "Health decays every day you don't focus. Hit 0% and your pet dies — you'll need to buy items to revive it. Stay consistent or keep it fed to stay alive.",
+    stats: [
+      { icon: Heart, label: "Health drops daily without sessions" },
+      { icon: ShoppingBag, label: "Buy Food from the Shop to heal" },
+      { icon: ShieldCheck, label: "Shields block decay for 24h" },
+    ],
+  },
+  {
+    id: "compete",
+    nav: "Compete globally",
+    title: "Climb the Leaderboard",
+    description:
+      "Every session earns XP that pushes you up the global leaderboard. Compete with Focusers worldwide — your rank, streak, and pet stage are all visible to everyone.",
+    stats: [
+      { icon: Trophy, label: "Live rankings updated in real-time" },
+      { icon: ShieldCheck, label: "Verified badge for top credibility" },
+      { icon: Zap, label: "Streaks shown on your public profile" },
+    ],
+  },
+];
+
 export default function GuidePage() {
+  const isMiniPay = useIsMiniPay();
   const [active, setActive] = useState(0);
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const navRef = useRef<HTMLDivElement>(null);
@@ -106,7 +146,9 @@ export default function GuidePage() {
     setConnectorHeight(btnRect.height);
   }, []);
 
-  const section = sections[active];
+  const displaySections = isMiniPay ? miniPaySections : sections;
+  const activeIndex = Math.min(active, displaySections.length - 1);
+  const section = displaySections[activeIndex];
 
   return (
     <div className="min-h-screen bg-black">
@@ -124,7 +166,7 @@ export default function GuidePage() {
             ref={navRef}
             className="relative flex flex-col gap-3 shrink-0 w-[190px]"
           >
-            {sections.map((s, i) => (
+            {displaySections.map((s, i) => (
               <button
                 key={s.id}
                 ref={(el) => {
@@ -201,7 +243,7 @@ export default function GuidePage() {
         <div className="md:hidden flex flex-col gap-6">
           {/* Horizontal scrolling tabs */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {sections.map((s, i) => (
+            {displaySections.map((s, i) => (
               <button
                 key={s.id}
                 onClick={() => setActive(i)}

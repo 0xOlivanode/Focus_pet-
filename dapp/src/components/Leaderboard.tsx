@@ -1,5 +1,6 @@
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMiniPay } from "@/hooks/useMiniPay";
 import { SocialShare } from "./SocialShare";
 import { getPetEmoji, getPetStage } from "@/utils/pet";
 import { VerifiedBadge } from "./VerifiedBadge";
@@ -22,6 +23,7 @@ function formatXP(xp: number): string {
 
 export function Leaderboard() {
   const { address } = useAuth();
+  const isMiniPay = useIsMiniPay();
   const { topTen, isLoading, totalUsers } = useLeaderboard();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
@@ -118,7 +120,7 @@ export function Leaderboard() {
                       ? <Check size={9} className="text-emerald-500" />
                       : <Copy size={9} />}
                   </button>
-                  {entry.isVerified && <VerifiedBadge size={11} />}
+                  {entry.isVerified && !isMiniPay && <VerifiedBadge size={11} />}
                   {isMe && (
                     <span className="text-[8px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tight shrink-0">
                       YOU

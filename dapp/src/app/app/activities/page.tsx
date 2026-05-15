@@ -3,9 +3,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMiniPay } from "@/hooks/useMiniPay";
 import { Navbar } from "@/components/Navbar";
 import { fetchUserHistory, UserHistory, DailyActivity } from "@/lib/subgraph";
-import { getPetEmoji, getPetStage, STAGE_THRESHOLD } from "@/utils/pet";
+import { getPetStage, STAGE_THRESHOLD } from "@/utils/pet";
 import { useStreaming } from "@/hooks/useStreaming";
 import { formatEther } from "viem";
 import { motion } from "framer-motion";
@@ -123,6 +124,7 @@ function XPChart({
 export default function ActivitiesPage() {
   const { isAuthenticated, isReady, address } = useAuth();
   const router = useRouter();
+  const isMiniPay = useIsMiniPay();
   const { globalUbiBalance, isStreaming, flowRate, lastUpdated } =
     useStreaming();
 
@@ -207,7 +209,7 @@ export default function ActivitiesPage() {
   const avgPerSession =
     totalSessions > 0 ? Math.round(focusTime / totalSessions) : 0;
 
-  const stats = [
+  const allStats = [
     { label: "Total XP", value: xp.toLocaleString() },
     { label: "Focus Time", value: fmtHours(focusTime) },
     { label: "Streak", value: `${streak} days` },
@@ -223,6 +225,9 @@ export default function ActivitiesPage() {
       value: avgPerSession > 0 ? fmtHours(avgPerSession) : "—",
     },
   ];
+  const stats = isMiniPay
+    ? allStats.filter((s) => s.label !== "UBI Donated")
+    : allStats;
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -230,59 +235,67 @@ export default function ActivitiesPage() {
 
       <div className="px-5 sm:px-8 lg:px-[80px] py-12">
         {/* ── Hero ─────────────────────────────────────────── */}
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start mb-10 justify-between">
-          {/* Left: title + description */}
-          <div className="lg:w-[340px] shrink-0">
-            <p className="text-neutral-500 text-sm mb-3">
-              Your focus helps fund global UBI
-            </p>
-            <h1 className="text-[72px] sm:text-[88px] font-medium leading-none tracking-tight mb-6">
-              Social
-              <br />
-              Impact
-            </h1>
-            <p className="text-neutral-500 text-sm leading-relaxed">
-              FocusPet is built on GoodDollar, a UBI protocol serving thousands
-              globally. Every focus session and purchase streams value directly
-              to the pool.
-            </p>
-          </div>
+        {!isMiniPay && (
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start mb-10 justify-between">
+            {/* Left: title + description */}
+            <div className="lg:w-[340px] shrink-0">
+              <p className="text-neutral-500 text-sm mb-3">
+                Your focus helps fund global UBI
+              </p>
+              <h1 className="text-[72px] sm:text-[88px] font-medium leading-none tracking-tight mb-6">
+                Social
+                <br />
+                Impact
+              </h1>
+              <p className="text-neutral-500 text-sm leading-relaxed">
+                FocusPet is built on GoodDollar, a UBI protocol serving thousands
+                globally. Every focus session and purchase streams value directly
+                to the pool.
+              </p>
+            </div>
 
-          {/* Right: community + your total card */}
-          <div className="min-w-0">
-            <div className="border border-neutral-800 rounded-2xl overflow-hidden">
-              <div className="grid grid-cols-2 divide-x divide-dashed divide-neutral-700">
-                {/* Community */}
-                <div className="pl-10 py-[80px] pr-[160px] bg-[#0F0F0F]">
-                  <p className="text-neutral-500 text-xl mb-1">Community</p>
-                  <p className="text-xl sm:text-[32px] font-mono font-medium tabular-nums tracking-tight">
-                    {communityLabel}{" "}
-                    <span className="text-neutral-500">G$</span>
-                  </p>
-                </div>
-
-                {/* Your Total */}
-                <div className="px-10 py-[80px] bg-[#0C0C0C] relative">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-neutral-500 text-xl ">Your Total</p>
-                    <span className="text-xs font-medium px-3 py-1.5 bg-[#1a1a1a] border border-neutral-800 rounded-full text-neutral-300">
-                      {rank.name}
-                    </span>
-                  </div>
-                  <p className="text-xl sm:text-[32px] font-mono font-medium tabular-nums tracking-tight">
-                    {fmtG(totalDonated)}{" "}
-                    <span className="text-neutral-500">G$</span>
-                  </p>
-                  {isStreaming && (
-                    <p className="text-xs text-neutral-600 mt-2 tabular-nums">
-                      +{streamedDonation.toFixed(4)} live
+            {/* Right: community + your total card */}
+            <div className="min-w-0">
+              <div className="border border-neutral-800 rounded-2xl overflow-hidden">
+                <div className="grid grid-cols-2 divide-x divide-dashed divide-neutral-700">
+                  {/* Community */}
+                  <div className="pl-10 py-[80px] pr-[160px] bg-[#0F0F0F]">
+                    <p className="text-neutral-500 text-xl mb-1">Community</p>
+                    <p className="text-xl sm:text-[32px] font-mono font-medium tabular-nums tracking-tight">
+                      {communityLabel}{" "}
+                      <span className="text-neutral-500">G$</span>
                     </p>
-                  )}
+                  </div>
+
+                  {/* Your Total */}
+                  <div className="px-10 py-[80px] bg-[#0C0C0C] relative">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-neutral-500 text-xl ">Your Total</p>
+                      <span className="text-xs font-medium px-3 py-1.5 bg-[#1a1a1a] border border-neutral-800 rounded-full text-neutral-300">
+                        {rank.name}
+                      </span>
+                    </div>
+                    <p className="text-xl sm:text-[32px] font-mono font-medium tabular-nums tracking-tight">
+                      {fmtG(totalDonated)}{" "}
+                      <span className="text-neutral-500">G$</span>
+                    </p>
+                    {isStreaming && (
+                      <p className="text-xs text-neutral-600 mt-2 tabular-nums">
+                        +{streamedDonation.toFixed(4)} live
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {isMiniPay && (
+          <h1 className="text-3xl sm:text-[40px] font-medium tracking-tight mb-8">
+            Your Activity
+          </h1>
+        )}
 
         {isLoading ? (
           <div className="space-y-4">

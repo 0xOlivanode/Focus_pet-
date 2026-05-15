@@ -5,10 +5,13 @@ import { useFocusPet } from "@/hooks/useFocusPet";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMiniPay } from "@/hooks/useMiniPay";
 import { useRouter } from "next/navigation";
+import { useAccount, useBalance } from "wagmi";
 import { Navbar } from "@/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatEther } from "viem";
 import toast from "react-hot-toast";
+
+const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
 
 type Category = "consumables" | "boosts" | "cosmetics";
 
@@ -29,6 +32,8 @@ export default function ShopPage() {
   const { isAuthenticated, isReady } = useAuth();
   const router = useRouter();
   const isMiniPay = useIsMiniPay();
+  const { address } = useAccount();
+  const { data: usdtBalance } = useBalance({ address, token: USDT_ADDRESS as `0x${string}` });
   const [category, setCategory] = useState<Category>("consumables");
 
   const {
@@ -223,14 +228,14 @@ export default function ShopPage() {
           <h1 className="text-3xl sm:text-[40px] font-medium tracking-tight">
             Pet Shop
           </h1>
-          {!isMiniPay && (
-            <div className="flex items-center gap-2 px-5 py-2.5 bg-[#111111] border border-neutral-800 rounded-full">
-              <span className="text-neutral-500 text-sm">Balance</span>
-              <span className="text-white text-sm font-semibold tabular-nums">
-                {balanceFormatted} G$
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 px-5 py-2.5 bg-[#111111] border border-neutral-800 rounded-full">
+            <span className="text-neutral-500 text-sm">Balance</span>
+            <span className="text-white text-sm font-semibold tabular-nums">
+              {isMiniPay
+                ? `${usdtBalance ? parseFloat(usdtBalance.formatted).toFixed(2) : "0.00"} USDT`
+                : `${balanceFormatted} G$`}
+            </span>
+          </div>
         </div>
 
         {/* MiniPay notice */}
