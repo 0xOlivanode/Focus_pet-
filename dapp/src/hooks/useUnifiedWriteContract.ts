@@ -25,12 +25,12 @@ type WriteContractParams = {
 /**
  * Drop-in replacement for wagmi's useWriteContract that works for all auth types.
  *
- * Web3Auth users: @privy-io/wagmi's WagmiProvider doesn't allow external connectors
- * to sign txs, so we bypass wagmi entirely and use viem directly with the Web3Auth
- * EIP1193 provider. MiniPay and Privy users go through wagmi as normal.
- *
- * MiniPay users: feeCurrency is set to the USDT adapter so gas is paid in USDT
- * instead of native CELO (which MiniPay users typically don't hold).
+ * Web3Auth users: bypass wagmi and use viem directly with the Web3Auth EIP1193 provider.
+ * MiniPay users: bypass wagmi and use viem directly with window.ethereum — this guarantees
+ *   feeCurrency (USDT adapter) is serialized into the Celo transaction. wagmi strips
+ *   non-standard fields before forwarding to viem, so feeCurrency never reached the
+ *   provider when going through wagmi.
+ * Privy users: wagmi handles it normally (no feeCurrency needed).
  *
  * Provider resolution order for Web3Auth:
  *   1. Live provider from useWeb3Auth() React context — always the freshest reference.
@@ -67,19 +67,31 @@ export function useUnifiedWriteContract() {
         (web3authIsConnected ? (liveProviderRef.current as any) : null) ??
         getWeb3AuthProvider();
 
-      if (w3aProvider) {
-        // Web3Auth user — viem direct, no wagmi connector needed
+      // MiniPay's window.ethereum when confirmed in MiniPay environment
+      const miniPayProvider =
+        isMiniPay === true && typeof window !== "undefined"
+          ? (window.ethereum as any)
+          : null;
+
+      const viemProvider = w3aProvider ?? miniPayProvider;
+
+      if (viemProvider) {
+        // Web3Auth or MiniPay — use viem directly so feeCurrency is serialized correctly.
+        // wagmi strips non-standard EIP-1559 fields before passing to viem, so feeCurrency
+        // never reached MiniPay's provider when going through wagmiWriteAsync.
         setIsPending(true);
         try {
           const walletClient = createWalletClient({
             chain: celo,
-            transport: custom(w3aProvider),
+            transport: custom(viemProvider),
           });
           const [account] = await walletClient.getAddresses();
           const txHash = await walletClient.writeContract({
             ...(params as Parameters<typeof walletClient.writeContract>[0]),
             account,
             chain: celo,
+            // MiniPay users pay gas in USDT — must use the adapter address, not the token address
+            ...(miniPayProvider ? { feeCurrency: USDT_FEE_ADAPTER } : {}),
           });
           setHash(txHash);
           return txHash;
@@ -91,14 +103,12 @@ export function useUnifiedWriteContract() {
           setIsPending(false);
         }
       } else {
-        // Privy / MiniPay — wagmi handles it normally
+        // Privy — wagmi handles it normally
         setIsPending(true);
         try {
-          const txHash = await wagmiWriteAsync({
-            ...(params as Parameters<typeof wagmiWriteAsync>[0]),
-            // MiniPay users pay gas in USDT via the adapter — no native CELO needed
-            ...(isMiniPay === true ? { feeCurrency: USDT_FEE_ADAPTER } : {}),
-          } as Parameters<typeof wagmiWriteAsync>[0]);
+          const txHash = await wagmiWriteAsync(
+            params as Parameters<typeof wagmiWriteAsync>[0],
+          );
           setHash(txHash);
           return txHash;
         } catch (err) {
