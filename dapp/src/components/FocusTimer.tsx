@@ -27,7 +27,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 type TimerState = "idle" | "running" | "paused" | "completed" | "failed";
 
 const STEPS = [
-  5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100, 110, 120,
+  0.5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100, 110, 120,
 ];
 
 interface FocusTimerProps {
@@ -341,7 +341,7 @@ export function FocusTimer({
 
                 {/* Duration pills */}
                 <div className="flex flex-wrap bg-[#141414] rounded-full p-1">
-                  {[10, 25, 45, 60].map((mins) => (
+                  {([0.5, 10, 25, 45, 60] as number[]).map((mins) => (
                     <button
                       key={mins}
                       style={
@@ -351,13 +351,13 @@ export function FocusTimer({
                       }
                       onClick={() => handleDurationSelect(mins)}
                       className={cn(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-all flex-1",
+                        "px-3 py-2 rounded-full text-sm font-medium transition-all flex-1",
                         duration === mins * 60
                           ? "bg-white text-black"
                           : " text-[#646363] hover:text-neutral-200",
                       )}
                     >
-                      {mins === 60 ? "1h" : `${mins}m`}
+                      {mins === 0.5 ? "30s" : mins === 60 ? "1h" : `${mins}m`}
                     </button>
                   ))}
                 </div>
@@ -386,9 +386,11 @@ export function FocusTimer({
                     <RadixSlider.Thumb className="block w-5 h-5 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.5)] focus:outline-none" />
                   </RadixSlider.Root>
                   <span className="text-white text-sm/[100%] font-mono font-medium tabular-nums text-right w-[60px] shrink-0">
-                    {STEPS[sliderIndex] >= 60
-                      ? `${Math.floor(STEPS[sliderIndex] / 60)}h${STEPS[sliderIndex] % 60 > 0 ? ` ${STEPS[sliderIndex] % 60}m` : ""}`
-                      : `${STEPS[sliderIndex]}min`}
+                    {STEPS[sliderIndex] === 0.5
+                      ? "30s"
+                      : STEPS[sliderIndex] >= 60
+                        ? `${Math.floor(STEPS[sliderIndex] / 60)}h${STEPS[sliderIndex] % 60 > 0 ? ` ${STEPS[sliderIndex] % 60}m` : ""}`
+                        : `${STEPS[sliderIndex]}min`}
                   </span>
                 </div>
               </div>
