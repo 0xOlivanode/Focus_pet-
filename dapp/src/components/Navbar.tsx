@@ -111,7 +111,9 @@ export function Navbar({
   if (minimal) {
     return (
       <>
-        <header className="sticky top-0 z-50 w-full bg-black border-b border-neutral-900">
+        {/* Spacer keeps page content below the fixed navbar */}
+        <div className="h-[72px] lg:h-[102px]" aria-hidden="true" />
+        <header className="fixed top-0 left-0 right-0 z-50 w-full bg-black border-b border-neutral-900">
           <div className="px-5 sm:px-10 lg:px-[80px] flex items-center justify-between">
             {/* <span className="font-anton text-white text-xl uppercase tracking-wide select-none">
               Focus Pet
@@ -162,7 +164,9 @@ export function Navbar({
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full bg-black border-b border-neutral-900">
+      {/* Spacer keeps page content below the fixed navbar */}
+      <div className="h-[72px] lg:h-[102px]" aria-hidden="true" />
+      <header className="fixed top-0 left-0 right-0 z-50 w-full bg-black border-b border-neutral-900">
         <div className="px-5 sm:px-10 lg:px-[80px] flex items-center justify-between">
           {/* Logo */}
           <Link href={APP_HOME} className="flex items-center gap-x-2 shrink-0">

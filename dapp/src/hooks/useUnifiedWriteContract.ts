@@ -90,8 +90,12 @@ export function useUnifiedWriteContract() {
             ...(params as Parameters<typeof walletClient.writeContract>[0]),
             account,
             chain: celo,
-            // MiniPay users pay gas in USDT — must use the adapter address, not the token address
-            ...(miniPayProvider ? { feeCurrency: USDT_FEE_ADAPTER } : {}),
+            // MiniPay: set feeCurrency (adapter) and clear explicit gas so the
+            // provider can estimate naturally. An explicit gas limit interferes
+            // with MiniPay's internal stablecoin fee calculation.
+            ...(miniPayProvider
+              ? { feeCurrency: USDT_FEE_ADAPTER, gas: undefined }
+              : {}),
           });
           setHash(txHash);
           return txHash;
