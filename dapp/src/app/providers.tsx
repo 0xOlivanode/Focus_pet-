@@ -4,6 +4,7 @@ import * as React from "react";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  WagmiProvider as StandardWagmiProvider, // used for MiniPay — no Privy connector
   useConnect,
   useAccount,
   fallback,
@@ -11,9 +12,9 @@ import {
   createConfig,
   custom as wagmiCustom,
 } from "wagmi";
+import { WagmiProvider as PrivyWagmiProvider } from "@privy-io/wagmi"; // used for Privy/Web3Auth
 import { injected } from "wagmi/connectors";
 import { PrivyProvider } from "@privy-io/react-auth";
-import { WagmiProvider } from "@privy-io/wagmi";
 import { celo } from "wagmi/chains";
 import { AudioProvider } from "@/hooks/useAudio";
 import { IdentityProvider } from "@/contexts/IdentityContext";
@@ -22,10 +23,7 @@ import { Web3AuthProvider, useWeb3Auth } from "@web3auth/modal/react";
 import type { Web3AuthContextConfig } from "@web3auth/modal/react";
 import { WEB3AUTH_NETWORK } from "@web3auth/modal";
 import type { EIP1193Provider } from "viem";
-import {
-  web3AuthConnector,
-  setWeb3AuthProvider,
-} from "@/lib/web3AuthConnector";
+import { web3AuthConnector, setWeb3AuthProvider } from "@/lib/web3AuthConnector";
 
 if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
   (BigInt.prototype as any).toJSON = function () {
@@ -33,15 +31,9 @@ if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
   };
 }
 
-// ── MiniPay: wipe wagmi's localStorage before it initialises ─────────────────
-// wagmi persists the last-connected connector (Privy / Web3Auth) in localStorage.
-// When MiniPay opens the app that stale session loads, wagmi thinks it is already
-// connected via the wrong connector, and MiniPayConnector's isConnected guard
-// silently skips — leaving window.ethereum unauthorised and every transaction
-// failing with "eth_requestAccounts" error.
-// Clearing all "wagmi.*" keys here (before createConfig runs) guarantees wagmi
-// always starts fresh in MiniPay, so the injected connector is the only one
-// that can connect.
+// ── MiniPay: wipe wagmi localStorage before it initialises ───────────────────
+// Prevents stale Privy/Web3Auth connector sessions from loading and overriding
+// the MiniPay injected connector. Must run before createConfig.
 if (typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
   try {
     Object.keys(localStorage)
@@ -50,8 +42,7 @@ if (typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
   } catch {}
 }
 
-// ── Web3Auth v10 config ───────────────────────────────────────────────────────
-
+// ── Web3Auth config ───────────────────────────────────────────────────────────
 const HIDDEN = { showOnModal: false } as const;
 
 const web3AuthConfig: Web3AuthContextConfig = {
@@ -63,8 +54,7 @@ const web3AuthConfig: Web3AuthContextConfig = {
       {
         chainNamespace: "eip155",
         chainId: "0xa4ec",
-        rpcTarget:
-          "https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17",
+        rpcTarget: "https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17",
         displayName: "Celo Mainnet",
         ticker: "CELO",
         tickerName: "Celo",
@@ -78,18 +68,9 @@ const web3AuthConfig: Web3AuthContextConfig = {
         auth: {
           label: "auth",
           loginMethods: {
-            google: HIDDEN,
-            twitter: HIDDEN,
-            facebook: HIDDEN,
-            discord: HIDDEN,
-            apple: HIDDEN,
-            github: HIDDEN,
-            reddit: HIDDEN,
-            twitch: HIDDEN,
-            linkedin: HIDDEN,
-            line: HIDDEN,
-            kakao: HIDDEN,
-            wechat: HIDDEN,
+            google: HIDDEN, twitter: HIDDEN, facebook: HIDDEN, discord: HIDDEN,
+            apple: HIDDEN, github: HIDDEN, reddit: HIDDEN, twitch: HIDDEN,
+            linkedin: HIDDEN, line: HIDDEN, kakao: HIDDEN, wechat: HIDDEN,
             farcaster: HIDDEN,
           },
         },
@@ -98,19 +79,9 @@ const web3AuthConfig: Web3AuthContextConfig = {
   },
 };
 
-// ── Wagmi config ─────────────────────────────────────────────────────────────
-// @privy-io/wagmi adds Privy's embedded-wallet connector automatically.
-// injected() covers MiniPay + MetaMask.
-// web3AuthConnector bridges Web3Auth into wagmi via the module-level provider store.
-
-let alch_key = "https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17";
-
-// ── Celo transport ───────────────────────────────────────────────────────────
-// Slot 0 (MiniPay only): routes ALL RPC calls through window.ethereum.
-//   MiniPay's sandbox blocks HTTP eth_estimateGas and eth_sendTransaction, so
-//   every call must go through the injected provider. Throws immediately for
-//   non-MiniPay environments so the fallback skips straight to slot 1.
-// Slot 1+ (everyone else): standard HTTP RPCs.
+// ── Transport ─────────────────────────────────────────────────────────────────
+// Slot 0: window.ethereum for MiniPay (throws for non-MiniPay → fallback continues).
+// Slot 1+: HTTP RPCs for everyone else.
 const celoTransport = fallback([
   wagmiCustom({
     async request({ method, params }: { method: string; params?: unknown[] }) {
@@ -119,56 +90,109 @@ const celoTransport = fallback([
       return eth.request({ method, params });
     },
   }),
-  ...(alch_key ? [http("https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17")] : []),
+  http("https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17"),
   http("https://forno.celo.org"),
   http("https://rpc.ankr.com/celo"),
   http("https://1rpc.io/celo"),
 ]);
 
-// Custom injected connector — explicitly targets window.ethereum so wagmi always
-// uses MiniPay's provider, not whatever discovery logic might pick up instead.
-// Same pattern as blokaz/src/config/wagmi.ts.
+// ── Connectors & configs ──────────────────────────────────────────────────────
 export const miniPayConnector = injected({
   target() {
     return {
       id: "injected",
-      name:
-        typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay
-          ? "MiniPay"
-          : "MetaMask",
-      provider:
-        typeof window !== "undefined" ? (window.ethereum as any) : undefined,
+      name: typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay
+        ? "MiniPay"
+        : "MetaMask",
+      provider: typeof window !== "undefined" ? (window.ethereum as any) : undefined,
     };
   },
 });
 
+// MiniPay config — ONLY the injected connector. No Privy, no Web3Auth connectors.
+// Using this with StandardWagmiProvider ensures Privy's WagmiProvider never injects
+// its embedded wallet connector for MiniPay users.
+const miniPayWagmiConfig = createConfig({
+  chains: [celo],
+  connectors: [miniPayConnector],
+  transports: { [celo.id]: celoTransport },
+});
+
+// Full config — Privy WagmiProvider adds its own connector on top of these.
 export const wagmiConfig = createConfig({
   chains: [celo],
   connectors: [miniPayConnector, web3AuthConnector],
-  transports: {
-    [celo.id]: celoTransport,
-  },
+  transports: { [celo.id]: celoTransport },
 });
 
-// ── Providers ─────────────────────────────────────────────────────────────────
+// ── Shared UI ─────────────────────────────────────────────────────────────────
+const toastOptions = {
+  duration: 4000,
+  style: {
+    background: "#111111", color: "#ffffff", border: "1px solid #262626",
+    borderRadius: "999px", padding: "12px 20px", fontSize: "13px",
+    fontWeight: 500, boxShadow: "0 8px 32px rgba(0,0,0,0.6)", maxWidth: "420px",
+  },
+  success: { iconTheme: { primary: "#ffffff", secondary: "#111111" } },
+  error:   { iconTheme: { primary: "#ef4444", secondary: "#111111" } },
+};
 
 const privyAppId = "cmmw8pr3l00lr0cjp282x5v3l";
 
+// ── Providers ─────────────────────────────────────────────────────────────────
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 30_000,
-            gcTime: 5 * 60_000,
-            retry: 1,
-            refetchOnWindowFocus: false,
-          },
-        },
-      }),
+    () => new QueryClient({
+      defaultOptions: {
+        queries: { staleTime: 30_000, gcTime: 5 * 60_000, retry: 1, refetchOnWindowFocus: false },
+      },
+    }),
   );
 
+  // Detect MiniPay after mount to avoid SSR hydration mismatch.
+  // Starts false (matches server). useEffect flips it to true if in MiniPay,
+  // swapping to the lightweight StandardWagmiProvider before the user sees any UI.
+  const [isMiniPay, setIsMiniPay] = React.useState(false);
+  React.useEffect(() => {
+    setIsMiniPay(!!(window.ethereum as any)?.isMiniPay);
+  }, []);
+
+  const appTree = (
+    <MiniPayProvider>
+      <AudioProvider>
+        <IdentityProvider>{children}</IdentityProvider>
+      </AudioProvider>
+    </MiniPayProvider>
+  );
+
+  // ── MiniPay branch ──────────────────────────────────────────────────────────
+  // StandardWagmiProvider: plain wagmi with only miniPayConnector.
+  // Privy's WagmiProvider is deliberately NOT used — it injects Privy's embedded
+  // wallet connector and can auto-restore a Privy session from privy:* localStorage
+  // keys, overriding the MiniPay injected connector even after our wagmi wipe.
+  // PrivyProvider is still rendered so usePrivy() in useAuth doesn't throw.
+  // Web3AuthProvider is still rendered so useWeb3Auth() in useAuth doesn't throw.
+  if (isMiniPay) {
+    return (
+      <Web3AuthProvider config={web3AuthConfig}>
+        <PrivyProvider appId={privyAppId} config={{
+          defaultChain: celo, supportedChains: [celo],
+          loginMethods: ["email", "wallet"],
+          embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
+        }}>
+          <QueryClientProvider client={queryClient}>
+            <StandardWagmiProvider config={miniPayWagmiConfig}>
+              <MiniPayConnector />
+              {appTree}
+              <Toaster position="top-center" toastOptions={toastOptions} />
+            </StandardWagmiProvider>
+          </QueryClientProvider>
+        </PrivyProvider>
+      </Web3AuthProvider>
+    );
+  }
+
+  // ── Full branch (Privy / Web3Auth users) ────────────────────────────────────
   return (
     <Web3AuthProvider config={web3AuthConfig}>
       <PrivyProvider
@@ -177,67 +201,29 @@ export function Providers({ children }: { children: React.ReactNode }) {
           defaultChain: celo,
           supportedChains: [celo],
           appearance: {
-            theme: "#000000",
-            accentColor: "#ffffff",
+            theme: "#000000", accentColor: "#ffffff",
             logo: "/focus-pet-logo.jpeg",
             landingHeader: "Sign in to FocusPet",
             loginMessage: "Raise a pet. Earn G$. Focus more.",
           },
-          embeddedWallets: {
-            ethereum: {
-              createOnLogin: "users-without-wallets",
-            },
-          },
+          embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
           loginMethods: ["email", "wallet"],
         }}
       >
         <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <>
-              <MiniPayConnector />
-              <Web3AuthWagmiSync />
-              <MiniPayProvider>
-                <AudioProvider>
-                  <IdentityProvider>{children}</IdentityProvider>
-                </AudioProvider>
-              </MiniPayProvider>
-              <Toaster
-                position="top-center"
-                toastOptions={{
-                  duration: 4000,
-                  style: {
-                    background: "#111111",
-                    color: "#ffffff",
-                    border: "1px solid #262626",
-                    borderRadius: "999px",
-                    padding: "12px 20px",
-                    fontSize: "13px",
-                    fontWeight: 500,
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-                    maxWidth: "420px",
-                  },
-                  success: {
-                    iconTheme: { primary: "#ffffff", secondary: "#111111" },
-                  },
-                  error: {
-                    iconTheme: { primary: "#ef4444", secondary: "#111111" },
-                  },
-                }}
-              />
-            </>
-          </WagmiProvider>
+          <PrivyWagmiProvider config={wagmiConfig}>
+            <Web3AuthWagmiSync />
+            {appTree}
+            <Toaster position="top-center" toastOptions={toastOptions} />
+          </PrivyWagmiProvider>
         </QueryClientProvider>
       </PrivyProvider>
     </Web3AuthProvider>
   );
 }
 
-// Bridges Web3Auth's EIP1193 provider into wagmi so all wagmi hooks work for Web3Auth users.
-// Pattern mirrors the Delulu reference implementation exactly:
-//   - use connect() (fire-and-forget), NOT connectAsync() — async throws on failure and
-//     its catch block can corrupt state, leaving the user stuck on the loading screen
-//   - get connectors from useConnect(), not a separate useConnectors() call
-//   - no syncedRef needed; wagmi's connect() is idempotent when already connected
+// ── Web3AuthWagmiSync ─────────────────────────────────────────────────────────
+// Only rendered in the full branch — never runs for MiniPay users.
 function Web3AuthWagmiSync() {
   const { provider, isConnected: web3authIsConnected } = useWeb3Auth();
   const { connect, connectors } = useConnect();
@@ -253,12 +239,6 @@ function Web3AuthWagmiSync() {
     if (!web3authIsConnected) setWeb3AuthProvider(null);
   }, [web3authIsConnected]);
 
-  // Re-sync the provider every time the tab regains visibility.
-  // On mobile, locking the screen or switching apps suspends the browser tab.
-  // Web3Auth's internal signing transport dies during suspension — the _provider
-  // reference in the module-level store stays alive but the underlying connection
-  // is dead. Without this, any transaction fired immediately after the user returns
-  // (e.g. a long focus timer completing) uses a dead provider and fails silently.
   React.useEffect(() => {
     if (!web3authIsConnected || !provider) return;
     const handleVisibility = () => {
@@ -267,22 +247,21 @@ function Web3AuthWagmiSync() {
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [web3authIsConnected, provider]);
 
   return null;
 }
 
+// ── MiniPayConnector ──────────────────────────────────────────────────────────
+// Only rendered in the MiniPay branch. Calls eth_requestAccounts via wagmi's
+// connect() — authorises window.ethereum and populates useAccount() with the
+// MiniPay address so useAuth() works.
 function MiniPayConnector() {
   const { connect } = useConnect();
   const { connector } = useAccount();
 
   React.useEffect(() => {
-    // Check the active connector ID, not isConnected — our app has Web3Auth/Privy
-    // connectors too, so isConnected:true could mean a stale non-MiniPay session
-    // is cached. That would suppress auto-connect and leave eth_requestAccounts
-    // uncalled, causing MiniPay to reject every transaction.
     if (connector?.id === "injected") return;
     const timer = setTimeout(() => {
       if (!(window.ethereum as any)?.isMiniPay) return;

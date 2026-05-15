@@ -7,7 +7,6 @@ import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { useWeb3Auth } from "@web3auth/modal/react";
 import { useState, useCallback, useRef } from "react";
 
-
 type WriteContractParams = {
   address: `0x${string}`;
   abi: Abi | readonly unknown[];
@@ -20,17 +19,11 @@ type WriteContractParams = {
 /**
  * Drop-in replacement for wagmi's useWriteContract that works for all auth types.
  *
- * Web3Auth: viem direct with the Web3Auth EIP1193 provider.
- *
- * MiniPay: wagmi writeContract with type:'legacy'.
- *   MiniPay's provider injects feeCurrency from the user's primary stablecoin automatically.
- *   Do NOT set feeCurrency — would break users who hold USDT vs USDm. The miniPayConnector
- *   routes all calls through window.ethereum, bypassing HTTP RPCs MiniPay's sandbox blocks.
- *
- * Privy: standard wagmi writeContract (no overrides needed).
- *
- * Returns the same shape as wagmi's useWriteContract:
- *   { writeContract, writeContractAsync, data, isPending, error, reset }
+ * Priority order: MiniPay → Web3Auth → Privy
+ * MiniPay must be checked first — Web3Auth restores its session independently of
+ * wagmi's localStorage, so w3aProvider can be non-null even inside MiniPay. If
+ * Web3Auth is checked first, every MiniPay transaction routes through Web3Auth's
+ * dead provider and times out.
  */
 export function useUnifiedWriteContract() {
   const {
@@ -54,55 +47,25 @@ export function useUnifiedWriteContract() {
     async (params: WriteContractParams): Promise<`0x${string}`> => {
       setError(null);
 
-      const w3aProvider =
-        (web3authIsConnected ? (liveProviderRef.current as any) : null) ??
-        getWeb3AuthProvider();
+      const isMiniPayEnv =
+        typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay === true;
 
-      const isMiniPayEnv = typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay === true;
+      // Null out Web3Auth provider when in MiniPay so the Web3Auth branch is
+      // never entered — Web3Auth can restore a cached session independently of
+      // wagmi's localStorage wipe and would otherwise hijack MiniPay writes.
+      const w3aProvider = isMiniPayEnv
+        ? null
+        : ((web3authIsConnected ? (liveProviderRef.current as any) : null) ??
+            getWeb3AuthProvider());
 
-      if (w3aProvider) {
-        // ── Web3Auth ─────────────────────────────────────────────────────────
-        // Bypass wagmi entirely; sign with the Web3Auth EIP1193 provider.
-        setIsPending(true);
-        try {
-          const walletClient = createWalletClient({
-            chain: celo,
-            transport: custom(w3aProvider),
-          });
-          const [account] = await walletClient.getAddresses();
-          const txHash = await walletClient.writeContract({
-            ...(params as Parameters<typeof walletClient.writeContract>[0]),
-            account,
-            chain: celo,
-          });
-          setHash(txHash);
-          return txHash;
-        } catch (err) {
-          const e = err instanceof Error ? err : new Error(String(err));
-          setError(e);
-          throw e;
-        } finally {
-          setIsPending(false);
-        }
-
-      } else if (isMiniPayEnv) {
+      if (isMiniPayEnv) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Bypass wagmi connector state entirely — go direct to window.ethereum.
-        //
-        // Why viem-direct and not wagmiWriteAsync:
-        // wagmi persists the last-connected connector (Privy / Web3Auth) in
-        // localStorage. Even with the wagmi localStorage wipe in providers.tsx,
-        // the wipe only fires once per page load. If wagmi reconnects a stale
-        // session during the session (e.g. after Web3AuthWagmiSync fires late),
-        // wagmiWriteAsync would silently route through the wrong connector.
-        // Viem-direct with window.ethereum is unconditional — it never touches
-        // wagmi's connector registry and cannot be derailed by session state.
-        //
-        // eth_requestAccounts — MiniPay requires this before eth_sendTransaction.
-        // type:'legacy' — MiniPay injects feeCurrency from the user's primary
+        // Viem-direct via window.ethereum — bypasses wagmi connector state entirely.
+        // eth_requestAccounts must be called before eth_sendTransaction.
+        // type:'legacy' → MiniPay injects feeCurrency from the user's primary
         //   stablecoin automatically. Do NOT set feeCurrency (breaks USDT users).
-        // gas passthrough — skips eth_estimateGas which times out when the phone
-        //   is backgrounded during a long focus session.
+        // gas passthrough → skips eth_estimateGas (times out when the phone is
+        //   backgrounded during a long focus session).
         setIsPending(true);
         try {
           const accounts: string[] = await (window.ethereum as any).request({
@@ -121,6 +84,31 @@ export function useUnifiedWriteContract() {
             chain: celo,
             type: "legacy",
           } as Parameters<typeof walletClient.writeContract>[0]);
+          setHash(txHash);
+          return txHash;
+        } catch (err) {
+          const e = err instanceof Error ? err : new Error(String(err));
+          setError(e);
+          throw e;
+        } finally {
+          setIsPending(false);
+        }
+
+      } else if (w3aProvider) {
+        // ── Web3Auth ─────────────────────────────────────────────────────────
+        // Bypass wagmi entirely; sign with the Web3Auth EIP1193 provider.
+        setIsPending(true);
+        try {
+          const walletClient = createWalletClient({
+            chain: celo,
+            transport: custom(w3aProvider),
+          });
+          const [account] = await walletClient.getAddresses();
+          const txHash = await walletClient.writeContract({
+            ...(params as Parameters<typeof walletClient.writeContract>[0]),
+            account,
+            chain: celo,
+          });
           setHash(txHash);
           return txHash;
         } catch (err) {
