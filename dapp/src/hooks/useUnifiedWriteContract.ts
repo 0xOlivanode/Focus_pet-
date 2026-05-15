@@ -8,6 +8,12 @@ import { useWeb3Auth } from "@web3auth/modal/react";
 import { useState, useCallback, useRef } from "react";
 import { useMiniPayContext } from "@/contexts/MiniPayContext";
 
+// USDm fee-currency address — same as token address for 18-decimal Mento stablecoins.
+// MiniPay uses this as the default gas-fee token; setting it explicitly creates a
+// CIP-64 transaction (Celo's fee-abstraction type) rather than an EIP-1559 transaction.
+// Do NOT use the USDT/USDC token address here — those require separate adapter contracts.
+const USDM_FEE_CURRENCY = "0x765DE816845861e75A25fCA122bb6898B8B1282a" as const;
+
 type WriteContractParams = {
   address: `0x${string}`;
   abi: Abi | readonly unknown[];
@@ -22,11 +28,11 @@ type WriteContractParams = {
  *
  * Web3Auth: viem direct with the Web3Auth EIP1193 provider.
  *
- * MiniPay: viem direct with window.ethereum and type:'legacy'.
- *   MiniPay only supports legacy (type 0) transactions — EIP-1559 (type 2) and
- *   CIP-64 are not accepted. Gas fee abstraction (stablecoin payment) is handled
- *   natively by MiniPay's provider; dApps must NOT set feeCurrency or explicit gas.
- *   Bypassing wagmi avoids any stale-connector or pending-nonce issues.
+ * MiniPay: viem direct with window.ethereum + feeCurrency (CIP-64).
+ *   requestAddresses() first (eth_requestAccounts) — eth_accounts returns [] until called.
+ *   feeCurrency = USDm address creates a CIP-64 transaction (Celo fee abstraction).
+ *   Do NOT use type:'legacy' — without feeCurrency viem defaults to EIP-1559 which MiniPay rejects.
+ *   No explicit gas — MiniPay estimates natively for stablecoin fee display.
  *
  * Privy: standard wagmi writeContract (no overrides needed).
  *
@@ -86,25 +92,53 @@ export function useUnifiedWriteContract() {
           setIsPending(false);
         }
 
-      } else {
-        // ── MiniPay + Privy ───────────────────────────────────────────────────
-        // MiniPay: type:'legacy' (only type 0 accepted) + no explicit gas so
-        //   MiniPay estimates it natively for stablecoin fee display.
-        //   The wagmi transport's slot 0 routes all RPC calls (including
-        //   eth_estimateGas) through window.ethereum, bypassing the HTTP RPCs
-        //   that MiniPay's sandbox blocks.
-        // Privy: no overrides needed.
-        const isMiniPayUser = isMiniPay === true;
+      } else if (isMiniPay === true && typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
+        // ── MiniPay ──────────────────────────────────────────────────────────
+        // Use viem directly with window.ethereum — bypasses wagmi entirely.
+        // MiniPay's sandbox blocks HTTP eth_estimateGas / eth_sendTransaction,
+        // so all RPC calls must go through window.ethereum.
+        //
+        // feeCurrency creates a CIP-64 transaction (Celo fee abstraction).
+        // Do NOT use type:'legacy' — without feeCurrency viem defaults to
+        // EIP-1559 (type 2) which MiniPay rejects.
+        //
+        // requestAddresses() = eth_requestAccounts — required before any call
+        // because eth_accounts returns [] until accounts are explicitly requested.
         setIsPending(true);
         try {
+          const walletClient = createWalletClient({
+            chain: celo,
+            transport: custom(window.ethereum as Parameters<typeof custom>[0]),
+          });
+          const addresses = await walletClient.requestAddresses();
+          const account = addresses[0];
+          if (!account) {
+            throw new Error(`MiniPay did not return an account (got: ${JSON.stringify(addresses)})`);
+          }
+          // Strip explicit gas — MiniPay must estimate natively for stablecoin fee display.
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { gas: _gas, ...restParams } = params;
-          const txHash = await wagmiWriteAsync({
-            ...(isMiniPayUser
-              ? (restParams as Parameters<typeof wagmiWriteAsync>[0])
-              : (params as Parameters<typeof wagmiWriteAsync>[0])),
-            ...(isMiniPayUser ? { type: "legacy" as const } : {}),
-          } as Parameters<typeof wagmiWriteAsync>[0]);
+          const txHash = await walletClient.writeContract({
+            ...(restParams as Parameters<typeof walletClient.writeContract>[0]),
+            account,
+            chain: celo,
+            feeCurrency: USDM_FEE_CURRENCY,
+          } as Parameters<typeof walletClient.writeContract>[0]);
+          setHash(txHash);
+          return txHash;
+        } catch (err) {
+          const e = err instanceof Error ? err : new Error(String(err));
+          setError(e);
+          throw e;
+        } finally {
+          setIsPending(false);
+        }
+
+      } else {
+        // ── Privy ─────────────────────────────────────────────────────────────
+        setIsPending(true);
+        try {
+          const txHash = await wagmiWriteAsync(params as Parameters<typeof wagmiWriteAsync>[0]);
           setHash(txHash);
           return txHash;
         } catch (err) {
