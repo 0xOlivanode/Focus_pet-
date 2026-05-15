@@ -61,42 +61,6 @@ export function useUnifiedWriteContract() {
         (web3authIsConnected ? (liveProviderRef.current as any) : null) ??
         getWeb3AuthProvider();
 
-      // ── MiniPay ──────────────────────────────────────────────────────────────
-      // Bypass wagmi entirely and sign directly via window.ethereum.
-      // MiniPay only accepts legacy (type 0) transactions; gas fee abstraction
-      // is handled natively — no feeCurrency, no explicit gas.
-      if (isMiniPay === true && typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
-        setIsPending(true);
-        try {
-          const ethereum = window.ethereum as any;
-          // eth_accounts returns [] until eth_requestAccounts is called — MiniPay
-          // resolves this silently (no popup) since the user is inside the mini app.
-          const accounts: string[] = await ethereum.request({ method: "eth_requestAccounts" });
-          const account = accounts[0] as `0x${string}`;
-          const walletClient = createWalletClient({
-            chain: celo,
-            transport: custom(ethereum),
-          });
-          // Strip gas so MiniPay estimates it natively for stablecoin fee display.
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { gas: _gas, ...restParams } = params;
-          const txHash = await walletClient.writeContract({
-            ...(restParams as any),
-            account,
-            chain: celo,
-            type: "legacy" as const,
-          } as Parameters<typeof walletClient.writeContract>[0]);
-          setHash(txHash);
-          return txHash;
-        } catch (err) {
-          const e = err instanceof Error ? err : new Error(String(err));
-          setError(e);
-          throw e;
-        } finally {
-          setIsPending(false);
-        }
-      }
-
       if (w3aProvider) {
         // ── Web3Auth ─────────────────────────────────────────────────────────
         // Bypass wagmi entirely; sign with the Web3Auth EIP1193 provider.
@@ -123,12 +87,24 @@ export function useUnifiedWriteContract() {
         }
 
       } else {
-        // ── Privy ────────────────────────────────────────────────────────────
+        // ── MiniPay + Privy ───────────────────────────────────────────────────
+        // MiniPay: type:'legacy' (only type 0 accepted) + no explicit gas so
+        //   MiniPay estimates it natively for stablecoin fee display.
+        //   The wagmi transport's slot 0 routes all RPC calls (including
+        //   eth_estimateGas) through window.ethereum, bypassing the HTTP RPCs
+        //   that MiniPay's sandbox blocks.
+        // Privy: no overrides needed.
+        const isMiniPayUser = isMiniPay === true;
         setIsPending(true);
         try {
-          const txHash = await wagmiWriteAsync(
-            params as Parameters<typeof wagmiWriteAsync>[0],
-          );
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { gas: _gas, ...restParams } = params;
+          const txHash = await wagmiWriteAsync({
+            ...(isMiniPayUser
+              ? (restParams as Parameters<typeof wagmiWriteAsync>[0])
+              : (params as Parameters<typeof wagmiWriteAsync>[0])),
+            ...(isMiniPayUser ? { type: "legacy" as const } : {}),
+          } as Parameters<typeof wagmiWriteAsync>[0]);
           setHash(txHash);
           return txHash;
         } catch (err) {

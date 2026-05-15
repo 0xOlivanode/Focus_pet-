@@ -4,13 +4,13 @@ import * as React from "react";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  useAccount,
   useConnect,
   useConnectors,
   useDisconnect,
   fallback,
   http,
   createConfig,
+  custom as wagmiCustom,
 } from "wagmi";
 // useAccount / useConnectors / useDisconnect are used by MiniPayConnector below
 import { injected } from "wagmi/connectors";
@@ -90,20 +90,31 @@ const web3AuthConfig: Web3AuthContextConfig = {
 
 let alch_key = "https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17";
 
+// ── Celo transport ───────────────────────────────────────────────────────────
+// Slot 0 (MiniPay only): routes ALL RPC calls through window.ethereum.
+//   MiniPay's sandbox blocks HTTP eth_estimateGas and eth_sendTransaction, so
+//   every call must go through the injected provider. Throws immediately for
+//   non-MiniPay environments so the fallback skips straight to slot 1.
+// Slot 1+ (everyone else): standard HTTP RPCs.
+const celoTransport = fallback([
+  wagmiCustom({
+    async request({ method, params }: { method: string; params?: unknown[] }) {
+      const eth = typeof window !== "undefined" ? (window.ethereum as any) : null;
+      if (!eth?.isMiniPay) throw new Error("not-minipay");
+      return eth.request({ method, params });
+    },
+  }),
+  ...(alch_key ? [http("https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17")] : []),
+  http("https://forno.celo.org"),
+  http("https://rpc.ankr.com/celo"),
+  http("https://1rpc.io/celo"),
+]);
+
 export const wagmiConfig = createConfig({
   chains: [celo],
   connectors: [injected(), web3AuthConnector],
   transports: {
-    [celo.id]: fallback([
-      // Alchemy is the primary — authenticated, fastest, rate-limit protected.
-      // Public RPCs are fallbacks only; http() with no URL omitted (redundant with forno).
-      ...(alch_key
-        ? [http("https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17")]
-        : []),
-      http("https://forno.celo.org"),
-      http("https://rpc.ankr.com/celo"),
-      http("https://1rpc.io/celo"),
-    ]),
+    [celo.id]: celoTransport,
   },
 });
 
@@ -234,16 +245,18 @@ function Web3AuthWagmiSync() {
 function MiniPayConnector() {
   const connectors = useConnectors();
   const { connect } = useConnect();
-  const { isConnected } = useAccount();
   const hasAttempted = React.useRef(false);
 
   React.useEffect(() => {
     if (hasAttempted.current || connectors.length === 0) return;
-    if (!(window.ethereum as any)?.isMiniPay || isConnected) return;
+    // Always connect the injected connector when in MiniPay, regardless of
+    // whether wagmi thinks it's already connected (stale sessions from a
+    // previous Web3Auth/Privy login would otherwise block this).
+    if (!(window.ethereum as any)?.isMiniPay) return;
     hasAttempted.current = true;
     const injectedConnector = connectors.find((c) => c.id === "injected");
     if (injectedConnector) connect({ connector: injectedConnector });
-  }, [connectors, connect, isConnected]);
+  }, [connectors, connect]);
 
   return null;
 }
