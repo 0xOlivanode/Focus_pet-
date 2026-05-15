@@ -1,12 +1,12 @@
 "use client";
 
 import { useWriteContract } from "wagmi";
-import { createWalletClient, custom, encodeFunctionData, type Abi } from "viem";
+import { createWalletClient, custom, type Abi } from "viem";
 import { celo } from "wagmi/chains";
 import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { useWeb3Auth } from "@web3auth/modal/react";
 import { useState, useCallback, useRef } from "react";
-import { IS_MINIPAY, nativeMiniPayEthereum } from "@/lib/miniPayEthereum";
+import { IS_MINIPAY } from "@/lib/miniPayEthereum";
 
 type WriteContractParams = {
   address: `0x${string}`;
@@ -15,16 +15,15 @@ type WriteContractParams = {
   args?: readonly unknown[];
   gas?: bigint;
   value?: bigint;
-  feeCurrency?: `0x${string}`;
+  feeCurrency?: `0x${string}`; // used by Web3Auth/Privy paths; stripped for MiniPay
 };
 
 /**
  * Drop-in replacement for wagmi's useWriteContract that works for all auth types.
  *
  * Priority order: MiniPay → Web3Auth → Privy
- * IS_MINIPAY and nativeMiniPayEthereum are captured at module-load time (before
- * Privy/Web3Auth can override window.ethereum) so MiniPay detection is immune
- * to provider injection that happens during React initialisation.
+ * IS_MINIPAY is captured at module-load time (before Privy/Web3Auth can override
+ * window.ethereum) so MiniPay detection is immune to provider injection.
  */
 export function useUnifiedWriteContract() {
   const {
@@ -48,8 +47,6 @@ export function useUnifiedWriteContract() {
     async (params: WriteContractParams): Promise<`0x${string}`> => {
       setError(null);
 
-      // IS_MINIPAY is captured at module-load time before Privy can override
-      // window.ethereum — safe to use here even if Privy has since injected.
       const w3aProvider = IS_MINIPAY
         ? null
         : ((web3authIsConnected ? (liveProviderRef.current as any) : null) ??
@@ -57,43 +54,24 @@ export function useUnifiedWriteContract() {
 
       if (IS_MINIPAY) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Pattern from MiniPay docs / celopedia skill:
-        //   1. createWalletClient with custom(window.ethereum)
-        //   2. encodeFunctionData manually — skips writeContract()'s eth_call simulation
-        //   3. walletClient.sendTransaction() with type:"legacy" and explicit gas
+        // Use wagmi's standard writeContract with type:"legacy" — exactly the
+        // pattern Blokaz uses (see blokaz/src/hooks/useBlokzGame.ts).
         //
-        // type:"legacy" — MiniPay only handles legacy (non-EIP-1559) transactions.
-        //   Without it, viem may attempt eth_maxFeePerGas / eth_feeHistory calls that hang.
-        // gas — callers always supply an explicit gas limit. Without it, viem calls
-        //   eth_estimateGas before every tx, which hangs in MiniPay's WebView.
-        //   (This is what the working commit at 2792191 got right: gas + type:legacy.)
-        if (!nativeMiniPayEthereum) throw new Error("MiniPay provider not found");
+        // type:"legacy" — MiniPay only supports type-0 (legacy) transactions.
+        //
+        // feeCurrency is intentionally stripped — MiniPay handles fee
+        // abstraction natively by picking from the user's stablecoin balance.
+        // feeCurrency requires CIP-64 (type 0x7b). Sending both type:"legacy"
+        // AND feeCurrency is a protocol contradiction that breaks the tx.
+        //
+        // gas is forwarded when provided by callers to skip eth_estimateGas.
         setIsPending(true);
         try {
-          const walletClient = createWalletClient({
-            chain: celo,
-            transport: custom(nativeMiniPayEthereum),
-          });
-
-          const [account] = await walletClient.getAddresses();
-          if (!account) throw new Error("MiniPay not connected — try reloading");
-
-          const data = encodeFunctionData({
-            abi: params.abi as Abi,
-            functionName: params.functionName,
-            args: params.args,
-          });
-
-          const txHash = await walletClient.sendTransaction({
-            account,
-            to: params.address,
-            data,
+          const { feeCurrency: _stripped, ...rest } = params as any;
+          const txHash = await wagmiWriteAsync({
+            ...rest,
             type: "legacy",
-            ...(params.gas !== undefined && { gas: params.gas }),
-            ...(params.value !== undefined && { value: params.value }),
-            ...(params.feeCurrency !== undefined && { feeCurrency: params.feeCurrency }),
-          } as Parameters<typeof walletClient.sendTransaction>[0]);
-
+          } as Parameters<typeof wagmiWriteAsync>[0]);
           setHash(txHash);
           return txHash;
         } catch (err) {

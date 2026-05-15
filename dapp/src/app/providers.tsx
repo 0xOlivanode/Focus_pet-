@@ -110,10 +110,11 @@ export const miniPayConnector = injected({
   },
 });
 
-// MiniPay config — HTTP-only transport for all read/receipt operations.
-// Writes bypass wagmi entirely (walletClient.sendTransaction via nativeMiniPayEthereum),
-// so the MiniPay WebView slot is not needed here and only adds latency to
-// useWaitForTransactionReceipt polling and useReadContracts calls.
+// MiniPay config — HTTP-only transport for reads and receipt polling.
+// Writes go through wagmi's writeContract with type:"legacy"; the wallet client
+// is created from the injected MiniPay connector (window.ethereum), not this transport.
+// HTTP-only here keeps useWaitForTransactionReceipt fast (Alchemy/Forno instead of
+// MiniPay's WebView, which adds latency for receipt queries).
 const miniPayHttpTransport = fallback([
   http("https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17"),
   http("https://forno.celo.org"),

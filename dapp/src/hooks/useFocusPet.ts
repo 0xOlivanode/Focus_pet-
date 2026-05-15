@@ -14,15 +14,6 @@ import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
 const G_DOLLAR_ADDRESS = GOOD_DOLLAR_ADDRESSES.CELO_MAINNET;
 import { formatEther, erc20Abi } from "viem";
 import { useAuth } from "@/hooks/useAuth";
-import { IS_MINIPAY } from "@/lib/miniPayEthereum";
-
-// MiniPay fee abstraction addresses (celopedia skill — builder-guide.md)
-const USDM_ADDRESS  = "0x765DE816845861e75A25fCA122bb6898B8B1282a" as const;
-const USDT_ADDRESS  = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e" as const;
-const USDC_ADDRESS  = "0xcebA9300f2b948710d2653dD7B07f33A8B32118C" as const;
-// Adapters for USDT/USDC (token addr ≠ fee addr for 6-decimal tokens)
-const USDT_FEE_ADAPTER = "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72" as const;
-const USDC_FEE_ADAPTER = "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B" as const;
 
 export function useFocusPet() {
   // Use useAuth so the address is available as soon as Web3Auth connects,
@@ -143,25 +134,6 @@ export function useFocusPet() {
         abi: FocusPetABI,
         functionName: "goodDollar",
       },
-      // Stablecoin balances for MiniPay fee-currency selection (indices 8-10)
-      {
-        address: USDM_ADDRESS,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [address as `0x${string}`],
-      },
-      {
-        address: USDT_ADDRESS,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [address as `0x${string}`],
-      },
-      {
-        address: USDC_ADDRESS,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [address as `0x${string}`],
-      },
     ],
     query: {
       enabled: !!address,
@@ -180,21 +152,6 @@ export function useFocusPet() {
   const isSunglassesEquipped = multicallData?.[5]?.result;
   const isCrownEquipped = multicallData?.[6]?.result;
   const goodDollarOnChain = multicallData?.[7]?.result;
-  const usdmBalance  = (multicallData?.[8]?.result  as bigint | undefined) ?? 0n;
-  const usdtBalance  = (multicallData?.[9]?.result  as bigint | undefined) ?? 0n;
-  const usdcBalance  = (multicallData?.[10]?.result as bigint | undefined) ?? 0n;
-
-  // Pick the right feeCurrency adapter based on what the user actually holds.
-  // MiniPay defaults to USDm when feeCurrency is omitted — users with only
-  // USDT/USDC would fail to pay fees without this detection.
-  // Only injected on MiniPay; Privy/Web3Auth handle fees natively.
-  const miniPayFeeCurrency: `0x${string}` | undefined = IS_MINIPAY
-    ? usdtBalance > 0n
-      ? USDT_FEE_ADAPTER
-      : usdcBalance > 0n
-        ? USDC_FEE_ADAPTER
-        : USDM_ADDRESS   // USDm token addr == fee addr
-    : undefined;
 
   const refetch = refetchAll;
   const refetchGBalance = refetchAll;
@@ -246,7 +203,6 @@ export function useFocusPet() {
       functionName: "approve",
       args: [CONTRACT_ADDRESS, amount],
       gas: BigInt(100000),
-      feeCurrency: miniPayFeeCurrency,
     });
   };
 
@@ -280,7 +236,6 @@ export function useFocusPet() {
         functionName: "approve",
         args: [CONTRACT_ADDRESS, amount],
         gas: BigInt(100_000),
-        feeCurrency: miniPayFeeCurrency,
       } as any);
     } else {
       writeContract({
@@ -290,7 +245,6 @@ export function useFocusPet() {
         functionName: functionName as any,
         args: args as any,
         gas: BigInt(400_000),
-        feeCurrency: miniPayFeeCurrency,
       } as any);
     }
   };
@@ -313,7 +267,6 @@ export function useFocusPet() {
       functionName: "toggleCosmetic",
       args: [id],
       gas: BigInt(100_000),
-      feeCurrency: miniPayFeeCurrency,
     });
   };
 
@@ -332,7 +285,6 @@ export function useFocusPet() {
       functionName: "setNames",
       args: [username, petName],
       gas: BigInt(200_000),
-      feeCurrency: miniPayFeeCurrency,
     });
   };
 
@@ -344,7 +296,6 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "deleteUser",
       gas: BigInt(200_000),
-      feeCurrency: miniPayFeeCurrency,
     });
   };
 
@@ -376,7 +327,6 @@ export function useFocusPet() {
         // Hard gas limit — skips eth_estimateGas which can time out after
         // mobile backgrounding (the most common failure on long sessions).
         gas: BigInt(400_000),
-        feeCurrency: miniPayFeeCurrency,
       });
       // Clear the pending session on successful submission
       try { localStorage.removeItem("pending-focus-session"); } catch {}
@@ -460,7 +410,6 @@ export function useFocusPet() {
             functionName: item.functionName as any,
             args: item.args as any,
             gas: BigInt(400_000),
-            feeCurrency: miniPayFeeCurrency,
           } as any);
         } else {
           // Fallback for older patterns
@@ -673,7 +622,6 @@ export function useFocusPet() {
         abi: FocusPetABI,
         functionName: "syncImpact",
         gas: BigInt(200_000),
-        feeCurrency: miniPayFeeCurrency,
       });
     } catch (error: any) {
       console.error("Sync impact failed:", error);
