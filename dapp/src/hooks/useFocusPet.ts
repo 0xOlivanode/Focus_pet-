@@ -324,6 +324,10 @@ export function useFocusPet() {
       try { localStorage.removeItem("pending-focus-session"); } catch {}
     } catch (e) {
       console.error("Session Record Error:", e);
+      const errMsg =
+        (e as any)?.shortMessage ||
+        (e as any)?.message ||
+        String(e);
       // Surface a retry toast so the user doesn't silently lose their session.
       // The pending-focus-session key stays in localStorage — if they reload,
       // the mount effect below will offer to retry again.
@@ -338,7 +342,7 @@ export function useFocusPet() {
                 recordSession(minutes, superchargeMultiplier);
               },
             },
-            "Session not recorded — tap to retry.",
+            `Session not recorded — tap to retry. (${errMsg.slice(0, 80)})`,
           ),
         { duration: Infinity, id: "session-retry" },
       );
