@@ -1,6 +1,6 @@
 "use client";
 
-import { useWriteContract } from "wagmi";
+import { useWriteContract, useAccount } from "wagmi";
 import { createWalletClient, custom, type Abi } from "viem";
 import { celo } from "wagmi/chains";
 import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
@@ -45,6 +45,9 @@ export function useUnifiedWriteContract() {
   } = useWriteContract();
 
   const isMiniPay = useMiniPayContext();
+  // wagmi already knows the MiniPay account from the injected connector — use it
+  // directly to skip the eth_accounts RPC call inside getAddresses().
+  const { address: wagmiAddress } = useAccount();
 
   // Live provider from React context — always current even after tab resume.
   const { provider: liveWeb3AuthProvider, isConnected: web3authIsConnected } = useWeb3Auth();
@@ -117,7 +120,10 @@ export function useUnifiedWriteContract() {
             chain: celo,
             transport: custom(window.ethereum as Parameters<typeof custom>[0]),
           });
-          const [account] = await walletClient.getAddresses();
+          // Prefer wagmi's cached address (already set by MiniPayConnector) to
+          // avoid an extra eth_accounts round-trip. Fall back to getAddresses()
+          // if wagmi hasn't connected yet (rare, only on the very first mount).
+          const account = wagmiAddress ?? (await walletClient.getAddresses())[0];
           if (!account) {
             throw new Error("MiniPay eth_accounts returned no address — try reloading the app");
           }
