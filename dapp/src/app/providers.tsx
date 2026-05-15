@@ -259,16 +259,20 @@ function Web3AuthWagmiSync() {
 
 function MiniPayConnector() {
   const { connect } = useConnect();
-  const { isConnected } = useAccount();
+  const { connector } = useAccount();
 
   React.useEffect(() => {
-    if (isConnected) return;
+    // Check the active connector ID, not isConnected — our app has Web3Auth/Privy
+    // connectors too, so isConnected:true could mean a stale non-MiniPay session
+    // is cached. That would suppress auto-connect and leave eth_requestAccounts
+    // uncalled, causing MiniPay to reject every transaction.
+    if (connector?.id === "injected") return;
     const timer = setTimeout(() => {
       if (!(window.ethereum as any)?.isMiniPay) return;
       connect({ connector: miniPayConnector });
     }, 1000);
     return () => clearTimeout(timer);
-  }, [isConnected, connect]);
+  }, [connector, connect]);
 
   return null;
 }

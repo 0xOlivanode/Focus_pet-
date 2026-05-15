@@ -87,17 +87,36 @@ export function useUnifiedWriteContract() {
 
       } else if (isMiniPayEnv) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Use wagmi's writeContract with type:'legacy' — MiniPay's provider
-        // injects feeCurrency from the user's primary stablecoin automatically.
-        // Do NOT set feeCurrency — would break users who hold USDT vs USDm.
-        // The miniPayConnector (window.ethereum) is already wired into wagmiConfig,
-        // so wagmi routes through the injected provider, not HTTP RPCs.
+        // Viem-direct via window.ethereum — bypasses wagmi connector state entirely.
+        // This is critical: wagmi may have a stale Web3Auth/Privy session cached in
+        // localStorage, making isConnected:true for the wrong connector. Using
+        // wagmiWriteAsync would route through that stale connector and fail.
+        //
+        // eth_requestAccounts MUST be called before eth_sendTransaction — MiniPay
+        // rejects send calls without prior authorization even though it auto-injects.
+        //
+        // type:'legacy' → MiniPay injects feeCurrency from user's primary stablecoin.
+        // Do NOT set feeCurrency — breaks users who hold USDT vs USDm.
+        // gas passed through from params — skips eth_estimateGas (times out after
+        // the phone is backgrounded during a long focus session).
         setIsPending(true);
         try {
-          const txHash = await wagmiWriteAsync({
-            ...(params as Parameters<typeof wagmiWriteAsync>[0]),
+          const accounts = await (window.ethereum as any).request({
+            method: "eth_requestAccounts",
+          });
+          const account = (accounts[0] as `0x${string}`) ?? null;
+          if (!account) throw new Error("MiniPay returned no address — try reloading the app");
+
+          const walletClient = createWalletClient({
+            chain: celo,
+            transport: custom(window.ethereum as Parameters<typeof custom>[0]),
+          });
+          const txHash = await walletClient.writeContract({
+            ...(params as Parameters<typeof walletClient.writeContract>[0]),
+            account,
+            chain: celo,
             type: "legacy",
-          } as Parameters<typeof wagmiWriteAsync>[0]);
+          } as Parameters<typeof walletClient.writeContract>[0]);
           setHash(txHash);
           return txHash;
         } catch (err) {
