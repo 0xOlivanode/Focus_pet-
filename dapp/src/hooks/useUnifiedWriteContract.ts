@@ -68,11 +68,15 @@ export function useUnifiedWriteContract() {
       if (isMiniPay === true && typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
         setIsPending(true);
         try {
+          const ethereum = window.ethereum as any;
+          // eth_accounts returns [] until eth_requestAccounts is called — MiniPay
+          // resolves this silently (no popup) since the user is inside the mini app.
+          const accounts: string[] = await ethereum.request({ method: "eth_requestAccounts" });
+          const account = accounts[0] as `0x${string}`;
           const walletClient = createWalletClient({
             chain: celo,
-            transport: custom(window.ethereum as any),
+            transport: custom(ethereum),
           });
-          const [account] = await walletClient.getAddresses();
           // Strip gas so MiniPay estimates it natively for stablecoin fee display.
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { gas: _gas, ...restParams } = params;
