@@ -57,20 +57,26 @@ export function useUnifiedWriteContract() {
 
       if (IS_MINIPAY) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Encode calldata with viem then call eth_sendTransaction directly on the
-        // native MiniPay provider. This bypasses viem's prepareTransactionRequest
-        // (eth_estimateGas, eth_getTransactionCount, eth_gasPrice) — MiniPay
-        // handles nonce, gas price, and fee abstraction natively. Using
-        // walletClient.writeContract() would hang because those preparation RPC
-        // calls either time out or fail against the MiniPay in-app browser.
+        // Pattern from MiniPay docs / celopedia skill:
+        //   1. createWalletClient with custom(window.ethereum)
+        //   2. encodeFunctionData manually (skips eth_call simulation)
+        //   3. walletClient.sendTransaction() — NOT writeContract()
+        //
+        // writeContract() runs eth_call (contract simulation) before sending,
+        // which hangs in MiniPay's WebView. sendTransaction() with pre-encoded
+        // data skips the simulation entirely.
+        // MiniPay handles nonce, gas price, and fee abstraction natively —
+        // no need to pass explicit gas.
         if (!nativeMiniPayEthereum) throw new Error("MiniPay provider not found");
         setIsPending(true);
         try {
-          const accounts: string[] = await nativeMiniPayEthereum.request({
-            method: "eth_requestAccounts",
+          const walletClient = createWalletClient({
+            chain: celo,
+            transport: custom(nativeMiniPayEthereum),
           });
-          const account = (accounts as string[])[0] as `0x${string}`;
-          if (!account) throw new Error("MiniPay returned no address — try reloading");
+
+          const [account] = await walletClient.getAddresses();
+          if (!account) throw new Error("MiniPay not connected — try reloading");
 
           const data = encodeFunctionData({
             abi: params.abi as Abi,
@@ -78,20 +84,13 @@ export function useUnifiedWriteContract() {
             args: params.args,
           });
 
-          const txHash = await (nativeMiniPayEthereum.request({
-            method: "eth_sendTransaction",
-            params: [{
-              from: account,
-              to: params.address,
-              data,
-              ...(params.gas !== undefined && {
-                gas: `0x${params.gas.toString(16)}`,
-              }),
-              ...(params.feeCurrency !== undefined && {
-                feeCurrency: params.feeCurrency,
-              }),
-            }],
-          }) as Promise<`0x${string}`>);
+          const txHash = await walletClient.sendTransaction({
+            account,
+            to: params.address,
+            data,
+            ...(params.value !== undefined && { value: params.value }),
+            ...(params.feeCurrency !== undefined && { feeCurrency: params.feeCurrency }),
+          } as Parameters<typeof walletClient.sendTransaction>[0]);
 
           setHash(txHash);
           return txHash;
