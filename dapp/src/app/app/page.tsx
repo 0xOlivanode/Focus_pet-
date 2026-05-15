@@ -200,13 +200,33 @@ function AppPageContent() {
       type: "success" | "error" | "info" | "achievement" = "success",
       showShare = false,
       shareText = "",
+      dismissible = false,
     ) => {
+      const label = `${title} — ${message}`;
+
+      if (dismissible) {
+        toast.success(
+          (t) => (
+            <span className="flex items-center justify-between gap-3 w-full">
+              <span>{label}</span>
+              <button
+                onClick={() => toast.dismiss(t.id)}
+                className="shrink-0 text-neutral-400 hover:text-white transition-colors leading-none"
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </span>
+          ),
+          { duration: 8000 },
+        );
+        return;
+      }
+
       const content = showShare
         ? (t: Toast) => (
             <span className="flex items-center gap-3">
-              <span>
-                {title} — {message}
-              </span>
+              <span>{label}</span>
               <button
                 onClick={() => {
                   toast.dismiss(t.id);
@@ -221,16 +241,12 @@ function AppPageContent() {
               </button>
             </span>
           )
-        : `${title} — ${message}`;
+        : label;
 
       if (type === "error") {
-        toast.error(
-          typeof content === "string" ? content : `${title} — ${message}`,
-        );
+        toast.error(typeof content === "string" ? content : label);
       } else if (type === "info") {
-        toast(typeof content === "string" ? content : `${title} — ${message}`, {
-          icon: "ℹ️",
-        });
+        toast(typeof content === "string" ? content : label, { icon: "ℹ️" });
       } else {
         toast.success(content as any, { duration: 5000 });
       }
@@ -963,6 +979,9 @@ function AppPageContent() {
                         "Coming home? ✨",
                         "The clouds are beginning to clear...",
                         "success",
+                        false,
+                        "",
+                        true,
                       );
                     }
                   }}
