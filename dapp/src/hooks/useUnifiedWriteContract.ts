@@ -1,12 +1,11 @@
 "use client";
 
-import { useWriteContract, useAccount } from "wagmi";
+import { useWriteContract } from "wagmi";
 import { createWalletClient, custom, type Abi } from "viem";
 import { celo } from "wagmi/chains";
 import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { useWeb3Auth } from "@web3auth/modal/react";
 import { useState, useCallback, useRef } from "react";
-import { useMiniPayContext } from "@/contexts/MiniPayContext";
 
 
 type WriteContractParams = {
@@ -23,12 +22,10 @@ type WriteContractParams = {
  *
  * Web3Auth: viem direct with the Web3Auth EIP1193 provider.
  *
- * MiniPay: viem direct with window.ethereum + type:'legacy'.
- *   MiniPay's provider handles fee abstraction internally — it intercepts the legacy
- *   transaction and injects feeCurrency from the user's primary stablecoin (USDT/USDm/USDC).
- *   Do NOT set feeCurrency yourself — you'd have to pick USDm or USDT and break users
- *   who hold the other token. Let MiniPay pick. Do NOT set type:'eip1559' either — MiniPay
- *   rejects EIP-1559 fields. No explicit gas — MiniPay estimates natively.
+ * MiniPay: wagmi writeContract with type:'legacy'.
+ *   MiniPay's provider injects feeCurrency from the user's primary stablecoin automatically.
+ *   Do NOT set feeCurrency — would break users who hold USDT vs USDm. The miniPayConnector
+ *   routes all calls through window.ethereum, bypassing HTTP RPCs MiniPay's sandbox blocks.
  *
  * Privy: standard wagmi writeContract (no overrides needed).
  *
@@ -43,11 +40,6 @@ export function useUnifiedWriteContract() {
     error: wagmiError,
     reset: wagmiReset,
   } = useWriteContract();
-
-  const isMiniPay = useMiniPayContext();
-  // wagmi already knows the MiniPay account from the injected connector — use it
-  // directly to skip the eth_accounts RPC call inside getAddresses().
-  const { address: wagmiAddress } = useAccount();
 
   // Live provider from React context — always current even after tab resume.
   const { provider: liveWeb3AuthProvider, isConnected: web3authIsConnected } = useWeb3Auth();
@@ -67,12 +59,6 @@ export function useUnifiedWriteContract() {
         getWeb3AuthProvider();
 
       const isMiniPayEnv = typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay === true;
-      console.log("[useUnifiedWriteContract] path", {
-        w3aProvider: !!w3aProvider,
-        isMiniPayEnv,
-        isMiniPayCtx: isMiniPay,
-        fn: params.functionName,
-      });
 
       if (w3aProvider) {
         // ── Web3Auth ─────────────────────────────────────────────────────────
@@ -101,38 +87,17 @@ export function useUnifiedWriteContract() {
 
       } else if (isMiniPayEnv) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Check window.ethereum.isMiniPay directly — do NOT rely on the React
-        // context which may still be null when this is first called.
-        //
-        // All RPC calls go through window.ethereum (bypasses wagmi + HTTP RPCs
-        // which MiniPay's sandbox blocks for eth_estimateGas / eth_sendTransaction).
-        //
-        // type:'legacy' → MiniPay's provider injects feeCurrency from the user's
-        // primary stablecoin automatically. Do NOT set feeCurrency here — you'd
-        // have to pick USDm or USDT and break users who hold the other one.
-        //
-        // getAddresses() (eth_accounts) works because MiniPay auto-connects.
-        // Pass gas through if provided — callers set gas: 400_000 to skip
-        // eth_estimateGas, which times out when the phone is backgrounded.
+        // Use wagmi's writeContract with type:'legacy' — MiniPay's provider
+        // injects feeCurrency from the user's primary stablecoin automatically.
+        // Do NOT set feeCurrency — would break users who hold USDT vs USDm.
+        // The miniPayConnector (window.ethereum) is already wired into wagmiConfig,
+        // so wagmi routes through the injected provider, not HTTP RPCs.
         setIsPending(true);
         try {
-          const walletClient = createWalletClient({
-            chain: celo,
-            transport: custom(window.ethereum as Parameters<typeof custom>[0]),
-          });
-          // Prefer wagmi's cached address (already set by MiniPayConnector) to
-          // avoid an extra eth_accounts round-trip. Fall back to getAddresses()
-          // if wagmi hasn't connected yet (rare, only on the very first mount).
-          const account = wagmiAddress ?? (await walletClient.getAddresses())[0];
-          if (!account) {
-            throw new Error("MiniPay eth_accounts returned no address — try reloading the app");
-          }
-          const txHash = await walletClient.writeContract({
-            ...(params as Parameters<typeof walletClient.writeContract>[0]),
-            account,
-            chain: celo,
+          const txHash = await wagmiWriteAsync({
+            ...(params as Parameters<typeof wagmiWriteAsync>[0]),
             type: "legacy",
-          } as Parameters<typeof walletClient.writeContract>[0]);
+          } as Parameters<typeof wagmiWriteAsync>[0]);
           setHash(txHash);
           return txHash;
         } catch (err) {
@@ -159,7 +124,7 @@ export function useUnifiedWriteContract() {
         }
       }
     },
-    [wagmiWriteAsync, web3authIsConnected, isMiniPay],
+    [wagmiWriteAsync, web3authIsConnected],
   );
 
   const writeContract = useCallback(

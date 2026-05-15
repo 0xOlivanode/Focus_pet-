@@ -5,14 +5,12 @@ import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   useConnect,
-  useConnectors,
-  useDisconnect,
+  useAccount,
   fallback,
   http,
   createConfig,
   custom as wagmiCustom,
 } from "wagmi";
-// useAccount / useConnectors / useDisconnect are used by MiniPayConnector below
 import { injected } from "wagmi/connectors";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider } from "@privy-io/wagmi";
@@ -110,9 +108,26 @@ const celoTransport = fallback([
   http("https://1rpc.io/celo"),
 ]);
 
+// Custom injected connector — explicitly targets window.ethereum so wagmi always
+// uses MiniPay's provider, not whatever discovery logic might pick up instead.
+// Same pattern as blokaz/src/config/wagmi.ts.
+export const miniPayConnector = injected({
+  target() {
+    return {
+      id: "injected",
+      name:
+        typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay
+          ? "MiniPay"
+          : "MetaMask",
+      provider:
+        typeof window !== "undefined" ? (window.ethereum as any) : undefined,
+    };
+  },
+});
+
 export const wagmiConfig = createConfig({
   chains: [celo],
-  connectors: [injected(), web3AuthConnector],
+  connectors: [miniPayConnector, web3AuthConnector],
   transports: {
     [celo.id]: celoTransport,
   },
@@ -243,20 +258,17 @@ function Web3AuthWagmiSync() {
 }
 
 function MiniPayConnector() {
-  const connectors = useConnectors();
   const { connect } = useConnect();
-  const hasAttempted = React.useRef(false);
+  const { isConnected } = useAccount();
 
   React.useEffect(() => {
-    if (hasAttempted.current || connectors.length === 0) return;
-    // Always connect the injected connector when in MiniPay, regardless of
-    // whether wagmi thinks it's already connected (stale sessions from a
-    // previous Web3Auth/Privy login would otherwise block this).
-    if (!(window.ethereum as any)?.isMiniPay) return;
-    hasAttempted.current = true;
-    const injectedConnector = connectors.find((c) => c.id === "injected");
-    if (injectedConnector) connect({ connector: injectedConnector });
-  }, [connectors, connect]);
+    if (isConnected) return;
+    const timer = setTimeout(() => {
+      if (!(window.ethereum as any)?.isMiniPay) return;
+      connect({ connector: miniPayConnector });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [isConnected, connect]);
 
   return null;
 }
