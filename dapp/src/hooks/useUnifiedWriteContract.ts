@@ -109,6 +109,8 @@ export function useUnifiedWriteContract() {
         // have to pick USDm or USDT and break users who hold the other one.
         //
         // getAddresses() (eth_accounts) works because MiniPay auto-connects.
+        // Pass gas through if provided — callers set gas: 400_000 to skip
+        // eth_estimateGas, which times out when the phone is backgrounded.
         setIsPending(true);
         try {
           const walletClient = createWalletClient({
@@ -119,11 +121,8 @@ export function useUnifiedWriteContract() {
           if (!account) {
             throw new Error("MiniPay eth_accounts returned no address — try reloading the app");
           }
-          // Strip explicit gas — MiniPay must estimate natively for stablecoin fee display.
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { gas: _gas, ...restParams } = params;
           const txHash = await walletClient.writeContract({
-            ...(restParams as Parameters<typeof walletClient.writeContract>[0]),
+            ...(params as Parameters<typeof walletClient.writeContract>[0]),
             account,
             chain: celo,
             type: "legacy",
