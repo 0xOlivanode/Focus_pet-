@@ -3,9 +3,9 @@
 import {
   useAccount,
   useBalance,
-  useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
+import { useUnifiedWriteContract } from "@/hooks/useUnifiedWriteContract";
 import {
   X,
   Copy,
@@ -83,7 +83,7 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
     isPending: isSending,
     reset: resetSend,
     error: sendWriteError,
-  } = useWriteContract();
+  } = useUnifiedWriteContract();
   const { isSuccess: isSendSuccess, isLoading: isSendConfirming } =
     useWaitForTransactionReceipt({ hash: sendTxHash });
 

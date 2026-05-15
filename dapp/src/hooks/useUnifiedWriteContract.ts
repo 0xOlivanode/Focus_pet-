@@ -87,36 +87,22 @@ export function useUnifiedWriteContract() {
 
       } else if (isMiniPayEnv) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Viem-direct via window.ethereum — bypasses wagmi connector state entirely.
-        // This is critical: wagmi may have a stale Web3Auth/Privy session cached in
-        // localStorage, making isConnected:true for the wrong connector. Using
-        // wagmiWriteAsync would route through that stale connector and fail.
+        // Mirrors blokaz's exact pattern: wagmi writeContract + getTxOverrides().
+        // MiniPayConnector (providers.tsx) wires miniPayConnector (injected,
+        // window.ethereum) as the active wagmi connector and calls
+        // eth_requestAccounts via connect() — so wagmi routes this call through
+        // window.ethereum automatically, no viem-direct bypass needed.
         //
-        // eth_requestAccounts MUST be called before eth_sendTransaction — MiniPay
-        // rejects send calls without prior authorization even though it auto-injects.
-        //
-        // type:'legacy' → MiniPay injects feeCurrency from user's primary stablecoin.
-        // Do NOT set feeCurrency — breaks users who hold USDT vs USDm.
-        // gas passed through from params — skips eth_estimateGas (times out after
-        // the phone is backgrounded during a long focus session).
+        // type:'legacy' → MiniPay injects feeCurrency from the user's primary
+        // stablecoin. Do NOT set feeCurrency — breaks USDT-only users.
+        // gas from params is passed through → skips eth_estimateGas which times
+        // out when the phone is backgrounded during a long focus session.
         setIsPending(true);
         try {
-          const accounts = await (window.ethereum as any).request({
-            method: "eth_requestAccounts",
-          });
-          const account = (accounts[0] as `0x${string}`) ?? null;
-          if (!account) throw new Error("MiniPay returned no address — try reloading the app");
-
-          const walletClient = createWalletClient({
-            chain: celo,
-            transport: custom(window.ethereum as Parameters<typeof custom>[0]),
-          });
-          const txHash = await walletClient.writeContract({
-            ...(params as Parameters<typeof walletClient.writeContract>[0]),
-            account,
-            chain: celo,
+          const txHash = await wagmiWriteAsync({
+            ...(params as Parameters<typeof wagmiWriteAsync>[0]),
             type: "legacy",
-          } as Parameters<typeof walletClient.writeContract>[0]);
+          } as Parameters<typeof wagmiWriteAsync>[0]);
           setHash(txHash);
           return txHash;
         } catch (err) {
