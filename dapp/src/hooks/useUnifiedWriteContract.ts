@@ -87,22 +87,40 @@ export function useUnifiedWriteContract() {
 
       } else if (isMiniPayEnv) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Mirrors blokaz's exact pattern: wagmi writeContract + getTxOverrides().
-        // MiniPayConnector (providers.tsx) wires miniPayConnector (injected,
-        // window.ethereum) as the active wagmi connector and calls
-        // eth_requestAccounts via connect() — so wagmi routes this call through
-        // window.ethereum automatically, no viem-direct bypass needed.
+        // Bypass wagmi connector state entirely — go direct to window.ethereum.
         //
-        // type:'legacy' → MiniPay injects feeCurrency from the user's primary
-        // stablecoin. Do NOT set feeCurrency — breaks USDT-only users.
-        // gas from params is passed through → skips eth_estimateGas which times
-        // out when the phone is backgrounded during a long focus session.
+        // Why viem-direct and not wagmiWriteAsync:
+        // wagmi persists the last-connected connector (Privy / Web3Auth) in
+        // localStorage. Even with the wagmi localStorage wipe in providers.tsx,
+        // the wipe only fires once per page load. If wagmi reconnects a stale
+        // session during the session (e.g. after Web3AuthWagmiSync fires late),
+        // wagmiWriteAsync would silently route through the wrong connector.
+        // Viem-direct with window.ethereum is unconditional — it never touches
+        // wagmi's connector registry and cannot be derailed by session state.
+        //
+        // eth_requestAccounts — MiniPay requires this before eth_sendTransaction.
+        // type:'legacy' — MiniPay injects feeCurrency from the user's primary
+        //   stablecoin automatically. Do NOT set feeCurrency (breaks USDT users).
+        // gas passthrough — skips eth_estimateGas which times out when the phone
+        //   is backgrounded during a long focus session.
         setIsPending(true);
         try {
-          const txHash = await wagmiWriteAsync({
-            ...(params as Parameters<typeof wagmiWriteAsync>[0]),
+          const accounts: string[] = await (window.ethereum as any).request({
+            method: "eth_requestAccounts",
+          });
+          const account = accounts[0] as `0x${string}`;
+          if (!account) throw new Error("MiniPay returned no address — try reloading");
+
+          const walletClient = createWalletClient({
+            chain: celo,
+            transport: custom(window.ethereum as Parameters<typeof custom>[0]),
+          });
+          const txHash = await walletClient.writeContract({
+            ...(params as Parameters<typeof walletClient.writeContract>[0]),
+            account,
+            chain: celo,
             type: "legacy",
-          } as Parameters<typeof wagmiWriteAsync>[0]);
+          } as Parameters<typeof walletClient.writeContract>[0]);
           setHash(txHash);
           return txHash;
         } catch (err) {

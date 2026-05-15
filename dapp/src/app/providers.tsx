@@ -33,6 +33,23 @@ if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
   };
 }
 
+// ── MiniPay: wipe wagmi's localStorage before it initialises ─────────────────
+// wagmi persists the last-connected connector (Privy / Web3Auth) in localStorage.
+// When MiniPay opens the app that stale session loads, wagmi thinks it is already
+// connected via the wrong connector, and MiniPayConnector's isConnected guard
+// silently skips — leaving window.ethereum unauthorised and every transaction
+// failing with "eth_requestAccounts" error.
+// Clearing all "wagmi.*" keys here (before createConfig runs) guarantees wagmi
+// always starts fresh in MiniPay, so the injected connector is the only one
+// that can connect.
+if (typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("wagmi"))
+      .forEach((k) => localStorage.removeItem(k));
+  } catch {}
+}
+
 // ── Web3Auth v10 config ───────────────────────────────────────────────────────
 
 const HIDDEN = { showOnModal: false } as const;

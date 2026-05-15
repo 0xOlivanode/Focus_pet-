@@ -1146,7 +1146,7 @@ function AppLoadingScreen({ miniPay = false }: { miniPay?: boolean }) {
 
       <div className="text-center">
         <p className="text-white text-sm font-medium">
-          {miniPay ? "Opening in MiniPay…" : "Loading your pet…"}
+          {miniPay ? "Loading…" : "Loading your pet…"}
         </p>
         {!miniPay && (
           <p className="text-neutral-600 text-xs mt-1">Almost ready…</p>
