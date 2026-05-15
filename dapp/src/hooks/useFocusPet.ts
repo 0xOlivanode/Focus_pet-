@@ -160,7 +160,10 @@ export function useFocusPet() {
   // Handle Post-Confirmation Success Effects
   useEffect(() => {
     if (finalIsConfirmed && !hasToasted) {
-      if (lastAction === "shop") {
+      if (lastAction === "focus") {
+        setHasToasted(true);
+        refetchAll();
+      } else if (lastAction === "shop") {
         if (!pendingItem) {
           setHasToasted(true);
           toast.success("Purchase Successful!\nYour items are ready.");

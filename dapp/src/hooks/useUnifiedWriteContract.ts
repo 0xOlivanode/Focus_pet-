@@ -8,11 +8,6 @@ import { useWeb3Auth } from "@web3auth/modal/react";
 import { useState, useCallback, useRef } from "react";
 import { useMiniPayContext } from "@/contexts/MiniPayContext";
 
-// USDm fee-currency address — same as token address for 18-decimal Mento stablecoins.
-// MiniPay uses this as the default gas-fee token; setting it explicitly creates a
-// CIP-64 transaction (Celo's fee-abstraction type) rather than an EIP-1559 transaction.
-// Do NOT use the USDT/USDC token address here — those require separate adapter contracts.
-const USDM_FEE_CURRENCY = "0x765DE816845861e75A25fCA122bb6898B8B1282a" as const;
 
 type WriteContractParams = {
   address: `0x${string}`;
@@ -28,11 +23,12 @@ type WriteContractParams = {
  *
  * Web3Auth: viem direct with the Web3Auth EIP1193 provider.
  *
- * MiniPay: viem direct with window.ethereum + feeCurrency (CIP-64).
- *   requestAddresses() first (eth_requestAccounts) — eth_accounts returns [] until called.
- *   feeCurrency = USDm address creates a CIP-64 transaction (Celo fee abstraction).
- *   Do NOT use type:'legacy' — without feeCurrency viem defaults to EIP-1559 which MiniPay rejects.
- *   No explicit gas — MiniPay estimates natively for stablecoin fee display.
+ * MiniPay: viem direct with window.ethereum + type:'legacy'.
+ *   MiniPay's provider handles fee abstraction internally — it intercepts the legacy
+ *   transaction and injects feeCurrency from the user's primary stablecoin (USDT/USDm/USDC).
+ *   Do NOT set feeCurrency yourself — you'd have to pick USDm or USDT and break users
+ *   who hold the other token. Let MiniPay pick. Do NOT set type:'eip1559' either — MiniPay
+ *   rejects EIP-1559 fields. No explicit gas — MiniPay estimates natively.
  *
  * Privy: standard wagmi writeContract (no overrides needed).
  *
@@ -105,16 +101,14 @@ export function useUnifiedWriteContract() {
         // Check window.ethereum.isMiniPay directly — do NOT rely on the React
         // context which may still be null when this is first called.
         //
-        // Use viem directly with window.ethereum (bypasses wagmi entirely).
-        // MiniPay's sandbox blocks HTTP eth_estimateGas / eth_sendTransaction,
-        // so all RPC calls must go through window.ethereum.
+        // All RPC calls go through window.ethereum (bypasses wagmi + HTTP RPCs
+        // which MiniPay's sandbox blocks for eth_estimateGas / eth_sendTransaction).
         //
-        // feeCurrency creates a CIP-64 transaction (Celo fee abstraction).
-        // Do NOT use type:'legacy' — without feeCurrency viem defaults to
-        // EIP-1559 (type 2) which MiniPay rejects.
+        // type:'legacy' → MiniPay's provider injects feeCurrency from the user's
+        // primary stablecoin automatically. Do NOT set feeCurrency here — you'd
+        // have to pick USDm or USDT and break users who hold the other one.
         //
-        // getAddresses() (eth_accounts) works because MiniPay auto-connects —
-        // this is the pattern from the official MiniPay template docs.
+        // getAddresses() (eth_accounts) works because MiniPay auto-connects.
         setIsPending(true);
         try {
           const walletClient = createWalletClient({
@@ -132,7 +126,7 @@ export function useUnifiedWriteContract() {
             ...(restParams as Parameters<typeof walletClient.writeContract>[0]),
             account,
             chain: celo,
-            feeCurrency: USDM_FEE_CURRENCY,
+            type: "legacy",
           } as Parameters<typeof walletClient.writeContract>[0]);
           setHash(txHash);
           return txHash;
