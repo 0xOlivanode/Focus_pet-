@@ -474,27 +474,24 @@ function AppPageContent() {
     return <AppLoadingScreen />;
   }
 
-  // Show welcome/auth screen for unauthenticated users.
-  // MiniPay is excluded: their wallet auto-connects — show loading instead.
-  const isMiniPayEnvCheck =
-    typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-  if (isReady && !isAuthenticated && !isMiniPayEnvCheck) {
+  // Don't render anything until we know whether this is MiniPay — avoids
+  // flashing the login screen for MiniPay users whose provider injects async.
+  if (isMiniPayEnv === null) return null;
+
+  // Show welcome/auth screen for unauthenticated non-MiniPay users.
+  // MiniPay auto-connects so they should never reach this.
+  if (isReady && !isAuthenticated && isMiniPayEnv === false) {
     return <AppWelcome />;
   }
 
   if (!isConnected) {
-    const miniPay =
-      typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
-
-    // Show loading while providers are still initialising or an auto-connect is
-    // in progress (MiniPay, wagmi reconnect, Privy loading). With compound
-    // isConnected, isAuthenticated being true already exits this block above, so
-    // we only reach here for truly unauthenticated states.
+    // Show loading while providers are initialising or an auto-connect is in
+    // progress (MiniPay, wagmi reconnect, Privy loading).
     const isAutoConnecting =
-      isConnecting || isReconnecting || miniPay || !isReady;
+      isConnecting || isReconnecting || isMiniPayEnv === true || !isReady;
 
     if (isAutoConnecting) {
-      return <AppLoadingScreen miniPay={miniPay} />;
+      return <AppLoadingScreen miniPay={isMiniPayEnv === true} />;
     }
 
     return <AppWelcome />;
@@ -505,8 +502,6 @@ function AppPageContent() {
   }
 
   if (!hasPet) {
-    const isMiniPayHatch =
-      typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
 
     return (
       <div className="min-h-screen w-full bg-black flex flex-col">
@@ -549,7 +544,7 @@ function AppPageContent() {
           </motion.div>
 
           {/* Wallet address — shown immediately for non-MiniPay users to share for gas */}
-          {!isMiniPayHatch && address && (
+          {isMiniPayEnv === false && address && (
             <motion.button
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}

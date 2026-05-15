@@ -1,40 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMiniPayContext } from "@/contexts/MiniPayContext";
 
+// Single source of truth — reads from MiniPayProvider in the root Providers tree.
+// The provider detects once on app load and never re-runs on client-side navigation.
 export function useIsMiniPay(): boolean | null {
-  const [isMiniPay, setIsMiniPay] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    // Fast path — already injected synchronously
-    if ((window.ethereum as any)?.isMiniPay) {
-      setIsMiniPay(true);
-      return;
-    }
-
-    // MiniPay injects window.ethereum asynchronously. Poll for up to 800ms
-    // before settling on false so we never flash non-MiniPay UI prematurely.
-    let resolved = false;
-    const interval = setInterval(() => {
-      if ((window.ethereum as any)?.isMiniPay) {
-        setIsMiniPay(true);
-        resolved = true;
-        clearInterval(interval);
-      }
-    }, 50);
-
-    const timeout = setTimeout(() => {
-      clearInterval(interval);
-      if (!resolved) setIsMiniPay(false);
-    }, 800);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, []);
-
-  return isMiniPay;
+  return useMiniPayContext();
 }
 
 /** Opens MiniPay's native QR scanner and resolves with the scanned address/data.

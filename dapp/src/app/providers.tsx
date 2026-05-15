@@ -19,6 +19,7 @@ import { WagmiProvider } from "@privy-io/wagmi";
 import { celo } from "wagmi/chains";
 import { AudioProvider } from "@/hooks/useAudio";
 import { IdentityProvider } from "@/contexts/IdentityContext";
+import { MiniPayProvider } from "@/contexts/MiniPayContext";
 import { Web3AuthProvider, useWeb3Auth } from "@web3auth/modal/react";
 import type { Web3AuthContextConfig } from "@web3auth/modal/react";
 import { WEB3AUTH_NETWORK } from "@web3auth/modal";
@@ -152,9 +153,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <>
               <MiniPayConnector />
               <Web3AuthWagmiSync />
-              <AudioProvider>
-                <IdentityProvider>{children}</IdentityProvider>
-              </AudioProvider>
+              <MiniPayProvider>
+                <AudioProvider>
+                  <IdentityProvider>{children}</IdentityProvider>
+                </AudioProvider>
+              </MiniPayProvider>
               <Toaster
                 position="top-center"
                 toastOptions={{
