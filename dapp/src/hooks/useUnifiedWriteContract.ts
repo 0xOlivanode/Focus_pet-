@@ -1,7 +1,7 @@
 "use client";
 
 import { useWriteContract } from "wagmi";
-import { createWalletClient, custom, type Abi } from "viem";
+import { createWalletClient, custom, encodeFunctionData, type Abi } from "viem";
 import { celo } from "wagmi/chains";
 import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { useWeb3Auth } from "@web3auth/modal/react";
@@ -15,6 +15,7 @@ type WriteContractParams = {
   args?: readonly unknown[];
   gas?: bigint;
   value?: bigint;
+  feeCurrency?: `0x${string}`;
 };
 
 /**
@@ -56,10 +57,12 @@ export function useUnifiedWriteContract() {
 
       if (IS_MINIPAY) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Viem-direct via the native MiniPay provider (captured before Privy could
-        // override window.ethereum). Bypasses wagmi connector state entirely.
-        // type:'legacy' → MiniPay injects feeCurrency from the user's primary
-        //   stablecoin automatically. Do NOT set feeCurrency (breaks USDT users).
+        // Encode calldata with viem then call eth_sendTransaction directly on the
+        // native MiniPay provider. This bypasses viem's prepareTransactionRequest
+        // (eth_estimateGas, eth_getTransactionCount, eth_gasPrice) — MiniPay
+        // handles nonce, gas price, and fee abstraction natively. Using
+        // walletClient.writeContract() would hang because those preparation RPC
+        // calls either time out or fail against the MiniPay in-app browser.
         if (!nativeMiniPayEthereum) throw new Error("MiniPay provider not found");
         setIsPending(true);
         try {
@@ -69,16 +72,27 @@ export function useUnifiedWriteContract() {
           const account = (accounts as string[])[0] as `0x${string}`;
           if (!account) throw new Error("MiniPay returned no address — try reloading");
 
-          const walletClient = createWalletClient({
-            chain: celo,
-            transport: custom(nativeMiniPayEthereum),
+          const data = encodeFunctionData({
+            abi: params.abi as Abi,
+            functionName: params.functionName,
+            args: params.args,
           });
-          const txHash = await walletClient.writeContract({
-            ...(params as Parameters<typeof walletClient.writeContract>[0]),
-            account,
-            chain: celo,
-            type: "legacy",
-          } as Parameters<typeof walletClient.writeContract>[0]);
+
+          const txHash = await (nativeMiniPayEthereum.request({
+            method: "eth_sendTransaction",
+            params: [{
+              from: account,
+              to: params.address,
+              data,
+              ...(params.gas !== undefined && {
+                gas: `0x${params.gas.toString(16)}`,
+              }),
+              ...(params.feeCurrency !== undefined && {
+                feeCurrency: params.feeCurrency,
+              }),
+            }],
+          }) as Promise<`0x${string}`>);
+
           setHash(txHash);
           return txHash;
         } catch (err) {

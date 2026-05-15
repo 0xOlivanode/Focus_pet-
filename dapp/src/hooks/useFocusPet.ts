@@ -235,6 +235,7 @@ export function useFocusPet() {
         abi: erc20Abi,
         functionName: "approve",
         args: [CONTRACT_ADDRESS, amount],
+        gas: BigInt(100_000),
       } as any);
     } else {
       writeContract({
@@ -243,6 +244,7 @@ export function useFocusPet() {
         abi: FocusPetABI,
         functionName: functionName as any,
         args: args as any,
+        gas: BigInt(400_000),
       } as any);
     }
   };
@@ -264,6 +266,7 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "toggleCosmetic",
       args: [id],
+      gas: BigInt(100_000),
     });
   };
 
@@ -281,6 +284,7 @@ export function useFocusPet() {
       abi: FocusPetABI,
       functionName: "setNames",
       args: [username, petName],
+      gas: BigInt(200_000),
     });
   };
 
@@ -291,6 +295,7 @@ export function useFocusPet() {
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
       functionName: "deleteUser",
+      gas: BigInt(200_000),
     });
   };
 
@@ -404,6 +409,7 @@ export function useFocusPet() {
             abi: FocusPetABI,
             functionName: item.functionName as any,
             args: item.args as any,
+            gas: BigInt(400_000),
           } as any);
         } else {
           // Fallback for older patterns
@@ -615,6 +621,7 @@ export function useFocusPet() {
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: "syncImpact",
+        gas: BigInt(200_000),
       });
     } catch (error: any) {
       console.error("Sync impact failed:", error);

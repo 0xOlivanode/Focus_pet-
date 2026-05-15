@@ -258,18 +258,29 @@ function Web3AuthWagmiSync() {
 // Only rendered in the MiniPay branch. Calls eth_requestAccounts via wagmi's
 // connect() — authorises window.ethereum and populates useAccount() with the
 // MiniPay address so useAuth() works.
+// Retries up to 4 times (at 1s, 2s, 3s, 4s) in case MiniPay's provider is
+// slow to inject or the first connect() call silently rejects.
 function MiniPayConnector() {
-  const { connect } = useConnect();
+  const { connect, error: connectError } = useConnect();
   const { connector } = useAccount();
+  const [attempt, setAttempt] = React.useState(0);
 
   React.useEffect(() => {
     if (connector?.id === "injected") return;
+    if (attempt > 4) return;
+    const delay = attempt === 0 ? 800 : attempt * 1000;
     const timer = setTimeout(() => {
       if (!(window.ethereum as any)?.isMiniPay) return;
       connect({ connector: miniPayConnector });
-    }, 1000);
+    }, delay);
     return () => clearTimeout(timer);
-  }, [connector, connect]);
+  }, [connector, connect, attempt]);
+
+  React.useEffect(() => {
+    if (connectError && attempt < 4) {
+      setAttempt((a) => a + 1);
+    }
+  }, [connectError]);
 
   return null;
 }

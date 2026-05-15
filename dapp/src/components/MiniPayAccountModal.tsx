@@ -25,6 +25,7 @@ import { parseUnits, isAddress } from "viem";
 import { miniPayScanQrCode, miniPayGetExchangeRate } from "@/hooks/useMiniPay";
 
 const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
+const USDT_ADAPTER = "0x0E2A3e05bc9A16F5292A6170456A710cb89C6f72";
 const USDT_DECIMALS = 6;
 
 const ERC20_TRANSFER_ABI = [
@@ -152,6 +153,8 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
       abi: ERC20_TRANSFER_ABI,
       functionName: "transfer",
       args: [recipient as `0x${string}`, parseUnits(sendAmount, USDT_DECIMALS)],
+      gas: BigInt(100_000),
+      feeCurrency: USDT_ADAPTER,
     });
   };
 
