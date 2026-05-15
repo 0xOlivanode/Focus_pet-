@@ -6,6 +6,7 @@ import { celo } from "wagmi/chains";
 import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { useWeb3Auth } from "@web3auth/modal/react";
 import { useState, useCallback, useRef } from "react";
+import { IS_MINIPAY, nativeMiniPayEthereum } from "@/lib/miniPayEthereum";
 
 type WriteContractParams = {
   address: `0x${string}`;
@@ -20,10 +21,9 @@ type WriteContractParams = {
  * Drop-in replacement for wagmi's useWriteContract that works for all auth types.
  *
  * Priority order: MiniPay → Web3Auth → Privy
- * MiniPay must be checked first — Web3Auth restores its session independently of
- * wagmi's localStorage, so w3aProvider can be non-null even inside MiniPay. If
- * Web3Auth is checked first, every MiniPay transaction routes through Web3Auth's
- * dead provider and times out.
+ * IS_MINIPAY and nativeMiniPayEthereum are captured at module-load time (before
+ * Privy/Web3Auth can override window.ethereum) so MiniPay detection is immune
+ * to provider injection that happens during React initialisation.
  */
 export function useUnifiedWriteContract() {
   const {
@@ -47,36 +47,31 @@ export function useUnifiedWriteContract() {
     async (params: WriteContractParams): Promise<`0x${string}`> => {
       setError(null);
 
-      const isMiniPayEnv =
-        typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay === true;
-
-      // Null out Web3Auth provider when in MiniPay so the Web3Auth branch is
-      // never entered — Web3Auth can restore a cached session independently of
-      // wagmi's localStorage wipe and would otherwise hijack MiniPay writes.
-      const w3aProvider = isMiniPayEnv
+      // IS_MINIPAY is captured at module-load time before Privy can override
+      // window.ethereum — safe to use here even if Privy has since injected.
+      const w3aProvider = IS_MINIPAY
         ? null
         : ((web3authIsConnected ? (liveProviderRef.current as any) : null) ??
             getWeb3AuthProvider());
 
-      if (isMiniPayEnv) {
+      if (IS_MINIPAY) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Viem-direct via window.ethereum — bypasses wagmi connector state entirely.
-        // eth_requestAccounts must be called before eth_sendTransaction.
+        // Viem-direct via the native MiniPay provider (captured before Privy could
+        // override window.ethereum). Bypasses wagmi connector state entirely.
         // type:'legacy' → MiniPay injects feeCurrency from the user's primary
         //   stablecoin automatically. Do NOT set feeCurrency (breaks USDT users).
-        // gas passthrough → skips eth_estimateGas (times out when the phone is
-        //   backgrounded during a long focus session).
+        if (!nativeMiniPayEthereum) throw new Error("MiniPay provider not found");
         setIsPending(true);
         try {
-          const accounts: string[] = await (window.ethereum as any).request({
+          const accounts: string[] = await nativeMiniPayEthereum.request({
             method: "eth_requestAccounts",
           });
-          const account = accounts[0] as `0x${string}`;
+          const account = (accounts as string[])[0] as `0x${string}`;
           if (!account) throw new Error("MiniPay returned no address — try reloading");
 
           const walletClient = createWalletClient({
             chain: celo,
-            transport: custom(window.ethereum as Parameters<typeof custom>[0]),
+            transport: custom(nativeMiniPayEthereum),
           });
           const txHash = await walletClient.writeContract({
             ...(params as Parameters<typeof walletClient.writeContract>[0]),

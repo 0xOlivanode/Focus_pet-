@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAccount, useDisconnect } from "wagmi";
 import { useWeb3Auth, useWeb3AuthDisconnect } from "@web3auth/modal/react";
+import { IS_MINIPAY } from "@/lib/miniPayEthereum";
 
 export function useAuth() {
   const { authenticated, ready: privyReady, logout: privyLogout } = usePrivy();
@@ -18,8 +19,7 @@ export function useAuth() {
   const { isConnected: web3authIsConnected, isInitialized: web3authIsInitialized, provider: web3authProvider } = useWeb3Auth();
   const { disconnect: web3authDisconnect } = useWeb3AuthDisconnect();
 
-  const isMiniPay =
-    typeof window !== "undefined" && !!(window.ethereum as any)?.isMiniPay;
+  const isMiniPay = IS_MINIPAY;
 
   // Derive address directly from the Web3Auth EIP1193 provider. This is available
   // as soon as Web3Auth connects, before Web3AuthWagmiSync bridges into wagmi.

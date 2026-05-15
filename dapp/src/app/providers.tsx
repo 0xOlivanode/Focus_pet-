@@ -24,6 +24,7 @@ import type { Web3AuthContextConfig } from "@web3auth/modal/react";
 import { WEB3AUTH_NETWORK } from "@web3auth/modal";
 import type { EIP1193Provider } from "viem";
 import { web3AuthConnector, setWeb3AuthProvider } from "@/lib/web3AuthConnector";
+import { IS_MINIPAY } from "@/lib/miniPayEthereum";
 
 if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
   (BigInt.prototype as any).toJSON = function () {
@@ -154,7 +155,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // swapping to the lightweight StandardWagmiProvider before the user sees any UI.
   const [isMiniPay, setIsMiniPay] = React.useState(false);
   React.useEffect(() => {
-    setIsMiniPay(!!(window.ethereum as any)?.isMiniPay);
+    setIsMiniPay(IS_MINIPAY);
   }, []);
 
   const appTree = (

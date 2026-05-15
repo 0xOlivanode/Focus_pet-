@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
+import { IS_MINIPAY } from "@/lib/miniPayEthereum";
 
 interface PrivyConnectButtonProps {
   onOpenAccount?: () => void;
@@ -22,7 +23,7 @@ export function PrivyConnectButton({ onOpenAccount }: PrivyConnectButtonProps) {
   }
 
   // MiniPay: wallet is injected automatically — Navbar handles this separately
-  if ((window.ethereum as any)?.isMiniPay) {
+  if (IS_MINIPAY) {
     return null;
   }
 
