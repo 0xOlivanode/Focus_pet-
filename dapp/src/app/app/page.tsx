@@ -973,6 +973,7 @@ function AppPageContent() {
                   onStart={(note) => {
                     setIsFocusing(true);
                     setMood("focused");
+                    toast.dismiss("session-retry");
                     if (note) setFocusNote(note);
                     if (weather === "rainy" || weather === "stormy") {
                       showToast(

@@ -1,7 +1,7 @@
 "use client";
 
-import { useWriteContract } from "wagmi";
-import { createWalletClient, custom, type Abi } from "viem";
+import { useWriteContract, useSendTransaction } from "wagmi";
+import { createWalletClient, custom, encodeFunctionData, type Abi } from "viem";
 import { celo } from "wagmi/chains";
 import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { useWeb3Auth } from "@web3auth/modal/react";
@@ -25,16 +25,15 @@ type WriteContractParams = {
 /**
  * Drop-in replacement for wagmi's useWriteContract that works for all auth types.
  *
- * Web3Auth users: bypass wagmi and use viem directly with the Web3Auth EIP1193 provider.
- * MiniPay users: bypass wagmi and use viem directly with window.ethereum — this guarantees
- *   feeCurrency (USDT adapter) is serialized into the Celo transaction. wagmi strips
- *   non-standard fields before forwarding to viem, so feeCurrency never reached the
- *   provider when going through wagmi.
- * Privy users: wagmi handles it normally (no feeCurrency needed).
+ * Web3Auth: viem direct with the Web3Auth EIP1193 provider.
  *
- * Provider resolution order for Web3Auth:
- *   1. Live provider from useWeb3Auth() React context — always the freshest reference.
- *   2. Module-level cache from getWeb3AuthProvider() — fallback only.
+ * MiniPay: wagmi's useSendTransaction + encodeFunctionData — exactly the pattern
+ *   the MiniPay docs recommend. sendTransaction goes through the wagmi injected
+ *   connector, which correctly forwards feeCurrency to MiniPay's provider without
+ *   the stripping that happens inside writeContract. No explicit gas — MiniPay
+ *   estimates it so it can calculate the stablecoin fee amount.
+ *
+ * Privy: wagmi's writeContract (no feeCurrency needed).
  *
  * Returns the same shape as wagmi's useWriteContract:
  *   { writeContract, writeContractAsync, data, isPending, error, reset }
@@ -42,11 +41,19 @@ type WriteContractParams = {
 export function useUnifiedWriteContract() {
   const {
     writeContractAsync: wagmiWriteAsync,
-    isPending: wagmiIsPending,
-    data: wagmiHash,
-    error: wagmiError,
-    reset: wagmiReset,
+    isPending: wagmiWriteIsPending,
+    data: wagmiWriteHash,
+    error: wagmiWriteError,
+    reset: wagmiWriteReset,
   } = useWriteContract();
+
+  const {
+    sendTransactionAsync: wagmiSendAsync,
+    isPending: wagmiSendIsPending,
+    data: wagmiSendHash,
+    error: wagmiSendError,
+    reset: wagmiSendReset,
+  } = useSendTransaction();
 
   const isMiniPay = useMiniPayContext();
 
@@ -67,35 +74,20 @@ export function useUnifiedWriteContract() {
         (web3authIsConnected ? (liveProviderRef.current as any) : null) ??
         getWeb3AuthProvider();
 
-      // MiniPay's window.ethereum when confirmed in MiniPay environment
-      const miniPayProvider =
-        isMiniPay === true && typeof window !== "undefined"
-          ? (window.ethereum as any)
-          : null;
-
-      const viemProvider = w3aProvider ?? miniPayProvider;
-
-      if (viemProvider) {
-        // Web3Auth or MiniPay — use viem directly so feeCurrency is serialized correctly.
-        // wagmi strips non-standard EIP-1559 fields before passing to viem, so feeCurrency
-        // never reached MiniPay's provider when going through wagmiWriteAsync.
+      if (w3aProvider) {
+        // ── Web3Auth ─────────────────────────────────────────────────────────
+        // Bypass wagmi entirely; sign with the Web3Auth EIP1193 provider.
         setIsPending(true);
         try {
           const walletClient = createWalletClient({
             chain: celo,
-            transport: custom(viemProvider),
+            transport: custom(w3aProvider),
           });
           const [account] = await walletClient.getAddresses();
           const txHash = await walletClient.writeContract({
             ...(params as Parameters<typeof walletClient.writeContract>[0]),
             account,
             chain: celo,
-            // MiniPay: set feeCurrency (adapter) and clear explicit gas so the
-            // provider can estimate naturally. An explicit gas limit interferes
-            // with MiniPay's internal stablecoin fee calculation.
-            ...(miniPayProvider
-              ? { feeCurrency: USDT_FEE_ADAPTER, gas: undefined }
-              : {}),
           });
           setHash(txHash);
           return txHash;
@@ -106,8 +98,39 @@ export function useUnifiedWriteContract() {
         } finally {
           setIsPending(false);
         }
+
+      } else if (isMiniPay === true) {
+        // ── MiniPay ──────────────────────────────────────────────────────────
+        // Use wagmi's sendTransaction + encodeFunctionData — the exact pattern
+        // from the MiniPay docs. sendTransaction goes through the wagmi injected
+        // connector and correctly forwards feeCurrency to MiniPay's provider.
+        // No explicit gas: MiniPay must estimate it to calculate the stablecoin fee.
+        setIsPending(true);
+        try {
+          const data = encodeFunctionData({
+            abi: params.abi as Abi,
+            functionName: params.functionName,
+            args: params.args as readonly unknown[],
+          });
+          const txHash = await wagmiSendAsync({
+            to: params.address,
+            data,
+            ...(params.value !== undefined ? { value: params.value } : {}),
+            feeCurrency: USDT_FEE_ADAPTER,
+          } as Parameters<typeof wagmiSendAsync>[0]);
+          setHash(txHash);
+          return txHash;
+        } catch (err) {
+          const e = err instanceof Error ? err : new Error(String(err));
+          setError(e);
+          throw e;
+        } finally {
+          setIsPending(false);
+        }
+
       } else {
-        // Privy — wagmi handles it normally
+        // ── Privy ─────────────────────────────────────────────────────────────
+        // wagmi's writeContract handles it normally — no feeCurrency needed.
         setIsPending(true);
         try {
           const txHash = await wagmiWriteAsync(
@@ -124,7 +147,7 @@ export function useUnifiedWriteContract() {
         }
       }
     },
-    [wagmiWriteAsync, web3authIsConnected, isMiniPay],
+    [wagmiWriteAsync, wagmiSendAsync, web3authIsConnected, isMiniPay],
   );
 
   const writeContract = useCallback(
@@ -137,15 +160,16 @@ export function useUnifiedWriteContract() {
   const reset = useCallback(() => {
     setHash(undefined);
     setError(null);
-    wagmiReset();
-  }, [wagmiReset]);
+    wagmiWriteReset();
+    wagmiSendReset();
+  }, [wagmiWriteReset, wagmiSendReset]);
 
   return {
     writeContract,
     writeContractAsync,
-    data: hash ?? wagmiHash,
-    isPending: isPending || wagmiIsPending,
-    error: error ?? (wagmiError as Error | null),
+    data: hash ?? wagmiWriteHash ?? wagmiSendHash,
+    isPending: isPending || wagmiWriteIsPending || wagmiSendIsPending,
+    error: error ?? (wagmiWriteError as Error | null) ?? (wagmiSendError as Error | null),
     reset,
   };
 }

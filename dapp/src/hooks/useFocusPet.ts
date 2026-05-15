@@ -297,6 +297,7 @@ export function useFocusPet() {
   ) => {
     setLastAction("focus");
     setPendingSession({ minutes, multiplier: superchargeMultiplier });
+    toast.dismiss("session-retry");
 
     // Persist before attempting so the user can retry if the tx fails
     // (e.g. provider went stale after a long session, network blip, etc.)
