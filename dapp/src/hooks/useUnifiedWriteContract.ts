@@ -67,6 +67,14 @@ export function useUnifiedWriteContract() {
         (web3authIsConnected ? (liveProviderRef.current as any) : null) ??
         getWeb3AuthProvider();
 
+      const isMiniPayEnv = typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay === true;
+      console.log("[useUnifiedWriteContract] path", {
+        w3aProvider: !!w3aProvider,
+        isMiniPayEnv,
+        isMiniPayCtx: isMiniPay,
+        fn: params.functionName,
+      });
+
       if (w3aProvider) {
         // ── Web3Auth ─────────────────────────────────────────────────────────
         // Bypass wagmi entirely; sign with the Web3Auth EIP1193 provider.
@@ -92,9 +100,12 @@ export function useUnifiedWriteContract() {
           setIsPending(false);
         }
 
-      } else if (isMiniPay === true && typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
+      } else if (isMiniPayEnv) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Use viem directly with window.ethereum — bypasses wagmi entirely.
+        // Check window.ethereum.isMiniPay directly — do NOT rely on the React
+        // context which may still be null when this is first called.
+        //
+        // Use viem directly with window.ethereum (bypasses wagmi entirely).
         // MiniPay's sandbox blocks HTTP eth_estimateGas / eth_sendTransaction,
         // so all RPC calls must go through window.ethereum.
         //
@@ -102,18 +113,17 @@ export function useUnifiedWriteContract() {
         // Do NOT use type:'legacy' — without feeCurrency viem defaults to
         // EIP-1559 (type 2) which MiniPay rejects.
         //
-        // requestAddresses() = eth_requestAccounts — required before any call
-        // because eth_accounts returns [] until accounts are explicitly requested.
+        // getAddresses() (eth_accounts) works because MiniPay auto-connects —
+        // this is the pattern from the official MiniPay template docs.
         setIsPending(true);
         try {
           const walletClient = createWalletClient({
             chain: celo,
             transport: custom(window.ethereum as Parameters<typeof custom>[0]),
           });
-          const addresses = await walletClient.requestAddresses();
-          const account = addresses[0];
+          const [account] = await walletClient.getAddresses();
           if (!account) {
-            throw new Error(`MiniPay did not return an account (got: ${JSON.stringify(addresses)})`);
+            throw new Error("MiniPay eth_accounts returned no address — try reloading the app");
           }
           // Strip explicit gas — MiniPay must estimate natively for stablecoin fee display.
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
