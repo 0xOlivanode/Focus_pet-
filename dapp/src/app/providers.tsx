@@ -110,13 +110,21 @@ export const miniPayConnector = injected({
   },
 });
 
-// MiniPay config — ONLY the injected connector. No Privy, no Web3Auth connectors.
-// Using this with StandardWagmiProvider ensures Privy's WagmiProvider never injects
-// its embedded wallet connector for MiniPay users.
+// MiniPay config — HTTP-only transport for all read/receipt operations.
+// Writes bypass wagmi entirely (walletClient.sendTransaction via nativeMiniPayEthereum),
+// so the MiniPay WebView slot is not needed here and only adds latency to
+// useWaitForTransactionReceipt polling and useReadContracts calls.
+const miniPayHttpTransport = fallback([
+  http("https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17"),
+  http("https://forno.celo.org"),
+  http("https://rpc.ankr.com/celo"),
+  http("https://1rpc.io/celo"),
+]);
+
 const miniPayWagmiConfig = createConfig({
   chains: [celo],
   connectors: [miniPayConnector],
-  transports: { [celo.id]: celoTransport },
+  transports: { [celo.id]: miniPayHttpTransport },
 });
 
 // Full config — Privy WagmiProvider adds its own connector on top of these.
@@ -179,7 +187,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <PrivyProvider appId={privyAppId} config={{
           defaultChain: celo, supportedChains: [celo],
           loginMethods: ["email", "wallet"],
-          embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
+          embeddedWallets: { ethereum: { createOnLogin: "off" } },
         }}>
           <QueryClientProvider client={queryClient}>
             <StandardWagmiProvider config={miniPayWagmiConfig}>

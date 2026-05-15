@@ -59,14 +59,14 @@ export function useUnifiedWriteContract() {
         // ── MiniPay ──────────────────────────────────────────────────────────
         // Pattern from MiniPay docs / celopedia skill:
         //   1. createWalletClient with custom(window.ethereum)
-        //   2. encodeFunctionData manually (skips eth_call simulation)
-        //   3. walletClient.sendTransaction() — NOT writeContract()
+        //   2. encodeFunctionData manually — skips writeContract()'s eth_call simulation
+        //   3. walletClient.sendTransaction() with type:"legacy" and explicit gas
         //
-        // writeContract() runs eth_call (contract simulation) before sending,
-        // which hangs in MiniPay's WebView. sendTransaction() with pre-encoded
-        // data skips the simulation entirely.
-        // MiniPay handles nonce, gas price, and fee abstraction natively —
-        // no need to pass explicit gas.
+        // type:"legacy" — MiniPay only handles legacy (non-EIP-1559) transactions.
+        //   Without it, viem may attempt eth_maxFeePerGas / eth_feeHistory calls that hang.
+        // gas — callers always supply an explicit gas limit. Without it, viem calls
+        //   eth_estimateGas before every tx, which hangs in MiniPay's WebView.
+        //   (This is what the working commit at 2792191 got right: gas + type:legacy.)
         if (!nativeMiniPayEthereum) throw new Error("MiniPay provider not found");
         setIsPending(true);
         try {
@@ -88,6 +88,8 @@ export function useUnifiedWriteContract() {
             account,
             to: params.address,
             data,
+            type: "legacy",
+            ...(params.gas !== undefined && { gas: params.gas }),
             ...(params.value !== undefined && { value: params.value }),
             ...(params.feeCurrency !== undefined && { feeCurrency: params.feeCurrency }),
           } as Parameters<typeof walletClient.sendTransaction>[0]);
