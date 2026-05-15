@@ -571,7 +571,8 @@ function AppPageContent() {
           >
             <button
               onClick={async () => {
-                if (!celoBalance || celoBalance.value < BigInt(1e15)) {
+                // MiniPay users pay gas in USDT — skip the CELO balance check
+                if (isMiniPayEnv !== true && (!celoBalance || celoBalance.value < BigInt(1e15))) {
                   toast.error(
                     "You need a small amount of CELO for network fees. Share your address to receive some.",
                   );
