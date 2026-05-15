@@ -6,7 +6,32 @@ export function useIsMiniPay(): boolean | null {
   const [isMiniPay, setIsMiniPay] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setIsMiniPay(!!(window.ethereum as any)?.isMiniPay);
+    // Fast path — already injected synchronously
+    if ((window.ethereum as any)?.isMiniPay) {
+      setIsMiniPay(true);
+      return;
+    }
+
+    // MiniPay injects window.ethereum asynchronously. Poll for up to 800ms
+    // before settling on false so we never flash non-MiniPay UI prematurely.
+    let resolved = false;
+    const interval = setInterval(() => {
+      if ((window.ethereum as any)?.isMiniPay) {
+        setIsMiniPay(true);
+        resolved = true;
+        clearInterval(interval);
+      }
+    }, 50);
+
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      if (!resolved) setIsMiniPay(false);
+    }, 800);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, []);
 
   return isMiniPay;
