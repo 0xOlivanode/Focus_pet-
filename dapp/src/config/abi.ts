@@ -398,6 +398,83 @@ export const FocusPetABI = [
     ],
     anonymous: false,
   },
+  // ── USDT shop functions ──────────────────────────────────────────────────────
+  {
+    type: "function",
+    name: "buyFoodWithUSDT",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "buySuperFoodWithUSDT",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "buyEnergyDrinkWithUSDT",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "buyShieldWithUSDT",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "revivePetWithUSDT",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "buyCosmeticWithUSDT",
+    inputs: [
+      { name: "cosmeticId", type: "string", internalType: "string" },
+      { name: "usdtPrice", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "setUsdt",
+    inputs: [{ name: "_usdt", type: "address", internalType: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "usdt",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "contract IERC20" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "totalVolumeUSDT",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "event",
+    name: "ItemPurchasedWithUSDT",
+    inputs: [
+      { name: "buyer", type: "address", indexed: true, internalType: "address" },
+      { name: "item", type: "string", indexed: false, internalType: "string" },
+      { name: "usdtAmount", type: "uint256", indexed: false, internalType: "uint256" },
+    ],
+    anonymous: false,
+  },
 ] as const;
 
 export const ERC20ABI = [

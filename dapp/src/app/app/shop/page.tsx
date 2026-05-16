@@ -5,13 +5,10 @@ import { useFocusPet } from "@/hooks/useFocusPet";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMiniPay } from "@/hooks/useMiniPay";
 import { useRouter } from "next/navigation";
-import { useAccount, useBalance } from "wagmi";
 import { Navbar } from "@/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatEther } from "viem";
 import toast from "react-hot-toast";
-
-const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
 
 type Category = "consumables" | "boosts" | "cosmetics";
 
@@ -20,6 +17,8 @@ interface ShopItem {
   name: string;
   image?: string;
   price: number;
+  usdtPrice?: bigint;
+  usdtDisplay?: string;
   tag: string;
   action: () => void;
   disabled: boolean;
@@ -32,8 +31,6 @@ export default function ShopPage() {
   const { isAuthenticated, isReady } = useAuth();
   const router = useRouter();
   const isMiniPay = useIsMiniPay();
-  const { address } = useAccount();
-  const { data: usdtBalance } = useBalance({ address, token: USDT_ADDRESS as `0x${string}` });
   const [category, setCategory] = useState<Category>("consumables");
 
   const {
@@ -56,6 +53,12 @@ export default function ShopPage() {
     boostEndTime,
     shieldCount,
     equippedCosmetics,
+    buyFoodWithUSDT,
+    buySuperFoodWithUSDT,
+    buyEnergyDrinkWithUSDT,
+    buyShieldWithUSDT,
+    buyCosmeticWithUSDT,
+    usdtBalanceRaw,
   } = useFocusPet();
 
   // Toast on tx error — must be before any early returns (Rules of Hooks)
@@ -79,9 +82,15 @@ export default function ShopPage() {
   const balanceFormatted = gBalance
     ? parseFloat(formatEther(gBalance)).toFixed(2)
     : "0.00";
+  const usdtBalanceFormatted = (Number(usdtBalanceRaw) / 1e6).toFixed(2);
 
   const canAfford = (price: number) =>
     gBalance !== undefined && gBalance >= BigInt(price) * BigInt(10 ** 18);
+
+  const canAffordUSDT = (usdtPrice: bigint) => usdtBalanceRaw >= usdtPrice;
+
+  const SUNGLASSES_USDT = BigInt(500_000);  // $0.50
+  const CROWN_USDT = BigInt(5_000_000);     // $5.00
 
   const items: Record<Category, ShopItem[]> = {
     consumables: [
@@ -90,8 +99,10 @@ export default function ShopPage() {
         name: "Cyber Apple",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778748/cyber-apple_rn3ksq.png",
         price: 10,
+        usdtPrice: BigInt(100_000),
+        usdtDisplay: "$0.10",
         tag: "+20 Health",
-        action: buyFood,
+        action: isMiniPay ? buyFoodWithUSDT : buyFood,
         disabled: health >= 100,
         disabledLabel: health >= 100 ? "Health Full" : undefined,
       },
@@ -100,8 +111,10 @@ export default function ShopPage() {
         name: "Golden Apple",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778750/golden-apple_a1ra1b.png",
         price: 30,
+        usdtPrice: BigInt(250_000),
+        usdtDisplay: "$0.25",
         tag: "Max Health",
-        action: buySuperFood,
+        action: isMiniPay ? buySuperFoodWithUSDT : buySuperFood,
         disabled: health >= 100,
         disabledLabel: health >= 100 ? "Health Full" : undefined,
       },
@@ -112,8 +125,10 @@ export default function ShopPage() {
         name: "Energy Drink",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778743/energy-drink_hzoqsb.png",
         price: 25,
+        usdtPrice: BigInt(200_000),
+        usdtDisplay: "$0.20",
         tag: "2x XP (24h)",
-        action: buyEnergyDrink,
+        action: isMiniPay ? buyEnergyDrinkWithUSDT : buyEnergyDrink,
         disabled: isBoostActive,
         disabledLabel: isBoostActive ? "Boost Active" : undefined,
       },
@@ -122,8 +137,10 @@ export default function ShopPage() {
         name: "Streak Shield",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778745/streak-shield_kepght.png",
         price: 100,
+        usdtPrice: BigInt(500_000),
+        usdtDisplay: "$0.50",
         tag: "Streak Protection",
-        action: buyShield,
+        action: isMiniPay ? buyShieldWithUSDT : buyShield,
         disabled: shieldCount > 0,
         disabledLabel: shieldCount > 0 ? "Shield Active" : undefined,
       },
@@ -134,11 +151,14 @@ export default function ShopPage() {
         name: "Cool Shades",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778747/cool-shades_txvqei.png",
         price: 50,
+        usdtPrice: SUNGLASSES_USDT,
+        usdtDisplay: "$0.50",
         tag: "Cosmetic",
-        action: () =>
-          inventory?.sunglasses
-            ? toggleCosmetic("sunglasses")
-            : buyCosmetic("sunglasses", 50),
+        action: inventory?.sunglasses
+          ? () => toggleCosmetic("sunglasses")
+          : isMiniPay
+            ? () => buyCosmeticWithUSDT("sunglasses", SUNGLASSES_USDT)
+            : () => buyCosmetic("sunglasses", 50),
         disabled: false,
         owned: inventory?.sunglasses,
         equipped: equippedCosmetics?.sunglasses,
@@ -148,11 +168,14 @@ export default function ShopPage() {
         name: "Royal Crown",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778752/crown_xs1nxk.png",
         price: 500,
+        usdtPrice: CROWN_USDT,
+        usdtDisplay: "$5.00",
         tag: "Legendary",
-        action: () =>
-          inventory?.crown
-            ? toggleCosmetic("crown")
-            : buyCosmetic("crown", 500),
+        action: inventory?.crown
+          ? () => toggleCosmetic("crown")
+          : isMiniPay
+            ? () => buyCosmeticWithUSDT("crown", CROWN_USDT)
+            : () => buyCosmetic("crown", 500),
         disabled: false,
         owned: inventory?.crown,
         equipped: equippedCosmetics?.crown,
@@ -232,22 +255,11 @@ export default function ShopPage() {
             <span className="text-neutral-500 text-sm">Balance</span>
             <span className="text-white text-sm font-semibold tabular-nums">
               {isMiniPay
-                ? `${usdtBalance ? parseFloat(usdtBalance.formatted).toFixed(2) : "0.00"} USDT`
+                ? `${usdtBalanceFormatted} USDT`
                 : `${balanceFormatted} G$`}
             </span>
           </div>
         </div>
-
-        {/* MiniPay notice */}
-        {isMiniPay && (
-          <div className="flex items-start gap-3 px-5 py-4 mb-6 rounded-2xl border border-neutral-800 bg-[#111111]">
-            <span className="text-lg leading-none mt-0.5">🛍️</span>
-            <div>
-              <p className="text-white text-sm font-semibold mb-0.5">Shop coming soon for MiniPay</p>
-              <p className="text-neutral-500 text-xs">USDT purchases are on the way. You can still equip cosmetics you already own.</p>
-            </div>
-          </div>
-        )}
 
         {/* Active effects */}
         {(isBoostActive || shieldCount > 0) && (
@@ -292,11 +304,12 @@ export default function ShopPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence mode="wait">
             {items[category].map((item, i) => {
-              const affordable = canAfford(item.price);
-              // In MiniPay: block purchases but allow equip/unequip on owned cosmetics
+              const affordable = isMiniPay
+                ? canAffordUSDT(item.usdtPrice ?? BigInt(0))
+                : canAfford(item.price);
+
               const blocked =
-                isPending || item.disabled || (!item.owned && !affordable) ||
-                (isMiniPay === true && !item.owned);
+                isPending || item.disabled || (!item.owned && !affordable);
 
               return (
                 <motion.div
@@ -310,7 +323,7 @@ export default function ShopPage() {
                   }`}
                 >
                   {/* Image area */}
-                  <div className="relative w-full aspect-[4/3] bg-[#111111] flex items-center justify-center overflow-hidden">
+                  <div className="relative w-full aspect-4/3 bg-[#111111] flex items-center justify-center overflow-hidden">
                     {item.image && (
                       <div className="w-full h-full flex items-center justify-center p-8">
                         <img
@@ -327,9 +340,9 @@ export default function ShopPage() {
                         {item.disabledLabel}
                       </span>
                     )}
-                    {!isMiniPay && !item.owned && !affordable && !item.disabled && (
+                    {!item.owned && !affordable && !item.disabled && (
                       <span className="absolute top-3 right-3 text-[11px] font-medium px-2.5 py-1 bg-black/60 border border-neutral-700 rounded-full text-neutral-500">
-                        Insufficient G$
+                        Insufficient {isMiniPay ? "USDT" : "G$"}
                       </span>
                     )}
                   </div>
@@ -352,6 +365,11 @@ export default function ShopPage() {
                   <div className="flex items-center justify-between px-4 pb-4 pt-1">
                     {item.owned && category === "cosmetics" ? (
                       <span className="text-neutral-600 text-sm">Owned</span>
+                    ) : isMiniPay && item.usdtDisplay ? (
+                      <span className="text-white text-lg font-semibold tabular-nums">
+                        {item.usdtDisplay}
+                        <span className="text-neutral-500 text-sm font-normal ml-1">USDT</span>
+                      </span>
                     ) : (
                       <span className="text-white text-lg font-semibold tabular-nums">
                         {item.price} G$

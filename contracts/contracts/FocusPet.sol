@@ -20,34 +20,39 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string petName;
         uint256 streak;
         uint256 lastDailySession;
-        uint256 boostEndTime;   // 2x XP Boost expiration
-        uint256 shieldCount;    // Streak protection shields
-        string activeCosmetic; // Currently equipped cosmetic
-        uint256 totalDonated;  // Total G$ contributed to UBI pool
-        uint256 totalFocusTime; // Total raw seconds focused (no multipliers)
+        uint256 boostEndTime;
+        uint256 shieldCount;
+        string activeCosmetic;
+        uint256 totalDonated;
+        uint256 totalFocusTime;
     }
 
     mapping(address => Pet) public pets;
-    
+
     IERC20 public goodDollar;
     address public ubiPool;
 
-
-    // Constants
     uint256 public constant MAX_HEALTH = 100;
     uint256 public constant DECAY_RATE_PER_DAY = 10;
-    
-    uint256 public constant FEE_PERCENTAGE = 10; // 10% redirected to UBI pool
+    uint256 public constant FEE_PERCENTAGE = 10;
 
-    // G$ Prices
+    // G$ prices (18 decimals)
     uint256 public constant PRICE_FOOD = 10 ether;
     uint256 public constant PRICE_SUPER_FOOD = 30 ether;
     uint256 public constant PRICE_ENERGY_DRINK = 25 ether;
     uint256 public constant PRICE_SHIELD = 100 ether;
     uint256 public constant PRICE_REVIVE = 50 ether;
 
+    // USDT prices (6 decimals) — set to match approximate USD value of G$ prices
+    uint256 public constant PRICE_FOOD_USDT         = 100_000;   // $0.10
+    uint256 public constant PRICE_SUPER_FOOD_USDT   = 250_000;   // $0.25
+    uint256 public constant PRICE_ENERGY_DRINK_USDT = 200_000;   // $0.20
+    uint256 public constant PRICE_SHIELD_USDT        = 500_000;   // $0.50
+    uint256 public constant PRICE_REVIVE_USDT        = 250_000;   // $0.25
+
     event PetFed(address indexed owner, uint256 newHealth, uint256 newXp);
     event ItemPurchased(address indexed buyer, string item);
+    event ItemPurchasedWithUSDT(address indexed buyer, string item, uint256 usdtAmount);
     event PetBorn(address indexed owner);
     event NamesUpdated(address indexed owner, string username, string petName);
     event BoostActivated(address indexed owner, uint256 endTime);
@@ -71,7 +76,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function initialize(address _goodDollar, address _ubiPool, address _cfaForwarder) public initializer {
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
-        
+
         goodDollar = IERC20(_goodDollar);
         ubiPool = _ubiPool;
         cfaForwarder = _cfaForwarder;
@@ -79,6 +84,8 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    // ── Admin setters ─────────────────────────────────────────────────────────
 
     function setUbiPool(address _newPool) public onlyOwner {
         ubiPool = _newPool;
@@ -92,10 +99,20 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         treasury = _newTreasury;
     }
 
+    // Call this once after upgrading to set the USDT token address.
+    // Celo Mainnet USDT: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e
+    function setUsdt(address _usdt) public onlyOwner {
+        usdt = IERC20(_usdt);
+    }
+
+    // ── Modifiers ─────────────────────────────────────────────────────────────
+
     modifier hasPet() {
         require(pets[msg.sender].birthTime > 0, "No pet found");
         _;
     }
+
+    // ── Internal helpers ──────────────────────────────────────────────────────
 
     function _initPet(address owner) internal {
         pets[owner] = Pet({
@@ -117,8 +134,6 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit PetBorn(owner);
     }
 
-    // --- Decoupled Helpers (Resolves Stack Too Deep) ---
-
     function _getFlowRate(address user) internal view returns (uint256) {
         if (cfaForwarder == address(0)) return 0;
         (, int96 flowRate, , ) = ICFAv1Forwarder(cfaForwarder).getFlowInfo(address(goodDollar), user, ubiPool);
@@ -126,7 +141,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _handleStreamedImpact(Pet storage pet, uint256 flowRateAmount, uint256 timeDiff) internal {
-        pet.health = MAX_HEALTH; 
+        pet.health = MAX_HEALTH;
         uint256 amountStreamed = flowRateAmount * timeDiff;
         pet.totalDonated += amountStreamed;
         totalCommunityImpact += amountStreamed;
@@ -165,9 +180,9 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _getStreamMultiplier(uint256 flowRateAmount) internal pure returns (uint256) {
-        if (flowRateAmount >= 38000 * 1e9) return 170; // 100 G$/mo
-        if (flowRateAmount >= 19000 * 1e9) return 140; // 50 G$/mo
-        if (flowRateAmount >= 3800 * 1e9) return 120;  // 10 G$/mo
+        if (flowRateAmount >= 38000 * 1e9) return 170;
+        if (flowRateAmount >= 19000 * 1e9) return 140;
+        if (flowRateAmount >= 3800 * 1e9) return 120;
         return 100;
     }
 
@@ -175,7 +190,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 bonus = (pet.streak > 1) ? min(20, (pet.streak - 1) * 5) : 0;
         uint256 baseXP = duration + (duration * bonus / 100);
         uint256 finalXP = (baseXP * _getStreamMultiplier(flowRateAmount)) / 100;
-        
+
         if (block.timestamp < pet.boostEndTime) {
             pet.xp += (finalXP * 2);
         } else {
@@ -192,109 +207,176 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         _settlePet(pets[user], _getFlowRate(user));
     }
 
-    // Buy Food: +20 Health, Costs 10 G$
+    // Splits a G$ payment: 90% treasury, 10% UBI pool.
+    function _splitPayment(uint256 amount) internal {
+        _settleStream(msg.sender);
+        uint256 ubiFee = (amount * FEE_PERCENTAGE) / 100;
+        uint256 treasuryAmount = amount - ubiFee;
+
+        address treasuryTarget = treasury != address(0) ? treasury : address(this);
+        require(goodDollar.transferFrom(msg.sender, treasuryTarget, treasuryAmount), "Treasury transfer failed");
+        require(goodDollar.transferFrom(msg.sender, ubiPool, ubiFee), "UBI Pool transfer failed");
+
+        pets[msg.sender].totalDonated += ubiFee;
+        totalCommunityImpact += ubiFee;
+        totalVolumeG$ += amount;
+        emit DonationSent(ubiPool, ubiFee);
+    }
+
+    // Pulls USDT from the caller to treasury. Full amount goes to treasury
+    // since the UBI pool is a GoodDollar-native contract and cannot receive USDT.
+    function _splitPaymentUSDT(uint256 amount) internal {
+        require(address(usdt) != address(0), "USDT not configured");
+        _settleStream(msg.sender);
+        address target = treasury != address(0) ? treasury : address(this);
+        require(usdt.transferFrom(msg.sender, target, amount), "USDT transfer failed");
+        totalVolumeUSDT += amount;
+    }
+
+    // ── G$ buy functions (unchanged) ──────────────────────────────────────────
+
     function buyFood() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
-
         _splitPayment(PRICE_FOOD);
-
         pet.health = min(MAX_HEALTH, pet.health + 20);
         emit PetFed(msg.sender, pet.health, pet.xp);
         emit ItemPurchased(msg.sender, "FOOD");
     }
 
-    // Buy Super Food: 100 Health, Costs 30 G$
     function buySuperFood() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
-
         _splitPayment(PRICE_SUPER_FOOD);
-
         pet.health = MAX_HEALTH;
         emit PetFed(msg.sender, pet.health, pet.xp);
         emit ItemPurchased(msg.sender, "SUPER_FOOD");
     }
 
-    // Buy Energy Drink: +24h 2x XP boost, Costs 25 G$
     function buyEnergyDrink() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
-        
         _splitPayment(PRICE_ENERGY_DRINK);
-
         if (pet.boostEndTime < block.timestamp) {
             pet.boostEndTime = block.timestamp + 24 hours;
         } else {
             pet.boostEndTime += 24 hours;
         }
-        
         emit BoostActivated(msg.sender, pet.boostEndTime);
         emit ItemPurchased(msg.sender, "ENERGY_DRINK");
     }
 
-    // Buy Shield: +1 Streak Shield, Costs 100 G$
     function buyShield() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
-        
         _splitPayment(PRICE_SHIELD);
-
         pet.shieldCount += 1;
         emit ShieldAdded(msg.sender, pet.shieldCount);
         emit ItemPurchased(msg.sender, "SHIELD");
     }
 
-    mapping(address => mapping(string => bool)) public ownedCosmetics;
-
-    address public cfaForwarder;
-    uint256 public totalCommunityImpact; // Total G$ sent to UBI by the FocusPet community
-    mapping(address => mapping(string => bool)) public isCosmeticEquipped;
-
-    // --- Metrics Tracking (Appended to fix storage layout) ---
-    uint256 public totalUsers;
-    uint256 public totalFocusSessions;
-    uint256 public totalGlobalFocusTime;
-    uint256 public totalVolumeG$;
-    address public treasury;
-    mapping(string => address) public usernameToAddress;
-
-    // Buy Cosmetic & Add to Inventory
-    function buyCosmetic(string memory cosmeticId, uint256 price) public {
-        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
-        
-        _splitPayment(price * 1 ether);
-
-        ownedCosmetics[msg.sender][cosmeticId] = true;
-        isCosmeticEquipped[msg.sender][cosmeticId] = true;
-        emit ItemPurchased(msg.sender, cosmeticId);
-    }
-
-    // Toggle Owned Cosmetic (Aesthetic Wardrobe)
-    function toggleCosmetic(string memory cosmeticId) public hasPet {
-        _settleStream(msg.sender);
-        require(ownedCosmetics[msg.sender][cosmeticId], "Item not owned");
-        
-        isCosmeticEquipped[msg.sender][cosmeticId] = !isCosmeticEquipped[msg.sender][cosmeticId];
-        
-        emit ItemPurchased(msg.sender, cosmeticId);
-    }
-
-    // Revive Pet: Sets Health to 50, Costs 50 G$
     function revivePet() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health == 0, "Pet is alive");
-
         _splitPayment(PRICE_REVIVE);
-
         pet.health = 50;
         pet.lastInteraction = block.timestamp;
         emit PetFed(msg.sender, pet.health, pet.xp);
         emit ItemPurchased(msg.sender, "REVIVE");
     }
+
+    function buyCosmetic(string memory cosmeticId, uint256 price) public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        _splitPayment(price * 1 ether);
+        ownedCosmetics[msg.sender][cosmeticId] = true;
+        isCosmeticEquipped[msg.sender][cosmeticId] = true;
+        emit ItemPurchased(msg.sender, cosmeticId);
+    }
+
+    // ── USDT buy functions ────────────────────────────────────────────────────
+
+    // +20 Health — costs $0.10 USDT
+    function buyFoodWithUSDT() public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        Pet storage pet = pets[msg.sender];
+        require(pet.health > 0, "Pet is dead");
+        _splitPaymentUSDT(PRICE_FOOD_USDT);
+        pet.health = min(MAX_HEALTH, pet.health + 20);
+        emit PetFed(msg.sender, pet.health, pet.xp);
+        emit ItemPurchasedWithUSDT(msg.sender, "FOOD", PRICE_FOOD_USDT);
+    }
+
+    // Full Health — costs $0.25 USDT
+    function buySuperFoodWithUSDT() public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        Pet storage pet = pets[msg.sender];
+        require(pet.health > 0, "Pet is dead");
+        _splitPaymentUSDT(PRICE_SUPER_FOOD_USDT);
+        pet.health = MAX_HEALTH;
+        emit PetFed(msg.sender, pet.health, pet.xp);
+        emit ItemPurchasedWithUSDT(msg.sender, "SUPER_FOOD", PRICE_SUPER_FOOD_USDT);
+    }
+
+    // 2x XP for 24h — costs $0.20 USDT
+    function buyEnergyDrinkWithUSDT() public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        Pet storage pet = pets[msg.sender];
+        _splitPaymentUSDT(PRICE_ENERGY_DRINK_USDT);
+        if (pet.boostEndTime < block.timestamp) {
+            pet.boostEndTime = block.timestamp + 24 hours;
+        } else {
+            pet.boostEndTime += 24 hours;
+        }
+        emit BoostActivated(msg.sender, pet.boostEndTime);
+        emit ItemPurchasedWithUSDT(msg.sender, "ENERGY_DRINK", PRICE_ENERGY_DRINK_USDT);
+    }
+
+    // +1 Streak Shield — costs $0.50 USDT
+    function buyShieldWithUSDT() public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        Pet storage pet = pets[msg.sender];
+        _splitPaymentUSDT(PRICE_SHIELD_USDT);
+        pet.shieldCount += 1;
+        emit ShieldAdded(msg.sender, pet.shieldCount);
+        emit ItemPurchasedWithUSDT(msg.sender, "SHIELD", PRICE_SHIELD_USDT);
+    }
+
+    // Revive dead pet — costs $0.25 USDT
+    function revivePetWithUSDT() public {
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        Pet storage pet = pets[msg.sender];
+        require(pet.health == 0, "Pet is alive");
+        _splitPaymentUSDT(PRICE_REVIVE_USDT);
+        pet.health = 50;
+        pet.lastInteraction = block.timestamp;
+        emit PetFed(msg.sender, pet.health, pet.xp);
+        emit ItemPurchasedWithUSDT(msg.sender, "REVIVE", PRICE_REVIVE_USDT);
+    }
+
+    // Buy cosmetic with USDT. usdtPrice must be in USDT units (6 decimals).
+    // Frontend is responsible for passing the correct price matching the item.
+    function buyCosmeticWithUSDT(string memory cosmeticId, uint256 usdtPrice) public {
+        require(usdtPrice > 0, "Invalid price");
+        if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
+        _splitPaymentUSDT(usdtPrice);
+        ownedCosmetics[msg.sender][cosmeticId] = true;
+        isCosmeticEquipped[msg.sender][cosmeticId] = true;
+        emit ItemPurchasedWithUSDT(msg.sender, cosmeticId, usdtPrice);
+    }
+
+    // ── Cosmetic toggle (unchanged) ───────────────────────────────────────────
+
+    function toggleCosmetic(string memory cosmeticId) public hasPet {
+        _settleStream(msg.sender);
+        require(ownedCosmetics[msg.sender][cosmeticId], "Item not owned");
+        isCosmeticEquipped[msg.sender][cosmeticId] = !isCosmeticEquipped[msg.sender][cosmeticId];
+        emit ItemPurchased(msg.sender, cosmeticId);
+    }
+
+    // ── Focus session (unchanged) ─────────────────────────────────────────────
 
     function focusSession(uint256 sessionDurationSeconds) public {
         Pet storage pet = pets[msg.sender];
@@ -319,32 +401,18 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit PetFed(msg.sender, pet.health, pet.xp);
     }
 
-    function _splitPayment(uint256 amount) internal {
-        _settleStream(msg.sender); // Settle stream before new transaction
-        uint256 ubiFee = (amount * FEE_PERCENTAGE) / 100;
-        uint256 treasuryAmount = amount - ubiFee;
-
-        address treasuryTarget = treasury != address(0) ? treasury : address(this);
-        require(goodDollar.transferFrom(msg.sender, treasuryTarget, treasuryAmount), "Treasury transfer failed");
-        require(goodDollar.transferFrom(msg.sender, ubiPool, ubiFee), "UBI Pool transfer failed");
-        
-        pets[msg.sender].totalDonated += ubiFee;
-        totalCommunityImpact += ubiFee;
-        totalVolumeG$ += amount;
-        emit DonationSent(ubiPool, ubiFee);
-    }
+    // ── Names / user management (unchanged) ──────────────────────────────────
 
     function setNames(string memory _username, string memory _petName) public hasPet {
         if (bytes(_username).length > 0) {
             address existing = usernameToAddress[_username];
             require(existing == address(0) || existing == msg.sender, "Username taken");
-            
-            // Clear old mapping
+
             string memory oldUsername = pets[msg.sender].username;
             if (bytes(oldUsername).length > 0 && keccak256(bytes(oldUsername)) != keccak256(bytes(_username))) {
                 delete usernameToAddress[oldUsername];
             }
-            
+
             usernameToAddress[_username] = msg.sender;
         }
 
@@ -357,7 +425,6 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         _clearUserData(msg.sender);
     }
 
-    // Admin-Reset: Allows owner to delete specific user data
     function adminDeleteUser(address _user) public onlyOwner {
         _clearUserData(_user);
     }
@@ -368,14 +435,13 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             delete usernameToAddress[username];
         }
 
-        // Wipe inventory & equipped states
         ownedCosmetics[_user]["sunglasses"] = false;
         ownedCosmetics[_user]["crown"] = false;
         isCosmeticEquipped[_user]["sunglasses"] = false;
         isCosmeticEquipped[_user]["crown"] = false;
 
         delete pets[_user];
-        
+
         if (totalUsers > 0) {
             totalUsers -= 1;
         }
@@ -383,9 +449,31 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit UserDeleted(_user);
     }
 
+    // ── Views ─────────────────────────────────────────────────────────────────
+
     function getPet(address owner) public view returns (Pet memory) {
         return pets[owner];
     }
+
+    // ── Storage variables appended to preserve upgrade layout ─────────────────
+    // WARNING: never reorder or remove any of these.
+
+    mapping(address => mapping(string => bool)) public ownedCosmetics;
+    address public cfaForwarder;
+    uint256 public totalCommunityImpact;
+    mapping(address => mapping(string => bool)) public isCosmeticEquipped;
+    uint256 public totalUsers;
+    uint256 public totalFocusSessions;
+    uint256 public totalGlobalFocusTime;
+    uint256 public totalVolumeG$;
+    address public treasury;
+    mapping(string => address) public usernameToAddress;
+
+    // V2 additions — appended after all V1 storage
+    IERC20 public usdt;
+    uint256 public totalVolumeUSDT;
+
+    // ── Utilities ─────────────────────────────────────────────────────────────
 
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;

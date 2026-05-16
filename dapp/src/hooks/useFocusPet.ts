@@ -12,6 +12,14 @@ import toast from "react-hot-toast";
 import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
 
 const G_DOLLAR_ADDRESS = GOOD_DOLLAR_ADDRESSES.CELO_MAINNET;
+const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
+
+// USDT price constants (6 decimals, matching contract)
+const PRICE_FOOD_USDT = BigInt(100_000);
+const PRICE_SUPER_FOOD_USDT = BigInt(250_000);
+const PRICE_ENERGY_DRINK_USDT = BigInt(200_000);
+const PRICE_SHIELD_USDT = BigInt(500_000);
+const PRICE_REVIVE_USDT = BigInt(250_000);
 import { formatEther, erc20Abi } from "viem";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -144,6 +152,18 @@ export function useFocusPet() {
         abi: FocusPetABI,
         functionName: "goodDollar",
       },
+      {
+        address: USDT_ADDRESS as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [address as `0x${string}`],
+      },
+      {
+        address: USDT_ADDRESS as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [address as `0x${string}`, CONTRACT_ADDRESS],
+      },
     ],
     query: {
       enabled: !!address,
@@ -162,6 +182,8 @@ export function useFocusPet() {
   const isSunglassesEquipped = multicallData?.[5]?.result;
   const isCrownEquipped = multicallData?.[6]?.result;
   const goodDollarOnChain = multicallData?.[7]?.result;
+  const usdtBalanceRaw = multicallData?.[8]?.result ? (multicallData[8].result as bigint) : BigInt(0);
+  const usdtAllowanceRaw = multicallData?.[9]?.result ? (multicallData[9].result as bigint) : BigInt(0);
 
   const refetch = refetchAll;
   const refetchGBalance = refetchAll;
@@ -267,6 +289,51 @@ export function useFocusPet() {
   const buyShield = () => executeBatchedBuy("buyShield", 100, [], "shield");
   const buyCosmetic = (id: string, price: number) =>
     executeBatchedBuy("buyCosmetic", price, [id, BigInt(price)], id);
+
+  // ── USDT buy functions (for MiniPay) ──────────────────────────────────────
+  const executeUSDTBuy = (
+    functionName: string,
+    usdtAmount: bigint,
+    args: any[] = [],
+    itemId?: string,
+  ) => {
+    if (usdtBalanceRaw < usdtAmount) {
+      toast.error("Insufficient USDT balance");
+      return;
+    }
+    setLastAction("shop");
+    if (usdtAllowanceRaw < usdtAmount) {
+      if (itemId) setPendingItem({ id: itemId, functionName, args });
+      writeContract({
+        address: USDT_ADDRESS as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [CONTRACT_ADDRESS, usdtAmount],
+        gas: BigInt(100_000),
+      } as any);
+    } else {
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: FocusPetABI,
+        functionName: functionName as any,
+        args: args as any,
+        gas: BigInt(400_000),
+      } as any);
+    }
+  };
+
+  const buyFoodWithUSDT = () =>
+    executeUSDTBuy("buyFoodWithUSDT", PRICE_FOOD_USDT, [], "apple");
+  const buySuperFoodWithUSDT = () =>
+    executeUSDTBuy("buySuperFoodWithUSDT", PRICE_SUPER_FOOD_USDT, [], "golden_apple");
+  const buyEnergyDrinkWithUSDT = () =>
+    executeUSDTBuy("buyEnergyDrinkWithUSDT", PRICE_ENERGY_DRINK_USDT, [], "energy_drink");
+  const buyShieldWithUSDT = () =>
+    executeUSDTBuy("buyShieldWithUSDT", PRICE_SHIELD_USDT, [], "shield");
+  const revivePetWithUSDT = () =>
+    executeUSDTBuy("revivePetWithUSDT", PRICE_REVIVE_USDT, [], "revive");
+  const buyCosmeticWithUSDT = (cosmeticId: string, usdtPrice: bigint) =>
+    executeUSDTBuy("buyCosmeticWithUSDT", usdtPrice, [cosmeticId, usdtPrice], cosmeticId);
 
   const toggleCosmetic = (id: string) => {
     setLastAction("shop");
@@ -657,6 +724,14 @@ export function useFocusPet() {
     buyShield,
     buyCosmetic,
     revivePet,
+    // USDT variants
+    buyFoodWithUSDT,
+    buySuperFoodWithUSDT,
+    buyEnergyDrinkWithUSDT,
+    buyShieldWithUSDT,
+    revivePetWithUSDT,
+    buyCosmeticWithUSDT,
+    usdtBalanceRaw,
     setNames,
     deleteUser,
     // Economy
