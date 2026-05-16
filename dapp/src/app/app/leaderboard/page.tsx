@@ -156,10 +156,10 @@ export default function LeaderboardPage() {
             })}
           </div>
         )} */}
-        {userAddress && userEntry && userEntry.rank > 0 && (
+        {userAddress && userEntry && (
           <div className="mt-6 flex items-center gap-4 px-5 py-4 bg-[#111111] border border-neutral-800 rounded-2xl mb-4">
             <span className="inline-flex items-center justify-center min-w-[44px] h-8 px-3 bg-white text-black text-xs font-semibold rounded-full tabular-nums shrink-0">
-              #{userEntry.rank}
+              {userEntry.rank > 0 ? `#${userEntry.rank}` : "—"}
             </span>
             <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-neutral-700 flex items-center justify-center text-sm shrink-0">
               {getPetEmoji(getPetStage(userEntry.xp))}
@@ -173,28 +173,36 @@ export default function LeaderboardPage() {
                     : "—"}
               </p>
               <p className="text-neutral-500 text-xs mt-0.5 tabular-nums">
-                {getPetStage(userEntry.xp).charAt(0).toUpperCase() +
-                  getPetStage(userEntry.xp).slice(1)}{" "}
-                · {userEntry.xp.toLocaleString()} XP ·{" "}
-                {formatHours(userEntry.totalFocusTime || 0)} focused
-                {userEntry.streak ? (
-                  <span className="inline-flex items-center gap-1 ml-1">
-                    · <Image src="/streak-flame.png" width={12} height={12} alt="" className="inline" /> {userEntry.streak}
-                  </span>
-                ) : ""}
+                {userEntry.rank > 0 ? (
+                  <>
+                    {getPetStage(userEntry.xp).charAt(0).toUpperCase() +
+                      getPetStage(userEntry.xp).slice(1)}{" "}
+                    · {userEntry.xp.toLocaleString()} XP ·{" "}
+                    {formatHours(userEntry.totalFocusTime || 0)} focused
+                    {userEntry.streak ? (
+                      <span className="inline-flex items-center gap-1 ml-1">
+                        · <Image src="/streak-flame.png" width={12} height={12} alt="" className="inline" /> {userEntry.streak}
+                      </span>
+                    ) : ""}
+                  </>
+                ) : (
+                  "Keep focusing to enter the top 100"
+                )}
               </p>
             </div>
-            <span className="text-neutral-600 text-xs shrink-0">
-              Top{" "}
-              {Math.max(
-                1,
-                Math.ceil(
-                  (userEntry.rank / (totalUsers || leaderboard.length || 1)) *
-                    100,
-                ),
-              )}
-              %
-            </span>
+            {userEntry.rank > 0 && (
+              <span className="text-neutral-600 text-xs shrink-0">
+                Top{" "}
+                {Math.max(
+                  1,
+                  Math.ceil(
+                    (userEntry.rank / (totalUsers || leaderboard.length || 1)) *
+                      100,
+                  ),
+                )}
+                %
+              </span>
+            )}
           </div>
         )}
         {/* Table */}
@@ -331,57 +339,58 @@ export default function LeaderboardPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-6 py-4 border-t border-neutral-800 flex items-center justify-between gap-4">
-              <p className="text-xs text-neutral-600">
-                {Math.min(
-                  filteredLeaderboard.length,
-                  (currentPage - 1) * ITEMS_PER_PAGE + 1,
-                )}
+            <div className="px-4 sm:px-6 py-4 border-t border-neutral-800 flex flex-col sm:flex-row items-center gap-3 sm:justify-between">
+              <p className="text-xs text-neutral-600 tabular-nums order-2 sm:order-1">
+                {Math.min(filteredLeaderboard.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)}
                 –
-                {Math.min(
-                  filteredLeaderboard.length,
-                  currentPage * ITEMS_PER_PAGE,
-                )}{" "}
+                {Math.min(filteredLeaderboard.length, currentPage * ITEMS_PER_PAGE)}{" "}
                 of {filteredLeaderboard.length}
               </p>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2 order-1 sm:order-2">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-neutral-800 text-xs text-neutral-400 disabled:opacity-30 hover:border-neutral-600 transition-colors"
+                  className="h-10 px-4 rounded-xl bg-[#1a1a1a] border border-neutral-800 text-sm text-neutral-400 disabled:opacity-30 hover:border-neutral-600 transition-colors active:scale-95"
                 >
-                  Prev
+                  ← Prev
                 </button>
-                {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                  let p = i + 1;
-                  if (totalPages > 5) {
-                    if (currentPage <= 3) p = i + 1;
-                    else if (currentPage >= totalPages - 2)
-                      p = totalPages - 4 + i;
-                    else p = currentPage - 2 + i;
-                  }
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setCurrentPage(p)}
-                      className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
-                        currentPage === p
-                          ? "bg-white text-black"
-                          : "bg-[#1a1a1a] border border-neutral-800 text-neutral-500 hover:border-neutral-600"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
+
+                {/* Mobile: show current / total only */}
+                <span className="sm:hidden text-sm text-neutral-400 tabular-nums px-3">
+                  {currentPage} / {totalPages}
+                </span>
+
+                {/* Desktop: show page number buttons */}
+                <div className="hidden sm:flex items-center gap-1.5">
+                  {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                    let p = i + 1;
+                    if (totalPages > 5) {
+                      if (currentPage <= 3) p = i + 1;
+                      else if (currentPage >= totalPages - 2) p = totalPages - 4 + i;
+                      else p = currentPage - 2 + i;
+                    }
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setCurrentPage(p)}
+                        className={`w-9 h-9 rounded-lg text-xs font-medium transition-all ${
+                          currentPage === p
+                            ? "bg-white text-black"
+                            : "bg-[#1a1a1a] border border-neutral-800 text-neutral-500 hover:border-neutral-600"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <button
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
-                  }
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-neutral-800 text-xs text-neutral-400 disabled:opacity-30 hover:border-neutral-600 transition-colors"
+                  className="h-10 px-4 rounded-xl bg-[#1a1a1a] border border-neutral-800 text-sm text-neutral-400 disabled:opacity-30 hover:border-neutral-600 transition-colors active:scale-95"
                 >
-                  Next
+                  Next →
                 </button>
               </div>
             </div>
