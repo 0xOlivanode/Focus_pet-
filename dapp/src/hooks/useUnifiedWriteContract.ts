@@ -1,12 +1,41 @@
 "use client";
 
 import { useWriteContract } from "wagmi";
-import { createWalletClient, custom, type Abi } from "viem";
+import { createWalletClient, createPublicClient, custom, http, erc20Abi, type Abi } from "viem";
 import { celo } from "wagmi/chains";
 import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { useWeb3Auth } from "@web3auth/modal/react";
 import { useState, useCallback, useRef } from "react";
 import { IS_MINIPAY, nativeMiniPayEthereum } from "@/lib/miniPayEthereum";
+
+// ── MiniPay fee-currency adapters ─────────────────────────────────────────────
+// MiniPay does NOT default to the user's available stablecoin — it defaults to
+// USDm. Users with only USDT or USDC will have every transaction fail silently
+// unless we set feeCurrency explicitly (CIP-64, type 0x7b).
+// Reference: builder-guide.md §Fee Abstraction, minipay-guide.md §Supported Stablecoins
+const USDT_TOKEN    = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e" as const;
+const USDT_FEE      = "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72" as const; // adapter
+const USDC_TOKEN    = "0xcebA9300f2b948710d2653dD7B07f33A8B32118C" as const;
+const USDC_FEE      = "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B" as const; // adapter
+const USDM_FEE      = "0x765DE816845861e75A25fCA122bb6898B8B1282a" as const; // token == adapter
+
+// Detect the best feeCurrency for the user: USDT > USDC > USDm (fallback).
+// Uses HTTP RPC so it doesn't go through the MiniPay WebView.
+async function detectMiniPayFeeCurrency(account: `0x${string}`): Promise<`0x${string}`> {
+  try {
+    const client = createPublicClient({
+      chain: celo,
+      transport: http("https://forno.celo.org"),
+    });
+    const [usdtBal, usdcBal] = await Promise.all([
+      client.readContract({ address: USDT_TOKEN, abi: erc20Abi, functionName: "balanceOf", args: [account] }),
+      client.readContract({ address: USDC_TOKEN, abi: erc20Abi, functionName: "balanceOf", args: [account] }),
+    ]);
+    if (usdtBal > 0n) return USDT_FEE;
+    if (usdcBal > 0n) return USDC_FEE;
+  } catch {}
+  return USDM_FEE;
+}
 
 type WriteContractParams = {
   address: `0x${string}`;
@@ -15,7 +44,7 @@ type WriteContractParams = {
   args?: readonly unknown[];
   gas?: bigint;
   value?: bigint;
-  feeCurrency?: `0x${string}`; // used by Web3Auth/Privy; stripped for MiniPay
+  feeCurrency?: `0x${string}`;
 };
 
 export function useUnifiedWriteContract() {
@@ -46,21 +75,18 @@ export function useUnifiedWriteContract() {
 
       if (IS_MINIPAY) {
         // ── MiniPay ──────────────────────────────────────────────────────────
-        // Use nativeMiniPayEthereum directly — do NOT route through wagmi's
-        // writeContractAsync, which requires a connected account in wagmi's
-        // store and throws "MetaMask not connected" if the connector hasn't
-        // fully registered yet after the provider-tree switch.
+        // Uses CIP-64 (feeCurrency) — NOT type:"legacy".
         //
-        // 1. eth_requestAccounts — auto-authorizes in MiniPay (no popup),
-        //    returns the address instantly, and ensures the provider is ready.
+        // "MiniPay Only Supports Legacy Transactions" means: don't use EIP-1559
+        // fields (maxFeePerGas / maxPriorityFeePerGas). CIP-64 (type 0x7b) IS
+        // supported and is the correct way to do fee abstraction in MiniPay.
         //
-        // 2. walletClient.writeContract with type:"legacy" —
-        //    MiniPay only supports type-0 (legacy) transactions.
-        //    feeCurrency is stripped: it requires CIP-64 (type 0x7b), which is
-        //    incompatible with type:"legacy". MiniPay selects the fee token
-        //    from the user's balance automatically.
+        // MiniPay defaults to USDm for gas. Users with only USDT/USDC have no
+        // USDm, so their transactions fail silently without an explicit feeCurrency.
+        // We detect the best available stablecoin and set feeCurrency accordingly.
+        // viem automatically formats as CIP-64 when feeCurrency is present.
         //
-        // 3. gas forwarded when provided — skips eth_estimateGas.
+        // gas forwarded when provided — skips eth_estimateGas.
         if (!nativeMiniPayEthereum) throw new Error("MiniPay provider not found");
         setIsPending(true);
         try {
@@ -75,13 +101,22 @@ export function useUnifiedWriteContract() {
             transport: custom(nativeMiniPayEthereum as any),
           });
 
-          const { feeCurrency: _stripped, ...rest } = params as any;
-          const txHash = await walletClient.writeContract({
-            ...(rest as any),
-            account,
-            chain: celo,
-            type: "legacy",
-          } as Parameters<typeof walletClient.writeContract>[0]);
+          // Use caller-supplied feeCurrency if provided; otherwise detect from balance.
+          const feeCurrency = params.feeCurrency ?? await detectMiniPayFeeCurrency(account);
+
+          // 90-second timeout — prevents isSigning from locking the UI forever
+          // if MiniPay's WebView hangs on eth_gasPrice / eth_sendTransaction.
+          const txHash = await Promise.race([
+            walletClient.writeContract({
+              ...(params as any),
+              account,
+              chain: celo,
+              feeCurrency,
+            } as Parameters<typeof walletClient.writeContract>[0]),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error("MiniPay request timed out — please try again")), 90_000)
+            ),
+          ]);
 
           setHash(txHash);
           return txHash;

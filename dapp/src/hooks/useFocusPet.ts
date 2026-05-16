@@ -67,16 +67,26 @@ export function useFocusPet() {
   useEffect(() => {
     if (writeError) {
       console.error("Contract Write Error:", writeError);
-      // Use error name/code — not message text (fragile across providers)
       const name = (writeError as any)?.name ?? "";
       const code = (writeError as any)?.code ?? 0;
       if (name === "EstimateGasExecutionError" || code === -32000) {
-        console.warn("Gas estimation failed — pet may not be initialized or stablecoin balance too low.");
+        toast.error("Transaction failed — insufficient gas or contract error.");
       } else if (name === "InsufficientFundsError" || code === -32603) {
-        console.warn("Insufficient funds for network fee.");
+        toast.error("Insufficient funds for network fee.");
+      } else if (name === "UserRejectedRequestError" || code === 4001) {
+        // user cancelled — no toast
+      } else {
+        toast.error("Transaction failed — please try again.");
       }
     }
-  }, [writeError, receiptError]);
+  }, [writeError]);
+
+  useEffect(() => {
+    if (receiptError) {
+      console.error("Receipt Error (tx reverted):", receiptError);
+      toast.error("Transaction reverted on-chain — please try again.");
+    }
+  }, [receiptError]);
 
   // --- GoodDollar Integration ---
 
@@ -324,9 +334,9 @@ export function useFocusPet() {
         abi: FocusPetABI,
         functionName: "focusSession",
         args: [BigInt(Math.max(1, Math.round(minutes * 60)))],
-        // Hard gas limit — skips eth_estimateGas which can time out after
-        // mobile backgrounding (the most common failure on long sessions).
-        gas: BigInt(400_000),
+        // Hard gas limit — skips eth_estimateGas. 600k covers first-time pet
+        // init (_initPet writes ~13 cold storage slots ≈ 260k gas) + session logic.
+        gas: BigInt(600_000),
       });
       // Clear the pending session on successful submission
       try { localStorage.removeItem("pending-focus-session"); } catch {}
