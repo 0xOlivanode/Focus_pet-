@@ -33,7 +33,9 @@ async function detectMiniPayFeeCurrency(account: `0x${string}`): Promise<`0x${st
     ]);
     if (usdtBal > 0n) return USDT_FEE;
     if (usdcBal > 0n) return USDC_FEE;
-  } catch {}
+  } catch {
+    // fall through to USDm default
+  }
   return USDM_FEE;
 }
 
@@ -101,7 +103,6 @@ export function useUnifiedWriteContract() {
             transport: custom(nativeMiniPayEthereum as any),
           });
 
-          // Use caller-supplied feeCurrency if provided; otherwise detect from balance.
           const feeCurrency = params.feeCurrency ?? await detectMiniPayFeeCurrency(account);
 
           // 90-second timeout — prevents isSigning from locking the UI forever

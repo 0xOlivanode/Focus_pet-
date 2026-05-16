@@ -43,7 +43,8 @@ export function useIdentity() {
 
   const checkVerification = async () => {
     if (!address || !publicClient || !identitySDK || !walletClient?.account?.address) {
-      setStatus("not_verified");
+      // Defer to avoid setState during wagmi's Hydrate render cycle (React dev warning).
+      // Stay in "loading" until we actually have the deps to perform a real check.
       return;
     }
 
