@@ -212,7 +212,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           supportedChains: [celo],
           appearance: {
             theme: "#000000", accentColor: "#ffffff",
-            logo: "/focus-pet-logo.jpeg",
+            logo: "/focus-egg.png",
             landingHeader: "Sign in to FocusPet",
             loginMessage: "Raise a pet. Earn G$. Focus more.",
           },

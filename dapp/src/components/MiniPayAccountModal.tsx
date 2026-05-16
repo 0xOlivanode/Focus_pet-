@@ -201,7 +201,7 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                   </button>
                 ) : (
                   <Image
-                    src="/focus-pet-logo.jpeg"
+                    src="/focus-egg.png"
                     width={28}
                     height={28}
                     alt="FocusPet"

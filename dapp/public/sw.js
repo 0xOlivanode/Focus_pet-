@@ -12,8 +12,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title ?? "FocusPet", {
       body: data.body ?? "Something needs your attention.",
-      icon: "/focus-pet.png",
-      badge: "/focus-pet.png",
+      icon: "/focus-egg.png",
+      badge: "/focus-egg.png",
       tag: data.tag ?? "focuspet",
       renotify: true,
       data: { url: data.url ?? "/app" },
@@ -45,8 +45,8 @@ self.addEventListener("message", (event) => {
     focusReminderTimer = setTimeout(() => {
       self.registration.showNotification("⏱ 1 minute left!", {
         body: "Your focus session is almost done — come back to record your session and earn XP.",
-        icon: "/focus-pet.png",
-        badge: "/focus-pet.png",
+        icon: "/focus-egg.png",
+        badge: "/focus-egg.png",
         tag: "focus-reminder",
         renotify: true,
         data: { url: "/app" },

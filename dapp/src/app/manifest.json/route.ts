@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
     theme_color: "#6366f1",
     background_color: "#0a0a0b",
     icons: [
-      { src: "/focus-pet.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-      { src: "/focus-pet.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+      { src: "/focus-egg.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+      { src: "/focus-egg.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
     ],
     categories: ["productivity", "games"],
     screenshots: [

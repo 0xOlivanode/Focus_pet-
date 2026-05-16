@@ -69,7 +69,7 @@ export function IOSInstallPrompt() {
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-[#1a1a1a] border border-neutral-800 overflow-hidden flex items-center justify-center shrink-0">
                     <Image
-                      src="/focus-pet.png"
+                      src="/focus-egg.png"
                       width={32}
                       height={32}
                       alt="FocusPet"
