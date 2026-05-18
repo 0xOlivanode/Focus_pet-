@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient } from "wagmi";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchLeaderboard } from "@/lib/subgraph";
+import { fetchLeaderboard, fetchSubgraphUser } from "@/lib/subgraph";
 import {
   UBI_POOL_ADDRESS_CELO,
 } from "@/config/contracts";
@@ -63,26 +63,39 @@ export function useLeaderboard() {
 
       // Inject current user if not in top 100
       const allEntries = [...baseEntries];
-      if (
-        accountAddress &&
-        !baseEntries.some(
-          (e) => e.address.toLowerCase() === accountAddress.toLowerCase(),
-        )
-      ) {
-        // User is outside top 100 — append them unranked so the UI can show their position
-        allEntries.push({
-          rank: 0,
-          address: accountAddress.toLowerCase(),
-          xp: 0,
-          health: 0,
-        });
+      const userInTop100 = accountAddress && baseEntries.some(
+        (e) => e.address.toLowerCase() === accountAddress.toLowerCase(),
+      );
+
+      if (accountAddress && !userInTop100) {
+        // User is outside top 100 — fetch their real stats so we can show XP/streak
+        try {
+          const userData = await fetchSubgraphUser(accountAddress);
+          const outsideEntry: LeaderboardEntry = userData
+            ? {
+                rank: 0,
+                address: accountAddress.toLowerCase(),
+                xp: Number(userData.xp),
+                health: Number(userData.health),
+                username: userData.username || undefined,
+                streak: Number(userData.streak),
+                totalFocusTime: Number(userData.totalFocusTime),
+              }
+            : { rank: 0, address: accountAddress.toLowerCase(), xp: 0, health: 0 };
+          allEntries.push(outsideEntry);
+          setUserEntry(outsideEntry);
+        } catch {
+          const stub: LeaderboardEntry = { rank: 0, address: accountAddress.toLowerCase(), xp: 0, health: 0 };
+          allEntries.push(stub);
+          setUserEntry(stub);
+        }
       }
 
       setLeaderboard(baseEntries);
       setTopTen(baseEntries.slice(0, 10));
 
       // Set user entry from base data right away so it renders without waiting
-      if (accountAddress) {
+      if (accountAddress && userInTop100) {
         const found = allEntries.find(
           (e) => e.address.toLowerCase() === accountAddress.toLowerCase(),
         );

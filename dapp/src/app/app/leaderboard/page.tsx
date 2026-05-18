@@ -173,7 +173,7 @@ export default function LeaderboardPage() {
                     : "—"}
               </p>
               <p className="text-neutral-500 text-xs mt-0.5 tabular-nums">
-                {userEntry.rank > 0 ? (
+                {userEntry.rank > 0 || userEntry.xp > 0 ? (
                   <>
                     {getPetStage(userEntry.xp).charAt(0).toUpperCase() +
                       getPetStage(userEntry.xp).slice(1)}{" "}
@@ -184,6 +184,9 @@ export default function LeaderboardPage() {
                         · <Image src="/streak-flame.png" width={12} height={12} alt="" className="inline" /> {userEntry.streak}
                       </span>
                     ) : ""}
+                    {userEntry.rank === 0 && (
+                      <span className="ml-1 text-neutral-600">· outside top 100</span>
+                    )}
                   </>
                 ) : (
                   "Keep focusing to enter the top 100"
