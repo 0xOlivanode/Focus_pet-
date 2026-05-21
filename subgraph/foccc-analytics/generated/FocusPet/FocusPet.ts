@@ -224,6 +224,28 @@ export class ShieldAdded__Params {
   }
 }
 
+export class PetMigrated extends ethereum.Event {
+  get params(): PetMigrated__Params {
+    return new PetMigrated__Params(this);
+  }
+}
+
+export class PetMigrated__Params {
+  _event: PetMigrated;
+
+  constructor(event: PetMigrated) {
+    this._event = event;
+  }
+
+  get from(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get to(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+}
+
 export class FocusPet__petsResult {
   value0: BigInt;
   value1: BigInt;

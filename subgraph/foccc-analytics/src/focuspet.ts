@@ -4,6 +4,7 @@ import {
   FocusSessionRecorded as FocusSessionRecordedEvent,
   NamesUpdated as NamesUpdatedEvent,
   UserDeleted as UserDeletedEvent,
+  PetMigrated as PetMigratedEvent,
   FocusPet,
 } from "../generated/FocusPet/FocusPet";
 import { User, GlobalStats, DailyActivity } from "../generated/schema";
@@ -173,6 +174,56 @@ export function handleNamesUpdated(event: NamesUpdatedEvent): void {
   user.lastUpdatedAt = event.block.timestamp;
 
   user.save();
+}
+
+export function handlePetMigrated(event: PetMigratedEvent): void {
+  let fromId = event.params.from.toHexString();
+  let fromUser = User.load(fromId);
+
+  // Nothing to migrate if we never indexed the source (shouldn't happen).
+  if (fromUser == null) return;
+
+  // Copy all state to the destination address.
+  let toUser = getOrCreateUser(event.params.to);
+  toUser.xp = fromUser.xp;
+  toUser.health = fromUser.health;
+  toUser.streak = fromUser.streak;
+  toUser.totalFocusTime = fromUser.totalFocusTime;
+  toUser.totalDonated = fromUser.totalDonated;
+  toUser.totalSessions = fromUser.totalSessions;
+  toUser.username = fromUser.username;
+  toUser.usernameLower = fromUser.usernameLower;
+  toUser.petName = fromUser.petName;
+  toUser.petNameLower = fromUser.petNameLower;
+  toUser.birthTime = fromUser.birthTime;
+  toUser.lastInteraction = fromUser.lastInteraction;
+  toUser.boostEndTime = fromUser.boostEndTime;
+  toUser.shieldCount = fromUser.shieldCount;
+  toUser.activeCosmetic = fromUser.activeCosmetic;
+  toUser.isActive = true;
+  toUser.lastUpdatedBlock = event.block.number;
+  toUser.lastUpdatedAt = event.block.timestamp;
+  toUser.save();
+
+  // Mark source as inactive and wipe live stats so it falls off the leaderboard.
+  fromUser.isActive = false;
+  fromUser.xp = BigInt.fromI32(0);
+  fromUser.health = BigInt.fromI32(0);
+  fromUser.streak = BigInt.fromI32(0);
+  fromUser.totalFocusTime = BigInt.fromI32(0);
+  fromUser.totalDonated = BigInt.fromI32(0);
+  fromUser.totalSessions = BigInt.fromI32(0);
+  fromUser.username = "";
+  fromUser.usernameLower = "";
+  fromUser.petName = "";
+  fromUser.petNameLower = "";
+  fromUser.boostEndTime = BigInt.fromI32(0);
+  fromUser.shieldCount = BigInt.fromI32(0);
+  fromUser.activeCosmetic = "";
+  fromUser.lastUpdatedBlock = event.block.number;
+  fromUser.lastUpdatedAt = event.block.timestamp;
+  fromUser.save();
+  // Note: totalUsers count is unchanged — the same user, different address.
 }
 
 export function handleUserDeleted(event: UserDeletedEvent): void {

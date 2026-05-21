@@ -19,12 +19,14 @@ import { parseUnits } from "viem";
 import toast from "react-hot-toast";
 import { GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
 import { ERC20ABI } from "@/config/abi";
+import { MigratePetModal } from "@/components/MigratePetModal";
 
 interface AccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenProfile?: () => void;
   onOpenOnboarding?: () => void;
+  hasPet?: boolean;
 }
 
 type ViewState = "overview" | "send" | "receive";
@@ -34,9 +36,11 @@ export function AccountModal({
   onClose,
   onOpenProfile,
   onOpenOnboarding,
+  hasPet = false,
 }: AccountModalProps) {
   const { address, logout } = useAuth();
   const { user, linkEmail, authenticated: privyAuthenticated } = usePrivy();
+  const [isMigrateOpen, setIsMigrateOpen] = useState(false);
   const [isLinkingEmail, setIsLinkingEmail] = useState(false);
 
   const email = user?.email?.address ?? user?.google?.email ?? null;
@@ -117,6 +121,7 @@ export function AccountModal({
     `${addr.slice(0, 7)}...${addr.slice(-4)}`;
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -213,6 +218,16 @@ export function AccountModal({
 
               {/* Footer actions */}
               <div className="px-5 py-2">
+                {/* Migrate to MiniPay — uncomment when migration is ready to ship
+                {hasPet && (
+                  <button
+                    onClick={() => { onClose(); setIsMigrateOpen(true); }}
+                    className="w-full flex items-center gap-3 py-3 text-indigo-400 hover:text-indigo-300 transition-colors text-sm border-b border-neutral-800"
+                  >
+                    <ArrowUpRight size={17} className="text-indigo-400" />
+                    Migrate to MiniPay
+                  </button>
+                )} */}
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-3 py-3 text-red-500 hover:text-red-400 transition-colors text-sm"
@@ -320,5 +335,12 @@ export function AccountModal({
         </motion.div>
       )}
     </AnimatePresence>
+
+    <MigratePetModal
+      isOpen={isMigrateOpen}
+      onClose={() => setIsMigrateOpen(false)}
+      hasPet={hasPet}
+    />
+    </>
   );
 }

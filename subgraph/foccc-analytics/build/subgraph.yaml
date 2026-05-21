@@ -20,7 +20,7 @@ dataSources:
         - DailyActivity
       abis:
         - name: FocusPet
-          file: FocusPet/FocusPet.json
+          file: FocusPet/abis/FocusPet.json
       eventHandlers:
         - event: PetBorn(indexed address)
           handler: handlePetBorn
@@ -32,4 +32,6 @@ dataSources:
           handler: handleNamesUpdated
         - event: UserDeleted(indexed address)
           handler: handleUserDeleted
+        - event: PetMigrated(indexed address,indexed address)
+          handler: handlePetMigrated
       file: FocusPet/FocusPet.wasm

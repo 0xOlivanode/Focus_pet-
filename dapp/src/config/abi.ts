@@ -475,6 +475,22 @@ export const FocusPetABI = [
     ],
     anonymous: false,
   },
+  {
+    type: "function",
+    name: "migratePet",
+    inputs: [{ name: "newAddress", type: "address", internalType: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "event",
+    name: "PetMigrated",
+    inputs: [
+      { name: "from", type: "address", indexed: true, internalType: "address" },
+      { name: "to",   type: "address", indexed: true, internalType: "address" },
+    ],
+    anonymous: false,
+  },
 ] as const;
 
 export const ERC20ABI = [

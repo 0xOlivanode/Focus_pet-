@@ -25,6 +25,7 @@ interface NavbarProps {
   onOpenOnboarding?: () => void;
   onOpenProfile?: () => void;
   minimal?: boolean;
+  hasPet?: boolean;
 }
 
 const NAV_LINKS = [
@@ -73,6 +74,7 @@ export function Navbar({
   onOpenOnboarding,
   onOpenProfile,
   minimal,
+  hasPet = false,
 }: NavbarProps) {
   const { address } = useAuth();
   const APP_HOME = "/app";
@@ -153,6 +155,7 @@ export function Navbar({
           onClose={() => setIsAccountModalOpen(false)}
           onOpenProfile={onOpenProfile}
           onOpenOnboarding={onOpenOnboarding}
+          hasPet={hasPet}
         />
         <MiniPayAccountModal
           isOpen={isMiniPayModalOpen}
@@ -385,6 +388,7 @@ export function Navbar({
         onClose={() => setIsAccountModalOpen(false)}
         onOpenProfile={onOpenProfile}
         onOpenOnboarding={onOpenOnboarding}
+        hasPet={hasPet}
       />
       <MiniPayAccountModal
         isOpen={isMiniPayModalOpen}

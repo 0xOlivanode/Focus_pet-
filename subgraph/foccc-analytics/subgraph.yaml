@@ -32,4 +32,6 @@ dataSources:
           handler: handleNamesUpdated
         - event: UserDeleted(indexed address)
           handler: handleUserDeleted
+        - event: PetMigrated(indexed address,indexed address)
+          handler: handlePetMigrated
       file: ./src/focuspet.ts

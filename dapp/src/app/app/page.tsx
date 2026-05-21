@@ -702,7 +702,7 @@ function AppPageContent() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <Navbar onOpenProfile={() => setIsEditModalOpen(true)} />
+      <Navbar onOpenProfile={() => setIsEditModalOpen(true)} hasPet={!!hasPet} />
 
       <main className="px-5 sm:px-10 lg:px-[80px] py-[40px] pb-24">
         <CompetitionBanner />

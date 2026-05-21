@@ -59,6 +59,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     event ShieldAdded(address indexed owner, uint256 newCount);
     event DonationSent(address indexed to, uint256 amount);
     event UserDeleted(address indexed owner);
+    event PetMigrated(address indexed from, address indexed to);
     event FocusSessionRecorded(
         address indexed owner,
         uint256 duration,
@@ -447,6 +448,66 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         emit UserDeleted(_user);
+    }
+
+    // ── Pet migration ─────────────────────────────────────────────────────────
+    // Moves all pet data (XP, health, streak, cosmetics, username) from the
+    // caller's address to newAddress. newAddress must be empty — we will never
+    // silently overwrite an existing player's data.
+    //
+    // What is NOT migrated:
+    //   • ERC-20 balances (G$ / USDT) — user must transfer tokens themselves
+    //   • ERC-20 allowances       — newAddress must re-approve the contract
+    //   • Superfluid streams      — user must stop on old address, restart on new
+    //   • GoodDollar verification — tied to old address in GoodDollar's registry
+    //
+    // totalUsers is intentionally unchanged — we are moving one pet, not
+    // creating or deleting one. We do NOT call _clearUserData() because that
+    // function decrements totalUsers and emits UserDeleted.
+    function migratePet(address newAddress) external hasPet {
+        require(newAddress != address(0), "Invalid address");
+        require(newAddress != msg.sender, "Cannot migrate to same address");
+        require(pets[newAddress].birthTime == 0, "Target already has a pet");
+
+        _executeMigration(msg.sender, newAddress);
+    }
+
+    // Owner-callable version for users whose Privy/Web3Auth wallets have no
+    // CELO to pay gas. User contacts support, proves ownership of both
+    // addresses off-chain, and the owner executes on their behalf.
+    function adminMigratePet(address from, address to) external onlyOwner {
+        require(from != address(0) && to != address(0), "Invalid address");
+        require(from != to, "Addresses must differ");
+        require(pets[from].birthTime > 0, "Source has no pet");
+        require(pets[to].birthTime == 0, "Target already has a pet");
+
+        _executeMigration(from, to);
+    }
+
+    function _executeMigration(address from, address to) internal {
+        // Transfer username → address mapping.
+        string memory uname = pets[from].username;
+        if (bytes(uname).length > 0) {
+            usernameToAddress[uname] = to;
+        }
+
+        // Copy full Pet struct.
+        pets[to] = pets[from];
+
+        // Copy cosmetics.
+        if (ownedCosmetics[from]["sunglasses"]) ownedCosmetics[to]["sunglasses"] = true;
+        if (ownedCosmetics[from]["crown"])       ownedCosmetics[to]["crown"]       = true;
+        if (isCosmeticEquipped[from]["sunglasses"]) isCosmeticEquipped[to]["sunglasses"] = true;
+        if (isCosmeticEquipped[from]["crown"])       isCosmeticEquipped[to]["crown"]       = true;
+
+        // Wipe source without touching totalUsers.
+        delete pets[from];
+        ownedCosmetics[from]["sunglasses"] = false;
+        ownedCosmetics[from]["crown"]      = false;
+        isCosmeticEquipped[from]["sunglasses"] = false;
+        isCosmeticEquipped[from]["crown"]      = false;
+
+        emit PetMigrated(from, to);
     }
 
     // ── Views ─────────────────────────────────────────────────────────────────
