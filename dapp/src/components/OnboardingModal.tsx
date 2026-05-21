@@ -14,12 +14,13 @@ import {
   Target,
   Globe,
 } from "lucide-react";
+import { IS_MINIPAY } from "@/lib/miniPayEthereum";
 
 interface OnboardingModalProps {
   onClose: () => void;
 }
 
-const steps = [
+const stepsDefault = [
   {
     id: 1,
     icon: <Target size={22} className="text-white" />,
@@ -86,6 +87,63 @@ const steps = [
     ],
   },
 ];
+
+const stepsMiniPay = [
+  {
+    id: 1,
+    icon: <Target size={22} className="text-white" />,
+    tag: "The core loop",
+    title: "Focus. Earn. Evolve.",
+    description:
+      "FocusPet turns your deep work into a living creature. Complete focus sessions to hatch your egg, earn XP, and evolve your pet from a baby all the way to an Elder.",
+    bullets: [
+      { icon: <Zap size={13} />, text: "10 min minimum to earn XP" },
+      { icon: <ArrowRight size={13} />, text: "5 evolution stages to unlock" },
+      { icon: <Trophy size={13} />, text: "Climb the global leaderboard" },
+    ],
+  },
+  {
+    id: 2,
+    icon: <Heart size={22} className="text-white" />,
+    tag: "Stay consistent",
+    title: "Your Pet Can Die",
+    description:
+      "Health decays every day you don't focus. Hit 0% and your pet dies — you'll need to revive it from the shop. Stay consistent or keep it fed to stay alive.",
+    bullets: [
+      { icon: <Heart size={13} />, text: "Health drops daily without sessions" },
+      { icon: <ShoppingBag size={13} />, text: "Buy food from the shop to heal" },
+      { icon: <ShieldCheck size={13} />, text: "Shields block decay for 24h" },
+    ],
+  },
+  {
+    id: 3,
+    icon: <Trophy size={22} className="text-white" />,
+    tag: "Compete globally",
+    title: "Climb the Leaderboard",
+    description:
+      "Every session earns XP that pushes you up the global leaderboard. Compete with Focusers worldwide — your rank, streak, and pet stage are all visible to everyone.",
+    bullets: [
+      { icon: <Trophy size={13} />, text: "Live rankings updated in real-time" },
+      { icon: <ShieldCheck size={13} />, text: "Verified badge for top credibility" },
+      { icon: <Zap size={13} />, text: "Streaks shown on your public profile" },
+    ],
+  },
+  {
+    id: 4,
+    icon: <Globe size={22} className="text-white" />,
+    tag: "Real-world impact",
+    title: "Focus with Purpose",
+    description:
+      "Every session you complete is a commitment to discipline — and your pet's evolution is public proof of it. Stay consistent and leave your mark on the leaderboard.",
+    bullets: [
+      { icon: <Zap size={13} />, text: "Daily streaks multiply your XP" },
+      { icon: <ShieldCheck size={13} />, text: "Verify identity to unlock more rewards" },
+      { icon: <Heart size={13} />, text: "Your streak = your contribution streak" },
+    ],
+  },
+];
+
+const steps = IS_MINIPAY ? stepsMiniPay : stepsDefault;
 
 export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const [step, setStep] = useState(1);

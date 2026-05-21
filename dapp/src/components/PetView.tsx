@@ -5,6 +5,7 @@ import { VerifiedBadge } from "./VerifiedBadge";
 import { Tooltip } from "./Tooltip";
 import Image from "next/image";
 import { motion, AnimatePresence, Variants } from "framer-motion";
+import { IS_MINIPAY } from "@/lib/miniPayEthereum";
 import {
   Heart,
   Sun,
@@ -501,7 +502,7 @@ export function PetView({
               </span>
             </div>
           </Tooltip>
-          {isVerified && (
+          {isVerified && !IS_MINIPAY && (
             <>
               <div className="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
               <Tooltip
@@ -511,7 +512,7 @@ export function PetView({
                       Verified Human
                     </span>
                     <span className="text-neutral-500">
-                      Identity confirmed via GoodDollar.
+                      Identity confirmed.
                     </span>
                   </div>
                 }

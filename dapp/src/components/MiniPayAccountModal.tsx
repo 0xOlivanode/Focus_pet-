@@ -4,12 +4,7 @@ import {
   useAccount,
   useBalance,
 } from "wagmi";
-import {
-  X,
-  QrCode,
-  Plus,
-  ArrowUpRight,
-} from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -130,44 +125,16 @@ export function MiniPayAccountModal({ isOpen, onClose }: MiniPayAccountModalProp
                 )}
               </div>
 
-              {/* Actions — Receive, Add Cash, Withdraw (all via MiniPay deeplinks) */}
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => { window.location.href = "https://link.minipay.xyz/qr"; }}
-                  className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a] hover:bg-neutral-800 transition-all"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center">
-                    <QrCode size={16} className="text-neutral-300" />
-                  </div>
-                  <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wide">
-                    Receive
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => { window.location.href = "https://link.minipay.xyz/add_cash"; }}
-                  className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a] hover:bg-neutral-800 transition-all"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center">
-                    <Plus size={16} className="text-neutral-300" />
-                  </div>
-                  <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wide">
-                    Add Cash
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => { window.location.href = "https://link.minipay.xyz/cash_out"; }}
-                  className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-800 bg-[#1a1a1a] hover:bg-neutral-800 transition-all"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center">
-                    <ArrowUpRight size={16} className="text-neutral-300" />
-                  </div>
-                  <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wide">
-                    Withdraw
-                  </span>
-                </button>
-              </div>
+              {/* Action */}
+              <button
+                onClick={() => { window.location.href = "https://link.minipay.xyz/add_cash"; }}
+                className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl border border-neutral-800 bg-[#1a1a1a] hover:bg-neutral-800 transition-all"
+              >
+                <div className="w-8 h-8 rounded-xl bg-neutral-800 flex items-center justify-center">
+                  <Plus size={16} className="text-neutral-300" />
+                </div>
+                <span className="text-sm font-bold text-white">Add Cash</span>
+              </button>
 
               <p className="text-center text-[10px] font-bold text-neutral-700 uppercase tracking-widest pt-1">
                 Powered by MiniPay · Celo
