@@ -75,7 +75,7 @@ export function useUnifiedWriteContract() {
         : ((web3authIsConnected ? (liveProviderRef.current as any) : null) ??
             getWeb3AuthProvider());
 
-      if (IS_MINIPAY) {
+      if (IS_MINIPAY && nativeMiniPayEthereum) {
         // ── MiniPay ──────────────────────────────────────────────────────────
         // Uses CIP-64 (feeCurrency) — NOT type:"legacy".
         //

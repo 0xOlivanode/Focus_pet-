@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Image from "next/image";
-import { FocusTimer } from "@/components/FocusTimer";
+import { FocusTimer, type FocusTimerHandle } from "@/components/FocusTimer";
 import { PetView } from "@/components/PetView";
 import {
   PetStage,
@@ -157,12 +157,19 @@ function AppPageContent() {
   const [isSuperchargeOpen, setIsSuperchargeOpen] = useState(false);
   const [isBoostsOpen, setIsBoostsOpen] = useState(false);
   const [isFocusing, setIsFocusing] = useState(false);
+  const focusTimerRef = useRef<FocusTimerHandle>(null);
+  const timerSectionRef = useRef<HTMLDivElement>(null);
+  const [isTimerVisible, setIsTimerVisible] = useState(false);
+  // Callback ref — wires the IntersectionObserver the moment the sentinel
+  // element mounts, regardless of when conditional rendering reveals it.
+  const [timerSentinel, setTimerSentinel] = useState<HTMLDivElement | null>(null);
   const [tempUsername, setTempUsername] = useState(username || "");
   const [tempPetName, setTempPetName] = useState(petName || "");
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [focusNote, setFocusNote] = useState("");
   const [lastSessionDuration, setLastSessionDuration] = useState(25);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [mood, setMood] = useState<PetMood>("happy");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -173,6 +180,26 @@ function AppPageContent() {
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Fires whenever timerSentinel mounts/unmounts — correctly handles
+  // conditional rendering (hasPet gates the timer section).
+  useEffect(() => {
+    if (!timerSentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsTimerVisible(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(timerSentinel);
+    return () => observer.disconnect();
+  }, [timerSentinel]);
 
   useEffect(() => {
     if (username) setTempUsername(username);
@@ -225,22 +252,22 @@ function AppPageContent() {
 
       const content = showShare
         ? (t: Toast) => (
-            <span className="flex items-center gap-3">
-              <span>{label}</span>
-              <button
-                onClick={() => {
-                  toast.dismiss(t.id);
-                  window.open(
-                    `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,
-                    "_blank",
-                  );
-                }}
-                className="shrink-0 px-3 py-1 rounded-full bg-white text-black text-xs font-semibold hover:bg-neutral-200 transition-colors"
-              >
-                Share
-              </button>
-            </span>
-          )
+          <span className="flex items-center gap-3">
+            <span>{label}</span>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                window.open(
+                  `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,
+                  "_blank",
+                );
+              }}
+              className="shrink-0 px-3 py-1 rounded-full bg-white text-black text-xs font-semibold hover:bg-neutral-200 transition-colors"
+            >
+              Share
+            </button>
+          </span>
+        )
         : label;
 
       if (type === "error") {
@@ -452,7 +479,7 @@ function AppPageContent() {
         authType,
         email: userInfo?.email ?? null,
       }),
-    }).catch(() => {});
+    }).catch(() => { });
   }, [authType, address, userInfo]);
 
   const handleSessionComplete = (minutes: number) => {
@@ -778,10 +805,10 @@ function AppPageContent() {
                   style={
                     isStreaming
                       ? {
-                          background:
-                            "linear-gradient(90deg, #342804, #E73B74, #342804)",
-                          color: "#ffffff",
-                        }
+                        background:
+                          "linear-gradient(90deg, #342804, #E73B74, #342804)",
+                        color: "#ffffff",
+                      }
                       : { background: "#ffffff", color: "#000000" }
                   }
                 >
@@ -808,10 +835,10 @@ function AppPageContent() {
                     style={
                       boostActive
                         ? {
-                            background:
-                              "linear-gradient(90deg, #063D49, #3B4CE7, #063D49)",
-                            color: "#ffffff",
-                          }
+                          background:
+                            "linear-gradient(90deg, #063D49, #3B4CE7, #063D49)",
+                          color: "#ffffff",
+                        }
                         : { background: "#ffffff", color: "#000000" }
                     }
                   >
@@ -955,8 +982,9 @@ function AppPageContent() {
               )}
 
               {/* Right – flex-1 absorbs whatever the left gives up */}
-              <div className="flex-1 min-w-0 p-5 sm:p-8 lg:p-10 bg-[#0C0C0C]">
+              <div ref={timerSectionRef} className="flex-1 min-w-0 p-5 sm:p-8 lg:p-10 bg-[#0C0C0C]">
                 <FocusTimer
+                  ref={focusTimerRef}
                   embedded
                   onComplete={(mins) => {
                     setIsFocusing(false);
@@ -995,6 +1023,8 @@ function AppPageContent() {
                   shieldCount={shieldCount}
                   streakBonus={streakBonus}
                 />
+                {/* Sentinel lives inside the timer div — guaranteed visible when timer is */}
+                <div ref={setTimerSentinel} className="h-px" />
               </div>
             </div>
           </div>
@@ -1022,6 +1052,33 @@ function AppPageContent() {
           </div>
         )}
       </main>
+
+      {/* Sticky CTA — MiniPay + mobile. Scrolls user to the timer section.
+          Disappears once the timer is in view or a session is running. */}
+      <AnimatePresence>
+        {(isMiniPayEnv || isMobile) && !isFocusing && !isTimerVisible && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 340, damping: 36 }}
+            className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-8 pt-16 pointer-events-none"
+            style={{ background: "linear-gradient(to top, #000 55%, transparent)" }}
+          >
+            <motion.button
+              animate={{ scale: [1, 1.018, 1] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+              onClick={() =>
+                timerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }
+              className="px-14 py-3 rounded-full bg-white text-black font-bold text-base pointer-events-auto"
+              style={{ boxShadow: "0 0 28px 6px rgba(255,255,255,0.14)" }}
+            >
+              Start focus
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
       <IOSInstallPrompt />

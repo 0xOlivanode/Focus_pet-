@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import * as RadixSlider from "@radix-ui/react-slider";
 import { BoostBadge } from "./BoostBadge";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,8 +17,11 @@ import {
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useBlockNumber } from "wagmi";
 import { useAuth } from "@/hooks/useAuth";
+// import { IS_MINIPAY } from "@/lib/miniPayEthereum";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+
+const IS_MINIPAY = true;
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
@@ -29,6 +32,10 @@ type TimerState = "idle" | "running" | "paused" | "completed" | "failed";
 const STEPS = [
   0.5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100, 110, 120,
 ];
+
+export interface FocusTimerHandle {
+  start: () => void;
+}
 
 interface FocusTimerProps {
   initialMinutes?: number;
@@ -47,7 +54,7 @@ interface FocusTimerProps {
   streakBonus?: number;
 }
 
-export function FocusTimer({
+export const FocusTimer = forwardRef<FocusTimerHandle, FocusTimerProps>(function FocusTimer({
   initialMinutes = 25,
   onComplete,
   onFail,
@@ -62,7 +69,7 @@ export function FocusTimer({
   boostEndTime = 0,
   shieldCount = 0,
   streakBonus = 0,
-}: FocusTimerProps) {
+}: FocusTimerProps, ref: React.Ref<FocusTimerHandle>) {
   const xpBoostActive = boostEndTime > Math.floor(Date.now() / 1000);
   const shieldActive = shieldCount > 0;
   const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
@@ -294,6 +301,18 @@ export function FocusTimer({
     return () => clearTimeout(t);
   }, [embedded, status]);
 
+  // Expose start() so the page-level sticky CTA can trigger the timer
+  // without needing to pass state back up through props.
+  const toggleTimerRef = useRef(toggleTimer);
+  toggleTimerRef.current = toggleTimer;
+  useImperativeHandle(ref, () => ({
+    start: () => {
+      if (status === "idle" || status === "paused" || status === "failed") {
+        toggleTimerRef.current();
+      }
+    },
+  }), [status]);
+
   // Keep slider in sync when preset pills are clicked
   useEffect(() => {
     const idx = STEPS.indexOf(duration / 60);
@@ -360,6 +379,7 @@ export function FocusTimer({
                       {mins === 0.5 ? "30s" : mins === 60 ? "1h" : `${mins}m`}
                     </button>
                   ))}
+
                 </div>
               </div>
 
@@ -400,7 +420,7 @@ export function FocusTimer({
           {!isDone && (
             <button
               onClick={toggleTimer}
-              className=" w-fit px-10 py-3.5 rounded-full bg-white hover:bg-neutral-100 text-black font-semibold text-sm transition-all"
+              className="w-fit px-10 py-3.5 rounded-full bg-white hover:bg-neutral-100 text-black font-semibold text-sm transition-all"
             >
               Start focus
             </button>
@@ -556,8 +576,8 @@ export function FocusTimer({
                 ? "bg-white dark:bg-black shadow-sm text-black dark:text-white"
                 : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300",
               status !== "idle" &&
-                status !== "completed" &&
-                "opacity-50 cursor-not-allowed",
+              status !== "completed" &&
+              "opacity-50 cursor-not-allowed",
             )}
           >
             {mins}m
@@ -579,8 +599,8 @@ export function FocusTimer({
             className={cn(
               "w-16 px-2 py-2 rounded-full bg-white dark:bg-black shadow-[inset_0_0_0_2px_#6366f1] font-medium text-center outline-hidden transition-all text-black dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
               status !== "idle" &&
-                status !== "completed" &&
-                "opacity-50 cursor-not-allowed",
+              status !== "completed" &&
+              "opacity-50 cursor-not-allowed",
             )}
             placeholder="min"
           />
@@ -594,8 +614,8 @@ export function FocusTimer({
                 ? "bg-white dark:bg-black shadow-sm text-black dark:text-white"
                 : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300",
               status !== "idle" &&
-                status !== "completed" &&
-                "opacity-50 cursor-not-allowed",
+              status !== "completed" &&
+              "opacity-50 cursor-not-allowed",
             )}
           >
             {![10, 25, 45].includes(duration / 60)
@@ -697,9 +717,9 @@ export function FocusTimer({
       {/* Controls */}
       <div className="flex gap-4 mt-8">
         {status === "idle" ||
-        status === "paused" ||
-        status === "completed" ||
-        status === "failed" ? (
+          status === "paused" ||
+          status === "completed" ||
+          status === "failed" ? (
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -775,4 +795,4 @@ export function FocusTimer({
       </AnimatePresence>
     </div>
   );
-}
+});
