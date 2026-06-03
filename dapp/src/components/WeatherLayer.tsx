@@ -11,13 +11,8 @@ interface WeatherLayerProps {
 }
 
 export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
-  // Generate random positions for rain/clouds once to avoid re-renders
-  const rainDrops = useMemo(
-    () => Array.from({ length: 40 }).map((_, i) => i),
-    [],
-  );
   const clouds = useMemo(() => Array.from({ length: 8 }).map((_, i) => i), []);
-  const stars = useMemo(() => Array.from({ length: 30 }).map((_, i) => i), []);
+  const stars = useMemo(() => Array.from({ length: 15 }).map((_, i) => i), []);
   const [strikePulse, setStrikePulse] = React.useState(0);
 
   // Re-randomize lightning paths on every pulse
@@ -214,17 +209,7 @@ export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
                 className="absolute w-64 h-24"
               >
                 {/* Main Cloud Body (Multi-layered puffiness) */}
-                <motion.div
-                  animate={{
-                    scale: [1, 1.1, 1],
-                  }}
-                  transition={{
-                    duration: 10 + i,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="relative w-full h-full"
-                >
+                <div className="relative w-full h-full">
                   {/* Central Puff */}
                   <div
                     className={`absolute inset-0 rounded-full blur-3xl ${
@@ -249,7 +234,7 @@ export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
                         : "bg-slate-600/20"
                     }`}
                   />
-                </motion.div>
+                </div>
               </motion.div>
             ))}
           </motion.div>
@@ -265,7 +250,7 @@ export function WeatherLayer({ weather, isNight }: WeatherLayerProps) {
             className="absolute inset-0"
           >
             {/* High-density Rain Drops */}
-            {Array.from({ length: 100 }).map((_, i) => (
+            {Array.from({ length: 30 }).map((_, i) => (
               <div
                 key={`rain-container-${i}`}
                 className="absolute w-px h-full"

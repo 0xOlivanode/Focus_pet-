@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Flame } from "lucide-react";
 
 interface StreakFlameProps {
   count: number;
@@ -22,24 +21,7 @@ export function StreakFlame({ count }: StreakFlameProps) {
       }`}
     >
       <div className="relative">
-        {/* <Flame
-          size={16}
-          className={`${count === 1 ? "fill-orange-500/20 animate-pulse" : ""}`}
-        /> */}
         🔥
-        {count >= 5 && (
-          <motion.div
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.5, 0.8, 0.5],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-            }}
-            className="absolute inset-0 bg-orange-400 blur-md rounded-full -z-10"
-          />
-        )}
       </div>
       <span className="text-xs font-black tracking-tighter">
         {count} <span className="hidden sm:inline">DAY STREAK</span>

@@ -93,15 +93,6 @@ function BoostRow({
         </div>
       )}
 
-      {active && count !== undefined && (
-        <div className="shrink-0">
-          <motion.div
-            animate={{ opacity: [1, 0.3, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="w-1.5 h-1.5 rounded-full bg-white"
-          />
-        </div>
-      )}
     </div>
   );
 }
