@@ -170,28 +170,20 @@ export function PetView({
   const variants: Variants = {
     happy: {
       y: [0, -12, 0],
-      filter: "brightness(1) drop-shadow(0 0 0px transparent)",
       transition: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
     },
     sad: {
       rotate: [0, -4, 4, 0],
       y: health <= 0 ? [0, 10, 0] : 0,
-      filter: "brightness(1) drop-shadow(0 0 0px transparent)",
       transition: { repeat: Infinity, duration: 4 },
     },
     sleeping: {
       scale: [1, 1.03, 1],
       opacity: [0.7, 1, 0.7],
-      filter: "brightness(1) drop-shadow(0 0 0px transparent)",
       transition: { repeat: Infinity, duration: 4 },
     },
     focused: {
       scale: [1, 1.05, 1],
-      filter: [
-        "brightness(1) drop-shadow(0 0 0px #6366f1)",
-        "brightness(1.2) drop-shadow(0 0 20px #6366f1)",
-        "brightness(1) drop-shadow(0 0 0px #6366f1)",
-      ],
       transition: { repeat: Infinity, duration: 2 },
     },
     poked: {
@@ -233,13 +225,9 @@ export function PetView({
         {health <= 0 && (
           <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
             <motion.div
-              initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
-              animate={{
-                opacity: [0.7, 1, 0.7],
-                scale: [1, 1.1, 1],
-                rotate: [-5, 5, -5],
-              }}
-              transition={{ duration: 4, repeat: Infinity }}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
               className="flex flex-col items-center gap-2"
             >
               <div className="bg-red-500/20 backdrop-blur-md p-6 rounded-full border-2 border-red-500/50 shadow-[0_0_40px_rgba(239,68,68,0.4)]">
@@ -258,10 +246,8 @@ export function PetView({
 
         {/* Low Health Warning Border */}
         {health > 0 && health < 30 && (
-          <motion.div
-            className="absolute inset-0 rounded-full pointer-events-none z-25"
-            animate={{ opacity: [0.4, 1, 0.4] }}
-            transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none z-25 animate-pulse"
             style={{
               boxShadow:
                 "0 0 0 3px rgba(239,68,68,0.7), 0 0 24px 4px rgba(239,68,68,0.3)",
@@ -353,7 +339,7 @@ export function PetView({
         }}
       >
         {/* Main Pet Container */}
-        <motion.div className="w-full h-80 md:h-[483px] bg-[#000000] rounded-[calc(2rem-0.5px)] flex items-center justify-center relative group transition-colors duration-500 shadow-xl cursor-pointer">
+        <div className="w-full h-80 md:h-[483px] bg-[#000000] rounded-[calc(2rem-0.5px)] flex items-center justify-center relative group transition-colors duration-500 shadow-xl cursor-pointer">
           {/* Weather Layer */}
           <WeatherLayer weather={weather} isNight={isNight} />
 
@@ -639,7 +625,7 @@ export function PetView({
           >
             {getPetContent()}
           </motion.div>
-        </motion.div>
+        </div>
       </div>
       {/* end gradient border wrapper */}
 
@@ -651,12 +637,7 @@ export function PetView({
           className="w-[90%] mx-auto mt-3 flex items-center justify-between gap-3 px-4 py-3 bg-[#110808] border border-red-900/40 rounded-2xl"
         >
           <div className="flex items-center gap-2.5">
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ repeat: Infinity, duration: 1.4 }}
-            >
-              <Heart size={15} className="text-red-500" fill="currentColor" />
-            </motion.div>
+            <Heart size={15} className="text-red-500 animate-pulse" fill="currentColor" />
             <span className="text-xs font-black text-white">
               Your pet is struggling!{" "}
               <span className="text-[#A9A9A9] font-medium">({health}% health)</span>

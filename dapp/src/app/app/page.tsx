@@ -1071,9 +1071,7 @@ function AppPageContent() {
             className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-8 pt-16 pointer-events-none"
             style={{ background: "linear-gradient(to top, #000 55%, transparent)" }}
           >
-            <motion.button
-              animate={{ scale: [1, 1.018, 1] }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+            <button
               onClick={() =>
                 timerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
               }
@@ -1081,7 +1079,7 @@ function AppPageContent() {
               style={{ boxShadow: "0 0 28px 6px rgba(255,255,255,0.14)" }}
             >
               Start focus
-            </motion.button>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1199,11 +1197,7 @@ function AppLoadingScreen({ miniPay = false }: { miniPay?: boolean }) {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
       {/* Spinner ring */}
       <div className="relative w-20 h-20 flex items-center justify-center">
-        <motion.div
-          animate={{ opacity: [0.08, 0.2, 0.08] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-full bg-white blur-xl"
-        />
+        <div className="absolute inset-0 rounded-full bg-white blur-xl opacity-10 animate-pulse" />
         <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white/30 animate-spin" />
       </div>
 
