@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allow ngrok and any tunnel host for local MiniPay testing
+  allowedDevOrigins: ["*.ngrok-free.app", "*.ngrok.io", "*.loca.lt"],
   experimental: {
     optimizePackageImports: [
       "framer-motion",
