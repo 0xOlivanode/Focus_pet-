@@ -60,6 +60,7 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     event DonationSent(address indexed to, uint256 amount);
     event UserDeleted(address indexed owner);
     event PetMigrated(address indexed from, address indexed to);
+    event LaunchDiscountSet(uint256 discountBps, uint256 discountEndTime);
     event FocusSessionRecorded(
         address indexed owner,
         uint256 duration,
@@ -224,6 +225,26 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit DonationSent(ubiPool, ubiFee);
     }
 
+    // ── Launch discount ───────────────────────────────────────────────────────
+    // Set discountBps to e.g. 3000 for 30% off, and discountEndTime to a Unix
+    // timestamp. The discount auto-expires — no second call needed to turn it off.
+    // Set discountBps = 0 to disable immediately if needed.
+    function setLaunchDiscount(uint256 bps, uint256 endTime) external onlyOwner {
+        require(bps < 10000, "FocusPet: discount must be < 100%");
+        discountBps = bps;
+        discountEndTime = endTime;
+        emit LaunchDiscountSet(bps, endTime);
+    }
+
+    // Returns the effective price after applying the active discount, if any.
+    function _discountedPrice(uint256 basePrice) internal view returns (uint256) {
+        if (discountBps > 0 && block.timestamp < discountEndTime) {
+            return basePrice - (basePrice * discountBps / 10000);
+        }
+        return basePrice;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Pulls USDT from the caller to treasury. Full amount goes to treasury
     // since the UBI pool is a GoodDollar-native contract and cannot receive USDT.
     function _splitPaymentUSDT(uint256 amount) internal {
@@ -299,62 +320,67 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     // ── USDT buy functions ────────────────────────────────────────────────────
 
-    // +20 Health — costs $0.10 USDT
+    // +20 Health — base $0.10 USDT (discount applied if active)
     function buyFoodWithUSDT() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
-        _splitPaymentUSDT(PRICE_FOOD_USDT);
+        uint256 price = _discountedPrice(PRICE_FOOD_USDT);
+        _splitPaymentUSDT(price);
         pet.health = min(MAX_HEALTH, pet.health + 20);
         emit PetFed(msg.sender, pet.health, pet.xp);
-        emit ItemPurchasedWithUSDT(msg.sender, "FOOD", PRICE_FOOD_USDT);
+        emit ItemPurchasedWithUSDT(msg.sender, "FOOD", price);
     }
 
-    // Full Health — costs $0.25 USDT
+    // Full Health — base $0.25 USDT (discount applied if active)
     function buySuperFoodWithUSDT() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health > 0, "Pet is dead");
-        _splitPaymentUSDT(PRICE_SUPER_FOOD_USDT);
+        uint256 price = _discountedPrice(PRICE_SUPER_FOOD_USDT);
+        _splitPaymentUSDT(price);
         pet.health = MAX_HEALTH;
         emit PetFed(msg.sender, pet.health, pet.xp);
-        emit ItemPurchasedWithUSDT(msg.sender, "SUPER_FOOD", PRICE_SUPER_FOOD_USDT);
+        emit ItemPurchasedWithUSDT(msg.sender, "SUPER_FOOD", price);
     }
 
-    // 2x XP for 24h — costs $0.20 USDT
+    // 2x XP for 24h — base $0.20 USDT (discount applied if active)
     function buyEnergyDrinkWithUSDT() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
-        _splitPaymentUSDT(PRICE_ENERGY_DRINK_USDT);
+        uint256 price = _discountedPrice(PRICE_ENERGY_DRINK_USDT);
+        _splitPaymentUSDT(price);
         if (pet.boostEndTime < block.timestamp) {
             pet.boostEndTime = block.timestamp + 24 hours;
         } else {
             pet.boostEndTime += 24 hours;
         }
         emit BoostActivated(msg.sender, pet.boostEndTime);
-        emit ItemPurchasedWithUSDT(msg.sender, "ENERGY_DRINK", PRICE_ENERGY_DRINK_USDT);
+        emit ItemPurchasedWithUSDT(msg.sender, "ENERGY_DRINK", price);
     }
 
-    // +1 Streak Shield — costs $0.50 USDT
+    // +1 Streak Shield — base $0.50 USDT (discount applied if active)
     function buyShieldWithUSDT() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
-        _splitPaymentUSDT(PRICE_SHIELD_USDT);
+        uint256 price = _discountedPrice(PRICE_SHIELD_USDT);
+        _splitPaymentUSDT(price);
         pet.shieldCount += 1;
         emit ShieldAdded(msg.sender, pet.shieldCount);
-        emit ItemPurchasedWithUSDT(msg.sender, "SHIELD", PRICE_SHIELD_USDT);
+        emit ItemPurchasedWithUSDT(msg.sender, "SHIELD", price);
     }
 
-    // Revive dead pet — costs $0.25 USDT
+    // Revive dead pet — base $0.25 USDT (discount applied if active)
     function revivePetWithUSDT() public {
         if (pets[msg.sender].birthTime == 0) _initPet(msg.sender);
         Pet storage pet = pets[msg.sender];
         require(pet.health == 0, "Pet is alive");
-        _splitPaymentUSDT(PRICE_REVIVE_USDT);
+        uint256 price = _discountedPrice(PRICE_REVIVE_USDT);
+        _splitPaymentUSDT(price);
         pet.health = 50;
         pet.lastInteraction = block.timestamp;
         emit PetFed(msg.sender, pet.health, pet.xp);
-        emit ItemPurchasedWithUSDT(msg.sender, "REVIVE", PRICE_REVIVE_USDT);
+        emit ItemPurchasedWithUSDT(msg.sender, "REVIVE", price);
     }
 
     // Buy cosmetic with USDT. usdtPrice must be in USDT units (6 decimals).
@@ -533,6 +559,10 @@ contract FocusPet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // V2 additions — appended after all V1 storage
     IERC20 public usdt;
     uint256 public totalVolumeUSDT;
+
+    // V3 additions — launch discount (auto-expires at discountEndTime)
+    uint256 public discountBps;      // e.g. 3000 = 30% off; 0 = no discount
+    uint256 public discountEndTime;  // Unix timestamp; discount inactive after this
 
     // ── Utilities ─────────────────────────────────────────────────────────────
 

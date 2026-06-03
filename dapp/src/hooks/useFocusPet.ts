@@ -322,14 +322,14 @@ export function useFocusPet() {
     }
   };
 
-  const buyFoodWithUSDT = () =>
-    executeUSDTBuy("buyFoodWithUSDT", PRICE_FOOD_USDT, [], "apple");
-  const buySuperFoodWithUSDT = () =>
-    executeUSDTBuy("buySuperFoodWithUSDT", PRICE_SUPER_FOOD_USDT, [], "golden_apple");
-  const buyEnergyDrinkWithUSDT = () =>
-    executeUSDTBuy("buyEnergyDrinkWithUSDT", PRICE_ENERGY_DRINK_USDT, [], "energy_drink");
-  const buyShieldWithUSDT = () =>
-    executeUSDTBuy("buyShieldWithUSDT", PRICE_SHIELD_USDT, [], "shield");
+  const buyFoodWithUSDT = (priceOverride?: bigint) =>
+    executeUSDTBuy("buyFoodWithUSDT", priceOverride ?? PRICE_FOOD_USDT, [], "apple");
+  const buySuperFoodWithUSDT = (priceOverride?: bigint) =>
+    executeUSDTBuy("buySuperFoodWithUSDT", priceOverride ?? PRICE_SUPER_FOOD_USDT, [], "golden_apple");
+  const buyEnergyDrinkWithUSDT = (priceOverride?: bigint) =>
+    executeUSDTBuy("buyEnergyDrinkWithUSDT", priceOverride ?? PRICE_ENERGY_DRINK_USDT, [], "energy_drink");
+  const buyShieldWithUSDT = (priceOverride?: bigint) =>
+    executeUSDTBuy("buyShieldWithUSDT", priceOverride ?? PRICE_SHIELD_USDT, [], "shield");
   const revivePetWithUSDT = () =>
     executeUSDTBuy("revivePetWithUSDT", PRICE_REVIVE_USDT, [], "revive");
   const buyCosmeticWithUSDT = (cosmeticId: string, usdtPrice: bigint) =>

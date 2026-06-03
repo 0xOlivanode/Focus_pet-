@@ -10,6 +10,27 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatEther } from "viem";
 import toast from "react-hot-toast";
 
+// ── Launch discount config ─────────────────────────────────────────────────────
+// 30% off all USDT items for MiniPay users during launch week.
+// NOTE: Contract prices must also be updated to accept these lower amounts.
+const LAUNCH_END_MS = new Date("2026-06-11T23:59:59Z").getTime();
+const DISCOUNT_FACTOR = 70n; // 70% of original = 30% off
+
+function applyDiscount(price: bigint): bigint {
+  return (price * DISCOUNT_FACTOR) / 100n;
+}
+
+function fmtUsdt(raw: bigint): string {
+  return `$${(Number(raw) / 1e6).toFixed(2)}`;
+}
+
+function getLaunchCountdown(now: number): { days: number; hours: number } {
+  const ms = Math.max(0, LAUNCH_END_MS - now);
+  const totalHours = Math.floor(ms / (1000 * 60 * 60));
+  return { days: Math.floor(totalHours / 24), hours: totalHours % 24 };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 type Category = "consumables" | "boosts" | "cosmetics";
 
 interface ShopItem {
@@ -19,6 +40,7 @@ interface ShopItem {
   price: number;
   usdtPrice?: bigint;
   usdtDisplay?: string;
+  originalUsdtDisplay?: string; // pre-discount, shown crossed-out during launch
   tag: string;
   action: () => void;
   disabled: boolean;
@@ -32,6 +54,7 @@ export default function ShopPage() {
   const router = useRouter();
   const isMiniPay = useIsMiniPay();
   const [category, setCategory] = useState<Category>("consumables");
+  const [now, setNow] = useState(Date.now());
 
   const {
     gBalance,
@@ -61,6 +84,12 @@ export default function ShopPage() {
     usdtBalanceRaw,
   } = useFocusPet();
 
+  // Update clock every minute for countdown accuracy
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
   // Toast on tx error — must be before any early returns (Rules of Hooks)
   useEffect(() => {
     if (writeError || receiptError) {
@@ -78,6 +107,9 @@ export default function ShopPage() {
     return null;
   }
 
+  const launchActive = isMiniPay && now < LAUNCH_END_MS;
+  const countdown = getLaunchCountdown(now);
+
   const isBoostActive = boostEndTime * 1000 > Date.now();
   const balanceFormatted = gBalance
     ? parseFloat(formatEther(gBalance)).toFixed(2)
@@ -89,8 +121,16 @@ export default function ShopPage() {
 
   const canAffordUSDT = (usdtPrice: bigint) => usdtBalanceRaw >= usdtPrice;
 
-  const SUNGLASSES_USDT = BigInt(500_000);  // $0.50
-  const CROWN_USDT = BigInt(5_000_000);     // $5.00
+  // Original USDT prices
+  const ORIG_FOOD       = BigInt(100_000);
+  const ORIG_SUPER_FOOD = BigInt(250_000);
+  const ORIG_ENERGY     = BigInt(200_000);
+  const ORIG_SHIELD     = BigInt(500_000);
+  const ORIG_SHADES     = BigInt(500_000);
+  const ORIG_CROWN      = BigInt(5_000_000);
+
+  // Active prices — discounted during launch week, original otherwise
+  const p = (orig: bigint) => launchActive ? applyDiscount(orig) : orig;
 
   const items: Record<Category, ShopItem[]> = {
     consumables: [
@@ -99,10 +139,11 @@ export default function ShopPage() {
         name: "Cyber Apple",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778748/cyber-apple_rn3ksq.png",
         price: 10,
-        usdtPrice: BigInt(100_000),
-        usdtDisplay: "$0.10",
+        usdtPrice: p(ORIG_FOOD),
+        usdtDisplay: fmtUsdt(p(ORIG_FOOD)),
+        originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_FOOD) : undefined,
         tag: "+20 Health",
-        action: isMiniPay ? buyFoodWithUSDT : buyFood,
+        action: isMiniPay ? () => buyFoodWithUSDT(p(ORIG_FOOD)) : buyFood,
         disabled: health >= 100,
         disabledLabel: health >= 100 ? "Health Full" : undefined,
       },
@@ -111,10 +152,11 @@ export default function ShopPage() {
         name: "Golden Apple",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778750/golden-apple_a1ra1b.png",
         price: 30,
-        usdtPrice: BigInt(250_000),
-        usdtDisplay: "$0.25",
+        usdtPrice: p(ORIG_SUPER_FOOD),
+        usdtDisplay: fmtUsdt(p(ORIG_SUPER_FOOD)),
+        originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_SUPER_FOOD) : undefined,
         tag: "Max Health",
-        action: isMiniPay ? buySuperFoodWithUSDT : buySuperFood,
+        action: isMiniPay ? () => buySuperFoodWithUSDT(p(ORIG_SUPER_FOOD)) : buySuperFood,
         disabled: health >= 100,
         disabledLabel: health >= 100 ? "Health Full" : undefined,
       },
@@ -125,10 +167,11 @@ export default function ShopPage() {
         name: "Energy Drink",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778743/energy-drink_hzoqsb.png",
         price: 25,
-        usdtPrice: BigInt(200_000),
-        usdtDisplay: "$0.20",
+        usdtPrice: p(ORIG_ENERGY),
+        usdtDisplay: fmtUsdt(p(ORIG_ENERGY)),
+        originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_ENERGY) : undefined,
         tag: "2x XP (24h)",
-        action: isMiniPay ? buyEnergyDrinkWithUSDT : buyEnergyDrink,
+        action: isMiniPay ? () => buyEnergyDrinkWithUSDT(p(ORIG_ENERGY)) : buyEnergyDrink,
         disabled: isBoostActive,
         disabledLabel: isBoostActive ? "Boost Active" : undefined,
       },
@@ -137,10 +180,11 @@ export default function ShopPage() {
         name: "Streak Shield",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778745/streak-shield_kepght.png",
         price: 100,
-        usdtPrice: BigInt(500_000),
-        usdtDisplay: "$0.50",
+        usdtPrice: p(ORIG_SHIELD),
+        usdtDisplay: fmtUsdt(p(ORIG_SHIELD)),
+        originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_SHIELD) : undefined,
         tag: "Streak Protection",
-        action: isMiniPay ? buyShieldWithUSDT : buyShield,
+        action: isMiniPay ? () => buyShieldWithUSDT(p(ORIG_SHIELD)) : buyShield,
         disabled: shieldCount > 0,
         disabledLabel: shieldCount > 0 ? "Shield Active" : undefined,
       },
@@ -151,13 +195,14 @@ export default function ShopPage() {
         name: "Cool Shades",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778747/cool-shades_txvqei.png",
         price: 50,
-        usdtPrice: SUNGLASSES_USDT,
-        usdtDisplay: "$0.50",
+        usdtPrice: p(ORIG_SHADES),
+        usdtDisplay: fmtUsdt(p(ORIG_SHADES)),
+        originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_SHADES) : undefined,
         tag: "Cosmetic",
         action: inventory?.sunglasses
           ? () => toggleCosmetic("sunglasses")
           : isMiniPay
-            ? () => buyCosmeticWithUSDT("sunglasses", SUNGLASSES_USDT)
+            ? () => buyCosmeticWithUSDT("sunglasses", p(ORIG_SHADES))
             : () => buyCosmetic("sunglasses", 50),
         disabled: false,
         owned: inventory?.sunglasses,
@@ -168,13 +213,14 @@ export default function ShopPage() {
         name: "Royal Crown",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778752/crown_xs1nxk.png",
         price: 500,
-        usdtPrice: CROWN_USDT,
-        usdtDisplay: "$5.00",
+        usdtPrice: p(ORIG_CROWN),
+        usdtDisplay: fmtUsdt(p(ORIG_CROWN)),
+        originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_CROWN) : undefined,
         tag: "Legendary",
         action: inventory?.crown
           ? () => toggleCosmetic("crown")
           : isMiniPay
-            ? () => buyCosmeticWithUSDT("crown", CROWN_USDT)
+            ? () => buyCosmeticWithUSDT("crown", p(ORIG_CROWN))
             : () => buyCosmetic("crown", 500),
         disabled: false,
         owned: inventory?.crown,
@@ -202,21 +248,12 @@ export default function ShopPage() {
             <div className="relative w-20 h-20 flex items-center justify-center">
               <motion.div
                 animate={{ scale: [1, 1.5, 1], opacity: [0.15, 0, 0.15] }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 className="absolute inset-0 rounded-full bg-white"
               />
               <motion.div
                 animate={{ scale: [1, 1.25, 1], opacity: [0.25, 0, 0.25] }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.3,
-                }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
                 className="absolute inset-0 rounded-full bg-white"
               />
               <div className="w-14 h-14 rounded-full border border-neutral-800 bg-[#111111] flex items-center justify-center">
@@ -228,9 +265,7 @@ export default function ShopPage() {
               </div>
             </div>
             <div className="text-center">
-              <h2 className="text-white text-lg font-semibold mb-1">
-                Processing…
-              </h2>
+              <h2 className="text-white text-lg font-semibold mb-1">Processing…</h2>
               <p className="text-neutral-500 text-sm">
                 {isSigning
                   ? "Getting ready…"
@@ -246,6 +281,44 @@ export default function ShopPage() {
       </AnimatePresence>
 
       <div className="px-5 sm:px-8 lg:px-[80px] py-10">
+
+        {/* Launch discount banner */}
+        <AnimatePresence>
+          {launchActive && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.3 }}
+              className="mb-6 rounded-2xl overflow-hidden border border-amber-500/20 bg-[#0f0d00]"
+            >
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20">
+                    <span className="text-sm">🚀</span>
+                  </div>
+                  <div>
+                    <p className="text-amber-400 font-black text-sm leading-tight">
+                      30% off — Launch Week
+                    </p>
+                    <p className="text-neutral-500 text-xs font-medium mt-0.5">
+                      Discounted prices applied automatically. Ends June 11.
+                    </p>
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-amber-400 font-black text-sm tabular-nums">
+                    {countdown.days}d {countdown.hours}h
+                  </p>
+                  <p className="text-neutral-600 text-[10px] font-medium uppercase tracking-widest">
+                    remaining
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl sm:text-[40px] font-medium tracking-tight">
@@ -267,17 +340,13 @@ export default function ShopPage() {
             {isBoostActive && (
               <div className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-neutral-800 rounded-full">
                 <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                <span className="text-white text-xs font-medium">
-                  2x XP Boost Active
-                </span>
+                <span className="text-white text-xs font-medium">2x XP Boost Active</span>
               </div>
             )}
             {shieldCount > 0 && (
               <div className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-neutral-800 rounded-full">
                 <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                <span className="text-white text-xs font-medium">
-                  {shieldCount}x Shield Active
-                </span>
+                <span className="text-white text-xs font-medium">{shieldCount}x Shield Active</span>
               </div>
             )}
           </div>
@@ -318,12 +387,23 @@ export default function ShopPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ delay: i * 0.05 }}
-                  className={`flex flex-col bg-[#111111] border border-neutral-800 rounded-2xl overflow-hidden transition-colors ${
-                    !blocked ? "hover:border-neutral-600" : "opacity-50"
-                  }`}
+                  className={`flex flex-col bg-[#111111] border rounded-2xl overflow-hidden transition-colors ${
+                    launchActive && isMiniPay
+                      ? "border-amber-500/15"
+                      : "border-neutral-800"
+                  } ${!blocked ? "hover:border-neutral-600" : "opacity-50"}`}
                 >
+                  {/* Discount badge */}
+                  {launchActive && isMiniPay && !item.owned && (
+                    <div className="flex justify-end px-3 pt-3">
+                      <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                        −30%
+                      </span>
+                    </div>
+                  )}
+
                   {/* Image area */}
-                  <div className="relative w-full aspect-4/3 bg-[#111111] flex items-center justify-center overflow-hidden">
+                  <div className={`relative w-full aspect-4/3 bg-[#111111] flex items-center justify-center overflow-hidden ${launchActive && isMiniPay && !item.owned ? "pt-0" : ""}`}>
                     {item.image && (
                       <div className="w-full h-full flex items-center justify-center p-8">
                         <img
@@ -349,14 +429,10 @@ export default function ShopPage() {
 
                   {/* Name + tag row */}
                   <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                    <span className="text-white text-base font-medium">
-                      {item.name}
-                    </span>
+                    <span className="text-white text-base font-medium">{item.name}</span>
                     <span className="text-xs font-medium px-3 py-1 bg-[#1a1a1a] border border-neutral-800 rounded-full text-neutral-400">
                       {item.owned && category === "cosmetics"
-                        ? item.equipped
-                          ? "Equipped"
-                          : "Owned"
+                        ? item.equipped ? "Equipped" : "Owned"
                         : item.tag}
                     </span>
                   </div>
@@ -366,10 +442,17 @@ export default function ShopPage() {
                     {item.owned && category === "cosmetics" ? (
                       <span className="text-neutral-600 text-sm">Owned</span>
                     ) : isMiniPay && item.usdtDisplay ? (
-                      <span className="text-white text-lg font-semibold tabular-nums">
-                        {item.usdtDisplay}
-                        <span className="text-neutral-500 text-sm font-normal ml-1">USDT</span>
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-white text-lg font-semibold tabular-nums leading-tight">
+                          {item.usdtDisplay}
+                          <span className="text-neutral-500 text-sm font-normal ml-1">USDT</span>
+                        </span>
+                        {item.originalUsdtDisplay && (
+                          <span className="text-neutral-600 text-xs line-through tabular-nums mt-0.5">
+                            {item.originalUsdtDisplay} USDT
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-white text-lg font-semibold tabular-nums">
                         {item.price} G$
@@ -392,9 +475,7 @@ export default function ShopPage() {
                       {isPending
                         ? "…"
                         : item.owned && category === "cosmetics"
-                          ? item.equipped
-                            ? "Remove"
-                            : "Equip"
+                          ? item.equipped ? "Remove" : "Equip"
                           : "Buy"}
                     </button>
                   </div>
