@@ -129,8 +129,11 @@ export default function ShopPage() {
   const ORIG_SHADES     = BigInt(500_000);
   const ORIG_CROWN      = BigInt(5_000_000);
 
-  // Active prices — discounted during launch week, original otherwise
-  const p = (orig: bigint) => launchActive ? applyDiscount(orig) : orig;
+  // Display prices — show discounted during launch week, original otherwise.
+  // The action functions do NOT pass a price override — the contract's
+  // _discountedPrice() handles the actual charge. Approval uses the full
+  // original price so there is never an allowance shortfall.
+  const displayPrice = (orig: bigint) => launchActive ? applyDiscount(orig) : orig;
 
   const items: Record<Category, ShopItem[]> = {
     consumables: [
@@ -139,11 +142,11 @@ export default function ShopPage() {
         name: "Cyber Apple",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778748/cyber-apple_rn3ksq.png",
         price: 10,
-        usdtPrice: p(ORIG_FOOD),
-        usdtDisplay: fmtUsdt(p(ORIG_FOOD)),
+        usdtPrice: ORIG_FOOD,          // approval always uses full price — safe
+        usdtDisplay: fmtUsdt(displayPrice(ORIG_FOOD)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_FOOD) : undefined,
         tag: "+20 Health",
-        action: isMiniPay ? () => buyFoodWithUSDT(p(ORIG_FOOD)) : buyFood,
+        action: isMiniPay ? () => buyFoodWithUSDT() : buyFood,
         disabled: health >= 100,
         disabledLabel: health >= 100 ? "Health Full" : undefined,
       },
@@ -152,11 +155,11 @@ export default function ShopPage() {
         name: "Golden Apple",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778750/golden-apple_a1ra1b.png",
         price: 30,
-        usdtPrice: p(ORIG_SUPER_FOOD),
-        usdtDisplay: fmtUsdt(p(ORIG_SUPER_FOOD)),
+        usdtPrice: ORIG_SUPER_FOOD,
+        usdtDisplay: fmtUsdt(displayPrice(ORIG_SUPER_FOOD)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_SUPER_FOOD) : undefined,
         tag: "Max Health",
-        action: isMiniPay ? () => buySuperFoodWithUSDT(p(ORIG_SUPER_FOOD)) : buySuperFood,
+        action: isMiniPay ? () => buySuperFoodWithUSDT() : buySuperFood,
         disabled: health >= 100,
         disabledLabel: health >= 100 ? "Health Full" : undefined,
       },
@@ -167,11 +170,11 @@ export default function ShopPage() {
         name: "Energy Drink",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778743/energy-drink_hzoqsb.png",
         price: 25,
-        usdtPrice: p(ORIG_ENERGY),
-        usdtDisplay: fmtUsdt(p(ORIG_ENERGY)),
+        usdtPrice: ORIG_ENERGY,
+        usdtDisplay: fmtUsdt(displayPrice(ORIG_ENERGY)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_ENERGY) : undefined,
         tag: "2x XP (24h)",
-        action: isMiniPay ? () => buyEnergyDrinkWithUSDT(p(ORIG_ENERGY)) : buyEnergyDrink,
+        action: isMiniPay ? () => buyEnergyDrinkWithUSDT() : buyEnergyDrink,
         disabled: isBoostActive,
         disabledLabel: isBoostActive ? "Boost Active" : undefined,
       },
@@ -180,11 +183,11 @@ export default function ShopPage() {
         name: "Streak Shield",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778745/streak-shield_kepght.png",
         price: 100,
-        usdtPrice: p(ORIG_SHIELD),
-        usdtDisplay: fmtUsdt(p(ORIG_SHIELD)),
+        usdtPrice: ORIG_SHIELD,
+        usdtDisplay: fmtUsdt(displayPrice(ORIG_SHIELD)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_SHIELD) : undefined,
         tag: "Streak Protection",
-        action: isMiniPay ? () => buyShieldWithUSDT(p(ORIG_SHIELD)) : buyShield,
+        action: isMiniPay ? () => buyShieldWithUSDT() : buyShield,
         disabled: shieldCount > 0,
         disabledLabel: shieldCount > 0 ? "Shield Active" : undefined,
       },
@@ -195,14 +198,14 @@ export default function ShopPage() {
         name: "Cool Shades",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778747/cool-shades_txvqei.png",
         price: 50,
-        usdtPrice: p(ORIG_SHADES),
-        usdtDisplay: fmtUsdt(p(ORIG_SHADES)),
+        usdtPrice: ORIG_SHADES,
+        usdtDisplay: fmtUsdt(displayPrice(ORIG_SHADES)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_SHADES) : undefined,
         tag: "Cosmetic",
         action: inventory?.sunglasses
           ? () => toggleCosmetic("sunglasses")
           : isMiniPay
-            ? () => buyCosmeticWithUSDT("sunglasses", p(ORIG_SHADES))
+            ? () => buyCosmeticWithUSDT("sunglasses", ORIG_SHADES)
             : () => buyCosmetic("sunglasses", 50),
         disabled: false,
         owned: inventory?.sunglasses,
@@ -213,14 +216,14 @@ export default function ShopPage() {
         name: "Royal Crown",
         image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778752/crown_xs1nxk.png",
         price: 500,
-        usdtPrice: p(ORIG_CROWN),
-        usdtDisplay: fmtUsdt(p(ORIG_CROWN)),
+        usdtPrice: ORIG_CROWN,
+        usdtDisplay: fmtUsdt(displayPrice(ORIG_CROWN)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_CROWN) : undefined,
         tag: "Legendary",
         action: inventory?.crown
           ? () => toggleCosmetic("crown")
           : isMiniPay
-            ? () => buyCosmeticWithUSDT("crown", p(ORIG_CROWN))
+            ? () => buyCosmeticWithUSDT("crown", ORIG_CROWN)
             : () => buyCosmetic("crown", 500),
         disabled: false,
         owned: inventory?.crown,
