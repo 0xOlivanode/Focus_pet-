@@ -3,19 +3,14 @@ import { createClient } from "@supabase/supabase-js";
 import { fetchCompetitionActivities, fetchUserBaselinesById } from "@/lib/subgraph";
 import { COMPETITION, calcPoints } from "@/config/competition";
 
-export const revalidate = 0; // no static caching — we handle it ourselves
+// Cache the response at the Vercel CDN for 5 minutes — shared across ALL
+// function instances (unlike module-level variables which are per-instance).
+export const revalidate = 300;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
-
-// ── In-memory cache (5-minute TTL) ───────────────────────────────────────────
-let cache: { data: CompetitionEntry[]; ts: number } | null = null;
-const CACHE_TTL = 5 * 60 * 1000;
-
-// Bust cache on startup so a fresh deploy always rebuilds immediately
-cache = null;
 
 export type CompetitionEntry = {
   rank: number;
@@ -173,17 +168,8 @@ async function buildLeaderboard(): Promise<CompetitionEntry[]> {
 
 export async function GET() {
   try {
-    const now = Date.now();
-
-    // Serve from cache if fresh
-    if (cache && now - cache.ts < CACHE_TTL) {
-      return NextResponse.json({ entries: cache.data, cachedAt: cache.ts });
-    }
-
     const entries = await buildLeaderboard();
-    cache = { data: entries, ts: now };
-
-    return NextResponse.json({ entries, cachedAt: now });
+    return NextResponse.json({ entries, cachedAt: Date.now() });
   } catch (err: any) {
     console.error("[competition/leaderboard]", err);
     return NextResponse.json(

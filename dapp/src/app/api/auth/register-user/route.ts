@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +17,10 @@ export async function POST(req: NextRequest) {
 
     if (!["web3auth", "minipay"].includes(authType)) {
       return NextResponse.json({ error: "Invalid authType" }, { status: 400 });
+    }
+
+    if (!rateLimit(`register:${walletAddress.toLowerCase()}`, 20, 60 * 60 * 1000)) {
+      return rateLimitResponse();
     }
 
     const { error } = await supabase.from("users").upsert(

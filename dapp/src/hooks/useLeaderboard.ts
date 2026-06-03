@@ -13,6 +13,12 @@ import {
 import { CONTRACT_ADDRESS } from "@/config/contracts";
 import { FocusPetABI } from "@/config/abi";
 
+// Module-level — survives re-renders and 30-second polls for the entire browser
+// session. GoodDollar verification status changes rarely (verified = stays
+// verified), so checking once per session is accurate enough and eliminates
+// 11 sequential RPC calls on every 30-second poll.
+const verifiedCache = new Map<string, boolean>();
+
 export type LeaderboardEntry = {
   rank: number;
   address: string;
@@ -160,73 +166,73 @@ export function useLeaderboard() {
       }
 
       // ─── 3. Enrich top 10 with isVerified (async, non-blocking) ────────────
-      enrichIsVerified(enrichTargets, enrichedMap, finalLeaderboard);
+      enrichIsVerified(enrichTargets);
     } catch (error) {
       console.error("Failed to fetch leaderboard:", error);
     } finally {
       setIsLoading(false);
     }
 
-    async function enrichIsVerified(
-      targets: LeaderboardEntry[],
-      enrichedMap: Map<string, LeaderboardEntry>,
-      currentLeaderboard: LeaderboardEntry[],
-    ) {
-      try {
-        const { ClaimSDK } = await import("@goodsdks/citizen-sdk");
+    async function enrichIsVerified(targets: LeaderboardEntry[]) {
+      // Only check addresses not already in the session cache. On the first
+      // call this is all 11 addresses; on every subsequent 30s poll it's zero
+      // (or just new entrants to the top 10), dropping RPC calls from ~11/poll
+      // to effectively 0 after the first render.
+      const unchecked = targets.filter(
+        (e) => !verifiedCache.has(e.address.toLowerCase()),
+      );
 
-        const verifiedResults = await Promise.allSettled(
-          targets.map(async (entry) => {
-            try {
-              const sdk = new ClaimSDK({
-                account: entry.address as `0x${string}`,
-                env: "production",
-                publicClient: publicClient as any,
-                walletClient: {} as any,
-                identitySDK: {} as any,
-              });
-              const status = await sdk.getWalletClaimStatus();
-              return {
-                address: entry.address,
-                isVerified: status.status !== "not_whitelisted",
-              };
-            } catch {
-              return { address: entry.address, isVerified: false };
+      if (unchecked.length > 0) {
+        try {
+          const { ClaimSDK } = await import("@goodsdks/citizen-sdk");
+
+          const results = await Promise.allSettled(
+            unchecked.map(async (entry) => {
+              try {
+                const sdk = new ClaimSDK({
+                  account: entry.address as `0x${string}`,
+                  env: "production",
+                  publicClient: publicClient as any,
+                  walletClient: {} as any,
+                  identitySDK: {} as any,
+                });
+                const status = await sdk.getWalletClaimStatus();
+                return { address: entry.address, isVerified: status.status !== "not_whitelisted" };
+              } catch {
+                return { address: entry.address, isVerified: false };
+              }
+            }),
+          );
+
+          for (const r of results) {
+            if (r.status === "fulfilled") {
+              verifiedCache.set(r.value.address.toLowerCase(), r.value.isVerified);
             }
-          }),
-        );
-
-        const verifiedMap = new Map(
-          verifiedResults
-            .filter((r) => r.status === "fulfilled")
-            .map((r) => [
-              (r as PromiseFulfilledResult<any>).value.address,
-              (r as PromiseFulfilledResult<any>).value.isVerified,
-            ]),
-        );
-
-        setLeaderboard((prev) =>
-          prev.map((e) =>
-            verifiedMap.has(e.address)
-              ? { ...e, isVerified: verifiedMap.get(e.address) }
-              : e,
-          ),
-        );
-        setTopTen((prev) =>
-          prev.map((e) =>
-            verifiedMap.has(e.address)
-              ? { ...e, isVerified: verifiedMap.get(e.address) }
-              : e,
-          ),
-        );
-        setUserEntry((prev) =>
-          prev && verifiedMap.has(prev.address)
-            ? { ...prev, isVerified: verifiedMap.get(prev.address) }
-            : prev,
-        );
-      } catch {
-        // isVerified is display-only — silently skip on error
+          }
+        } catch {
+          // isVerified is display-only — silently skip on error
+          return;
+        }
       }
+
+      // Apply the full cache (newly fetched + previously cached) to state
+      setLeaderboard((prev) =>
+        prev.map((e) => {
+          const key = e.address.toLowerCase();
+          return verifiedCache.has(key) ? { ...e, isVerified: verifiedCache.get(key) } : e;
+        }),
+      );
+      setTopTen((prev) =>
+        prev.map((e) => {
+          const key = e.address.toLowerCase();
+          return verifiedCache.has(key) ? { ...e, isVerified: verifiedCache.get(key) } : e;
+        }),
+      );
+      setUserEntry((prev) => {
+        if (!prev) return prev;
+        const key = prev.address.toLowerCase();
+        return verifiedCache.has(key) ? { ...prev, isVerified: verifiedCache.get(key) } : prev;
+      });
     }
   }, [publicClient, accountAddress]);
 

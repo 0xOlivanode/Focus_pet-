@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAddress } from "viem";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
@@ -55,6 +56,10 @@ export async function POST(req: NextRequest) {
   // Silently ignore self-referrals
   if (invitee.toLowerCase() === inviter.toLowerCase()) {
     return NextResponse.json({ ok: true });
+  }
+
+  if (!rateLimit(`referral:${invitee.toLowerCase()}`, 10, 60 * 60 * 1000)) {
+    return rateLimitResponse();
   }
 
   // Check if this invitee already has a referral (first referral wins)

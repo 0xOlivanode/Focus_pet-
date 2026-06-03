@@ -6,6 +6,7 @@ import {
   isAddress,
   verifyTypedData,
 } from "viem";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { privateKeyToAccount } from "viem/accounts";
 import { celo } from "viem/chains";
 import { createClient } from "@supabase/supabase-js";
@@ -84,6 +85,12 @@ export async function POST(req: NextRequest) {
         { error: "Invalid parameters" },
         { status: 400 },
       );
+    }
+
+    // 10 attempts per address per hour — stops replay loops without
+    // blocking legitimate users who might retry on a failed tx.
+    if (!rateLimit(`sign-reward:${userAddress.toLowerCase()}`, 10, 60 * 60 * 1000)) {
+      return rateLimitResponse();
     }
 
     // ── 2. Read authoritative inviter from DB ───────────────────────────────
