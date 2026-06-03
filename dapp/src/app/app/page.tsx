@@ -25,12 +25,18 @@ import { useWeb3AuthUser } from "@web3auth/modal/react";
 import { formatEther } from "viem";
 import { PrivyConnectButton } from "@/components/PrivyConnectButton";
 import { SocialShare } from "@/components/SocialShare";
-import { OnboardingModal } from "@/components/OnboardingModal";
-import { SuperchargeModal } from "@/components/SuperchargeModal";
 import { BoostsSheet } from "@/components/BoostsSheet";
 import dynamic from "next/dynamic";
 const ClaimReward = dynamic(
   () => import("@/components/ClaimReward").then((mod) => mod.ClaimReward),
+  { ssr: false },
+);
+const OnboardingModal = dynamic(
+  () => import("@/components/OnboardingModal").then((m) => m.OnboardingModal),
+  { ssr: false },
+);
+const SuperchargeModal = dynamic(
+  () => import("@/components/SuperchargeModal").then((m) => m.SuperchargeModal),
   { ssr: false },
 );
 import { motion, AnimatePresence } from "framer-motion";
@@ -559,7 +565,7 @@ function AppPageContent() {
             className="relative mb-12 flex items-center justify-center"
           >
             <motion.img
-              src="https://res.cloudinary.com/dmpulmnb9/image/upload/v1778777438/egg_sunny_tqcx2g.png"
+              src="https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778777438/egg_sunny_tqcx2g.png"
               alt="Your egg"
               animate={{ y: [0, -6, 0] }}
               transition={{

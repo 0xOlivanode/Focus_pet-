@@ -530,59 +530,37 @@ export function useFocusPet() {
   // --- Streak Bonus Calculation ---
   const [virtualStreak, setVirtualStreak] = useState(streak);
 
-  useEffect(() => {
-    if (lastDailySession > 0) {
-      const calculateVirtualStreak = () => {
-        const now = Math.floor(Date.now() / 1000);
-        const lastSessionDay = Math.floor(lastDailySession / (24 * 60 * 60));
-        const currentDay = Math.floor(now / (24 * 60 * 60));
-
-        if (currentDay > lastSessionDay + 1) {
-          // Missed more than a day - check if we have a shield to protect it
-          if (shieldCount > 0) {
-            setVirtualStreak(streak);
-          } else {
-            setVirtualStreak(0);
-          }
-        } else {
-          setVirtualStreak(streak);
-        }
-      };
-
-      calculateVirtualStreak();
-      const interval = setInterval(calculateVirtualStreak, 60000); // Check every minute
-      return () => clearInterval(interval);
-    } else {
-      setVirtualStreak(streak);
-    }
-  }, [streak, lastDailySession]);
-
-  const streakBonus = Math.min(
-    20,
-    (virtualStreak > 1 ? virtualStreak - 1 : 0) * 5,
-  ); // 5% per day, max 20%
-
   // --- Dynamic Weather Calculation ---
   const [weather, setWeather] = useState<
     "sunny" | "clear" | "cloudy" | "rainy" | "stormy"
   >("clear");
   const [isNight, setIsNight] = useState<boolean>(false);
 
+  // Streak + weather + time-of-day share a single 60s interval — same cadence,
+  // overlapping dependencies, no reason for three separate timers.
   useEffect(() => {
-    const calculateWeather = () => {
-      if (!lastDailySession) return setWeather("clear");
+    const calculateVirtualStreak = () => {
+      if (lastDailySession > 0) {
+        const now = Math.floor(Date.now() / 1000);
+        const lastSessionDay = Math.floor(lastDailySession / (24 * 60 * 60));
+        const currentDay = Math.floor(now / (24 * 60 * 60));
+        if (currentDay > lastSessionDay + 1) {
+          setVirtualStreak(shieldCount > 0 ? streak : 0);
+        } else {
+          setVirtualStreak(streak);
+        }
+      } else {
+        setVirtualStreak(streak);
+      }
+    };
 
+    const calculateWeather = () => {
+      if (!lastDailySession) { setWeather("clear"); return; }
       const now = Math.floor(Date.now() / 1000);
       const diffHrs = (now - lastDailySession) / 3600;
       const recentInteractionHrs = (now - lastInteraction) / 3600;
-
       if (diffHrs < 24 || recentInteractionHrs < 24) {
-        // If they just focused (last 1 hour), make it Sunny!
-        if (recentInteractionHrs < 1) {
-          setWeather("sunny");
-        } else {
-          setWeather(streak > 1 ? "sunny" : "clear");
-        }
+        setWeather(recentInteractionHrs < 1 ? "sunny" : (streak > 1 ? "sunny" : "clear"));
       } else if (diffHrs < 48) {
         setWeather("cloudy");
       } else if (diffHrs < 72) {
@@ -592,19 +570,27 @@ export function useFocusPet() {
       }
     };
 
-    calculateWeather();
     const checkTime = () => {
       const hours = new Date().getHours();
       setIsNight(hours >= 20 || hours < 6);
     };
+
+    calculateVirtualStreak();
+    calculateWeather();
     checkTime();
 
     const interval = setInterval(() => {
+      calculateVirtualStreak();
       calculateWeather();
       checkTime();
-    }, 60000); // Check every minute
+    }, 60_000);
     return () => clearInterval(interval);
-  }, [lastDailySession, streak, lastInteraction]);
+  }, [streak, lastDailySession, lastInteraction]);
+
+  const streakBonus = Math.min(
+    20,
+    (virtualStreak > 1 ? virtualStreak - 1 : 0) * 5,
+  ); // 5% per day, max 20%
 
   // Handle Focus Session Specific Confirmed Success Effects (Requires Pet Context Variables)
   useEffect(() => {

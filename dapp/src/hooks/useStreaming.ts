@@ -36,7 +36,7 @@ export function useStreaming() {
     args: address ? [G_DOLLAR_CELO, address, TRUST_FUND_ADDRESS] : undefined,
     query: {
       enabled: !!address,
-      refetchInterval: 10000, // Poll every 10s for updates
+      refetchInterval: 60000, // Poll every 60s — stream rates rarely change
     },
   });
 

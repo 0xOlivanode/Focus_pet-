@@ -18,8 +18,15 @@ import { SoundMenu } from "./SoundMenu";
 import { PrivyConnectButton } from "./PrivyConnectButton";
 import { useAudio } from "@/hooks/useAudio";
 import { motion, AnimatePresence } from "framer-motion";
-import { AccountModal } from "./AccountModal";
-import { MiniPayAccountModal } from "./MiniPayAccountModal";
+import dynamic from "next/dynamic";
+const AccountModal = dynamic(
+  () => import("./AccountModal").then((m) => m.AccountModal),
+  { ssr: false },
+);
+const MiniPayAccountModal = dynamic(
+  () => import("./MiniPayAccountModal").then((m) => m.MiniPayAccountModal),
+  { ssr: false },
+);
 
 interface NavbarProps {
   onOpenOnboarding?: () => void;

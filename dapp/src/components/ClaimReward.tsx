@@ -10,7 +10,11 @@ import { Gift, ArrowRight, Loader2, ShieldCheck, CheckCircle2 } from "lucide-rea
 import { useIdentityContext } from "@/contexts/IdentityContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnifiedWalletClient } from "@/hooks/useUnifiedWalletClient";
-import { IdentityModal } from "./IdentityModal";
+import dynamic from "next/dynamic";
+const IdentityModal = dynamic(
+  () => import("./IdentityModal").then((m) => m.IdentityModal),
+  { ssr: false },
+);
 
 export function ClaimReward() {
   const { address } = useAuth();

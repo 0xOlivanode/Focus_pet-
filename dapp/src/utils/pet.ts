@@ -37,9 +37,9 @@ export const getPetEmoji = (stage: PetStage): string => {
 };
 
 const CYBER_DINO_ASSETS: Record<string, string> = {
-  egg: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778777438/egg_sunny_tqcx2g.png",
-  baby: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778777435/baby_sunny_jmplzw.png",
-  adult: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778777434/adult_sunny_g4ards.png",
+  egg: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778777438/egg_sunny_tqcx2g.png",
+  baby: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778777435/baby_sunny_jmplzw.png",
+  adult: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778777434/adult_sunny_g4ards.png",
 };
 
 export const getPetAsset = (

@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
       "@privy-io/react-auth",
       "@privy-io/wagmi",
       "viem",
+      "@web3auth/modal",
+      "@goodsdks/citizen-sdk",
+      "@goodsdks/engagement-sdk",
+      "@goodsdks/identity-sdk",
+      "@supabase/supabase-js",
     ],
   },
   images: {

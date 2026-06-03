@@ -97,7 +97,7 @@ export default function ShopPage() {
       {
         id: "apple",
         name: "Cyber Apple",
-        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778748/cyber-apple_rn3ksq.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778748/cyber-apple_rn3ksq.png",
         price: 10,
         usdtPrice: BigInt(100_000),
         usdtDisplay: "$0.10",
@@ -109,7 +109,7 @@ export default function ShopPage() {
       {
         id: "golden_apple",
         name: "Golden Apple",
-        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778750/golden-apple_a1ra1b.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778750/golden-apple_a1ra1b.png",
         price: 30,
         usdtPrice: BigInt(250_000),
         usdtDisplay: "$0.25",
@@ -123,7 +123,7 @@ export default function ShopPage() {
       {
         id: "energy_drink",
         name: "Energy Drink",
-        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778743/energy-drink_hzoqsb.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778743/energy-drink_hzoqsb.png",
         price: 25,
         usdtPrice: BigInt(200_000),
         usdtDisplay: "$0.20",
@@ -135,7 +135,7 @@ export default function ShopPage() {
       {
         id: "shield",
         name: "Streak Shield",
-        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778745/streak-shield_kepght.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778745/streak-shield_kepght.png",
         price: 100,
         usdtPrice: BigInt(500_000),
         usdtDisplay: "$0.50",
@@ -149,7 +149,7 @@ export default function ShopPage() {
       {
         id: "sunglasses",
         name: "Cool Shades",
-        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778747/cool-shades_txvqei.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778747/cool-shades_txvqei.png",
         price: 50,
         usdtPrice: SUNGLASSES_USDT,
         usdtDisplay: "$0.50",
@@ -166,7 +166,7 @@ export default function ShopPage() {
       {
         id: "crown",
         name: "Royal Crown",
-        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/v1778778752/crown_xs1nxk.png",
+        image: "https://res.cloudinary.com/dmpulmnb9/image/upload/f_auto,q_auto/v1778778752/crown_xs1nxk.png",
         price: 500,
         usdtPrice: CROWN_USDT,
         usdtDisplay: "$5.00",

@@ -8,7 +8,11 @@ import { ClaimSDK } from "@goodsdks/citizen-sdk";
 import { useIdentityContext } from "@/contexts/IdentityContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnifiedWalletClient } from "@/hooks/useUnifiedWalletClient";
-import { IdentityModal } from "./IdentityModal";
+import dynamic from "next/dynamic";
+const IdentityModal = dynamic(
+  () => import("./IdentityModal").then((m) => m.IdentityModal),
+  { ssr: false },
+);
 import {
   Loader2,
   Gift,
