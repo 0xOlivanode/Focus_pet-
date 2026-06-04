@@ -474,7 +474,7 @@ function AppPageContent() {
 
     return (
       <div className="min-h-screen w-full bg-black flex flex-col">
-        <Navbar minimal onOpenOnboarding={() => setShowOnboarding(true)} />
+        <Navbar minimal />
 
         <div className="flex-1 flex flex-col items-center justify-center px-5 py-16">
           {/* Egg visual */}
@@ -655,7 +655,7 @@ function AppPageContent() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <Navbar onOpenProfile={() => setIsEditModalOpen(true)} hasPet={!!hasPet} />
+      <Navbar onOpenProfile={() => setIsEditModalOpen(true)} />
 
       <main className="px-5 sm:px-10 lg:px-[80px] py-[40px] pb-24">
         <CompetitionBanner />
