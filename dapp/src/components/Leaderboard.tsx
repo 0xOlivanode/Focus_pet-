@@ -120,7 +120,7 @@ export function Leaderboard() {
                       ? <Check size={9} className="text-emerald-500" />
                       : <Copy size={9} />}
                   </button>
-                  {entry.isVerified && !isMiniPay && <VerifiedBadge size={11} />}
+                  {(entry as any).isVerified && <VerifiedBadge size={11} />}
                   {isMe && (
                     <span className="text-[8px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tight shrink-0">
                       YOU

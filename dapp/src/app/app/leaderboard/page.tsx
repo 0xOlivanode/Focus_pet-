@@ -273,7 +273,7 @@ export default function LeaderboardPage() {
                               ? `${entry.username}`
                               : formatAddress(entry.address)}
                           </span>
-                          {entry.isVerified && <VerifiedBadge size={12} />}
+                          {(entry as any).isVerified && <VerifiedBadge size={12} />}
                           {isMe && (
                             <span className="text-[10px] bg-white/10 text-neutral-300 px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-tight shrink-0">
                               you

@@ -14,7 +14,6 @@ import {
   Target,
   Globe,
 } from "lucide-react";
-import { IS_MINIPAY } from "@/lib/miniPayEthereum";
 
 interface OnboardingModalProps {
   onClose: () => void;
@@ -143,7 +142,7 @@ const stepsMiniPay = [
   },
 ];
 
-const steps = IS_MINIPAY ? stepsMiniPay : stepsDefault;
+const steps = stepsMiniPay;
 
 export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const [step, setStep] = useState(1);

@@ -2,24 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useBalance } from "wagmi";
-import { useUnifiedWriteContract } from "@/hooks/useUnifiedWriteContract";
-import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Copy,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Loader2,
-  Settings,
   LogOut,
   ChevronLeft,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { parseUnits } from "viem";
 import toast from "react-hot-toast";
-import { GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
-import { ERC20ABI } from "@/config/abi";
-import { MigratePetModal } from "@/components/MigratePetModal";
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -29,7 +19,7 @@ interface AccountModalProps {
   hasPet?: boolean;
 }
 
-type ViewState = "overview" | "send" | "receive";
+type ViewState = "overview" | "receive";
 
 export function AccountModal({
   isOpen,
@@ -39,36 +29,10 @@ export function AccountModal({
   hasPet = false,
 }: AccountModalProps) {
   const { address, logout } = useAuth();
-  const { user, linkEmail, authenticated: privyAuthenticated } = usePrivy();
-  const [isMigrateOpen, setIsMigrateOpen] = useState(false);
-  const [isLinkingEmail, setIsLinkingEmail] = useState(false);
-
-  const email = user?.email?.address ?? user?.google?.email ?? null;
-  // Only offer email linking to Privy users who don't have one yet
-  const canLinkEmail = privyAuthenticated && !email;
-
-  const handleLinkEmail = async () => {
-    setIsLinkingEmail(true);
-    try {
-      await linkEmail();
-    } catch {
-      // dismissed
-    } finally {
-      setIsLinkingEmail(false);
-    }
-  };
   const [view, setView] = useState<ViewState>("overview");
-  const [recipient, setRecipient] = useState("");
-  const [amount, setAmount] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   const { data: celoBalance } = useBalance({ address });
-  const { data: gBalance } = useBalance({
-    address,
-    token: GOOD_DOLLAR_ADDRESSES.CELO_MAINNET,
-  });
-  const { writeContractAsync, isPending: isGSPending } =
-    useUnifiedWriteContract();
 
   // Close on outside click
   useEffect(() => {
@@ -96,32 +60,10 @@ export function AccountModal({
     await logout();
   };
 
-  const handleSend = async () => {
-    if (!recipient || !amount) {
-      toast.error("Please fill in all fields.");
-      return;
-    }
-    try {
-      await writeContractAsync({
-        address: GOOD_DOLLAR_ADDRESSES.CELO_MAINNET,
-        abi: ERC20ABI,
-        functionName: "transfer",
-        args: [recipient as `0x${string}`, parseUnits(amount, 18)],
-      });
-      toast.success("G$ sent!");
-      setView("overview");
-      setAmount("");
-      setRecipient("");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Send failed. Try again.");
-    }
-  };
-
   const formatAddress = (addr: string) =>
     `${addr.slice(0, 7)}...${addr.slice(-4)}`;
 
   return (
-    <>
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -134,27 +76,11 @@ export function AccountModal({
         >
           {view === "overview" && (
             <>
-              {/* Address + email row */}
+              {/* Address row */}
               <div className="flex items-start justify-between px-5 py-4">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-white font-mono text-base font-medium">
-                    {address ? formatAddress(address) : "—"}
-                  </span>
-                  {email ? (
-                    <span className="text-neutral-400 text-xs">{email}</span>
-                  ) : canLinkEmail ? (
-                    <button
-                      onClick={handleLinkEmail}
-                      disabled={isLinkingEmail}
-                      className="text-xs text-amber-400 hover:text-amber-300 transition-colors text-left disabled:opacity-50 flex items-center gap-1"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                      {isLinkingEmail
-                        ? "Opening…"
-                        : "Link email to secure account"}
-                    </button>
-                  ) : null}
-                </div>
+                <span className="text-white font-mono text-base font-medium">
+                  {address ? formatAddress(address) : "—"}
+                </span>
                 <button
                   onClick={copyAddress}
                   className="text-neutral-400 hover:text-white transition-colors mt-0.5"
@@ -167,7 +93,6 @@ export function AccountModal({
 
               {/* Balances */}
               <div className="px-5 py-1">
-                {/* Celo */}
                 <div className="flex items-center justify-between py-4 border-b border-neutral-800">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center overflow-hidden shrink-0">
@@ -184,27 +109,7 @@ export function AccountModal({
                   </span>
                 </div>
 
-                {/* G$ */}
-                <div className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center shrink-0">
-                      <span className="text-white text-xs font-bold">G$</span>
-                    </div>
-                    <span className="text-white font-medium">G$</span>
-                  </div>
-                  <span className="text-white font-medium tabular-nums">
-                    {gBalance?.formatted?.slice(0, 7) ?? "0.00"}
-                  </span>
-                </div>
-
-                {/* Send / Receive */}
-                <div className="grid grid-cols-2 gap-3 pb-4">
-                  <button
-                    onClick={() => setView("send")}
-                    className="py-3 rounded-full bg-white hover:bg-neutral-100 text-black font-semibold text-sm transition-colors"
-                  >
-                    Send
-                  </button>
+                <div className="grid grid-cols-1 gap-3 py-4">
                   <button
                     onClick={() => setView("receive")}
                     className="py-3 rounded-full bg-white hover:bg-neutral-100 text-black font-semibold text-sm transition-colors"
@@ -216,18 +121,7 @@ export function AccountModal({
 
               <div className="border-t border-neutral-800" />
 
-              {/* Footer actions */}
               <div className="px-5 py-2">
-                {/* Migrate to MiniPay — uncomment when migration is ready to ship
-                {hasPet && (
-                  <button
-                    onClick={() => { onClose(); setIsMigrateOpen(true); }}
-                    className="w-full flex items-center gap-3 py-3 text-indigo-400 hover:text-indigo-300 transition-colors text-sm border-b border-neutral-800"
-                  >
-                    <ArrowUpRight size={17} className="text-indigo-400" />
-                    Migrate to MiniPay
-                  </button>
-                )} */}
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-3 py-3 text-red-500 hover:text-red-400 transition-colors text-sm"
@@ -237,66 +131,6 @@ export function AccountModal({
                 </button>
               </div>
             </>
-          )}
-
-          {view === "send" && (
-            <div className="px-5 py-5 space-y-4">
-              <div className="flex items-center gap-3 mb-2">
-                <button
-                  onClick={() => setView("overview")}
-                  className="text-neutral-400 hover:text-white transition-colors"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <span className="text-white font-semibold">Send G$</span>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-neutral-500 uppercase tracking-widest font-bold">
-                  Recipient
-                </label>
-                <input
-                  type="text"
-                  placeholder="0x..."
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 outline-none focus:border-neutral-500 font-mono text-sm transition-colors"
-                  value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <label className="text-xs text-neutral-500 uppercase tracking-widest font-bold">
-                    Amount (G$)
-                  </label>
-                  <button
-                    onClick={() => setAmount(gBalance?.formatted || "")}
-                    className="text-xs text-neutral-400 hover:text-white transition-colors"
-                  >
-                    Max: {gBalance?.formatted?.slice(0, 7)}
-                  </button>
-                </div>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 outline-none focus:border-neutral-500 font-bold text-2xl transition-colors"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-              </div>
-
-              <button
-                onClick={handleSend}
-                disabled={isGSPending}
-                className="w-full py-3.5 rounded-full bg-white hover:bg-neutral-100 text-black font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isGSPending ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  "Send G$"
-                )}
-              </button>
-            </div>
           )}
 
           {view === "receive" && (
@@ -335,12 +169,5 @@ export function AccountModal({
         </motion.div>
       )}
     </AnimatePresence>
-
-    <MigratePetModal
-      isOpen={isMigrateOpen}
-      onClose={() => setIsMigrateOpen(false)}
-      hasPet={hasPet}
-    />
-    </>
   );
 }

@@ -3,9 +3,7 @@
 import { useWriteContract } from "wagmi";
 import { createWalletClient, createPublicClient, custom, http, erc20Abi, type Abi } from "viem";
 import { celo } from "wagmi/chains";
-import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
-import { useWeb3Auth } from "@web3auth/modal/react";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { IS_MINIPAY, nativeMiniPayEthereum } from "@/lib/miniPayEthereum";
 
 // ── MiniPay fee-currency adapters ─────────────────────────────────────────────
@@ -60,10 +58,6 @@ export function useUnifiedWriteContract() {
     reset: wagmiReset,
   } = useWriteContract();
 
-  const { provider: liveWeb3AuthProvider, isConnected: web3authIsConnected } = useWeb3Auth();
-  const liveProviderRef = useRef(liveWeb3AuthProvider);
-  liveProviderRef.current = liveWeb3AuthProvider;
-
   const [hash, setHash] = useState<`0x${string}` | undefined>(undefined);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -72,106 +66,56 @@ export function useUnifiedWriteContract() {
     async (params: WriteContractParams): Promise<`0x${string}`> => {
       setError(null);
 
-      const w3aProvider = IS_MINIPAY
-        ? null
-        : ((web3authIsConnected ? (liveProviderRef.current as any) : null) ??
-            getWeb3AuthProvider());
+      if (!nativeMiniPayEthereum) {
+        throw new Error("MiniPay provider not found — this app requires MiniPay");
+      }
 
-      if (IS_MINIPAY && nativeMiniPayEthereum) {
-        // ── MiniPay ──────────────────────────────────────────────────────────
-        // Uses CIP-64 (feeCurrency) — NOT type:"legacy".
-        //
-        // "MiniPay Only Supports Legacy Transactions" means: don't use EIP-1559
-        // fields (maxFeePerGas / maxPriorityFeePerGas). CIP-64 (type 0x7b) IS
-        // supported and is the correct way to do fee abstraction in MiniPay.
-        //
-        // MiniPay defaults to USDm for gas. Users with only USDT/USDC have no
-        // USDm, so their transactions fail silently without an explicit feeCurrency.
-        // We detect the best available stablecoin and set feeCurrency accordingly.
-        // viem automatically formats as CIP-64 when feeCurrency is present.
-        //
-        // gas forwarded when provided — skips eth_estimateGas.
-        if (!nativeMiniPayEthereum) throw new Error("MiniPay provider not found");
-        setIsPending(true);
-        try {
-          const accounts = await (nativeMiniPayEthereum as any).request({
-            method: "eth_requestAccounts",
-          }) as string[];
-          const account = accounts[0] as `0x${string}`;
-          if (!account) throw new Error("MiniPay not connected — reload and try again");
+      // ── MiniPay CIP-64 path ────────────────────────────────────────────────
+      // Uses CIP-64 (feeCurrency) — NOT type:"legacy".
+      // MiniPay defaults to USDm for gas. Users with only USDT/USDC have no
+      // USDm, so their transactions fail silently without an explicit feeCurrency.
+      // We detect the best available stablecoin and set feeCurrency accordingly.
+      // viem automatically formats as CIP-64 when feeCurrency is present.
+      setIsPending(true);
+      try {
+        const accounts = await (nativeMiniPayEthereum as any).request({
+          method: "eth_requestAccounts",
+        }) as string[];
+        const account = accounts[0] as `0x${string}`;
+        if (!account) throw new Error("MiniPay not connected — reload and try again");
 
-          const walletClient = createWalletClient({
-            chain: celo,
-            transport: custom(nativeMiniPayEthereum as any),
-          });
+        const walletClient = createWalletClient({
+          chain: celo,
+          transport: custom(nativeMiniPayEthereum as any),
+        });
 
-          const feeCurrency = params.feeCurrency ?? await detectMiniPayFeeCurrency(account);
+        const feeCurrency = params.feeCurrency ?? await detectMiniPayFeeCurrency(account);
 
-          // 90-second timeout — prevents isSigning from locking the UI forever
-          // if MiniPay's WebView hangs on eth_gasPrice / eth_sendTransaction.
-          const txHash = await Promise.race([
-            walletClient.writeContract({
-              ...(params as any),
-              account,
-              chain: celo,
-              feeCurrency,
-            } as Parameters<typeof walletClient.writeContract>[0]),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error("MiniPay request timed out — please try again")), 90_000)
-            ),
-          ]);
-
-          setHash(txHash);
-          return txHash;
-        } catch (err) {
-          const e = err instanceof Error ? err : new Error(String(err));
-          setError(e);
-          throw e;
-        } finally {
-          setIsPending(false);
-        }
-
-      } else if (w3aProvider) {
-        // ── Web3Auth ─────────────────────────────────────────────────────────
-        setIsPending(true);
-        try {
-          const walletClient = createWalletClient({
-            chain: celo,
-            transport: custom(w3aProvider),
-          });
-          const [account] = await walletClient.getAddresses();
-          const txHash = await walletClient.writeContract({
-            ...(params as Parameters<typeof walletClient.writeContract>[0]),
+        // 90-second timeout — prevents isSigning from locking the UI forever
+        // if MiniPay's WebView hangs on eth_gasPrice / eth_sendTransaction.
+        const txHash = await Promise.race([
+          walletClient.writeContract({
+            ...(params as any),
             account,
             chain: celo,
-          });
-          setHash(txHash);
-          return txHash;
-        } catch (err) {
-          const e = err instanceof Error ? err : new Error(String(err));
-          setError(e);
-          throw e;
-        } finally {
-          setIsPending(false);
-        }
+            feeCurrency,
+          } as Parameters<typeof walletClient.writeContract>[0]),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("MiniPay request timed out — please try again")), 90_000)
+          ),
+        ]);
 
-      } else {
-        // ── Privy ─────────────────────────────────────────────────────────────
-        setIsPending(true);
-        try {
-          const txHash = await wagmiWriteAsync(params as Parameters<typeof wagmiWriteAsync>[0]);
-          setHash(txHash);
-          return txHash;
-        } catch (err) {
-          const e = err instanceof Error ? err : new Error(String(err));
-          setError(e);
-          throw e;
-        } finally {
-          setIsPending(false);
-        }
+        setHash(txHash);
+        return txHash;
+      } catch (err) {
+        const e = err instanceof Error ? err : new Error(String(err));
+        setError(e);
+        throw e;
+      } finally {
+        setIsPending(false);
       }
     },
-    [wagmiWriteAsync, web3authIsConnected],
+    [],
   );
 
   const writeContract = useCallback(
