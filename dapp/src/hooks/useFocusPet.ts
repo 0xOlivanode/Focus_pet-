@@ -42,6 +42,12 @@ export function useFocusPet() {
     functionName?: string;
     args?: any[];
   } | null>(null);
+  // Tracks a pending USDT approval — after it confirms we refetch allowance and
+  // prompt the user to tap the buy button again rather than auto-triggering the
+  // buy from a useEffect. Auto-triggering causes a race where viem's eth_call
+  // simulation runs before MiniPay's RPC reflects the new allowance, producing
+  // an EstimateGasExecutionError even though the approve confirmed on-chain.
+  const [pendingUSDTApproval, setPendingUSDTApproval] = useState(false);
   const [pendingSession, setPendingSession] = useState<{
     minutes: number;
     multiplier: number;
@@ -196,7 +202,7 @@ export function useFocusPet() {
         setHasToasted(true);
         refetchAll();
       } else if (lastAction === "shop") {
-        if (!pendingItem) {
+        if (!pendingItem && !pendingUSDTApproval) {
           setHasToasted(true);
           toast.success("Purchase Successful!\nYour items are ready.");
           refetchAll();
@@ -213,6 +219,19 @@ export function useFocusPet() {
       }
     }
   }, [finalIsConfirmed, refetchAll, lastAction, hasToasted]);
+
+  // After a USDT max-approve confirms, refetch so usdtAllowanceRaw reflects
+  // maxUint256, then prompt the user to tap the buy button again. This avoids
+  // the race where an auto-triggered buy tx is simulated before MiniPay's RPC
+  // has indexed the new allowance, causing a spurious EstimateGasExecutionError.
+  useEffect(() => {
+    if (finalIsConfirmed && pendingUSDTApproval && lastAction === "shop") {
+      setHasToasted(true);
+      setPendingUSDTApproval(false);
+      refetchAll();
+      toast.success("Approved! Tap the item again to complete your purchase.");
+    }
+  }, [finalIsConfirmed, pendingUSDTApproval, lastAction, refetchAll]);
 
   const approveG = (amount: bigint, itemId?: string, price?: number) => {
     // Check balance first
@@ -295,7 +314,7 @@ export function useFocusPet() {
     functionName: string,
     usdtAmount: bigint,
     args: any[] = [],
-    itemId?: string,
+    _itemId?: string,
   ) => {
     if (usdtBalanceRaw < usdtAmount) {
       toast.error("Insufficient USDT balance");
@@ -303,7 +322,7 @@ export function useFocusPet() {
     }
     setLastAction("shop");
     if (usdtAllowanceRaw < usdtAmount) {
-      if (itemId) setPendingItem({ id: itemId, functionName, args });
+      setPendingUSDTApproval(true);
       writeContract({
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
