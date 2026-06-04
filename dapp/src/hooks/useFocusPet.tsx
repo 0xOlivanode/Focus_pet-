@@ -15,6 +15,24 @@ import { useAuth } from "@/hooks/useAuth";
 
 const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
 
+function copyableErrorToast(msg: string) {
+  toast.error(
+    (t) => (
+      <span
+        onClick={() => {
+          navigator.clipboard?.writeText(msg).catch(() => {});
+          toast.dismiss(t.id);
+        }}
+        style={{ cursor: "pointer", userSelect: "all", display: "block" }}
+        title="Tap to copy"
+      >
+        {msg}
+      </span>
+    ),
+    { duration: 30000 },
+  );
+}
+
 // USDT price constants (6 decimals, matching contract)
 const PRICE_FOOD_USDT       = BigInt(100_000);
 const PRICE_SUPER_FOOD_USDT = BigInt(250_000);
@@ -72,19 +90,19 @@ const [isSigning, setIsSigning] = useState(false);
       const err = writeError as any;
       const name: string = err?.name ?? "";
       const code: number = err?.code ?? err?.cause?.code ?? 0;
-      // Log full error for debugging (visible in browser console / Vercel logs)
+      const msg: string = err?.message ?? err?.cause?.message ?? String(writeError);
       console.error("[FocusPet] writeError", writeError);
-      // User-friendly message per MiniPay docs — prefer code/name over message text
       if (name === "UserRejectedRequestError" || code === 4001 || code === -32604) return;
-      toast.error("Transaction failed. Please try again.");
+      copyableErrorToast(msg);
     }
   }, [writeError]);
 
   useEffect(() => {
     if (receiptError) {
-      // Log full error for debugging
+      const err = receiptError as any;
+      const msg: string = err?.message ?? err?.cause?.message ?? String(receiptError);
       console.error("[FocusPet] receiptError", receiptError);
-      toast.error("Transaction failed. Please try again.");
+      copyableErrorToast(msg);
     }
   }, [receiptError]);
 
@@ -188,15 +206,19 @@ const [isSigning, setIsSigning] = useState(false);
     functionName: string,
     usdtAmount: bigint,
     args: any[] = [],
-    itemId?: string,
   ) => {
-    if (usdtBalanceRaw < usdtAmount) {
-      toast.error("Insufficient USDT balance.");
+    const bal = usdtBalanceRaw;
+    const allow = usdtAllowanceRaw;
+    console.log("[BUY]", functionName, { bal: bal.toString(), allow: allow.toString(), need: usdtAmount.toString(), usdtApproved });
+
+    if (bal < usdtAmount) {
+      toast.error(`Insufficient USDT (have $${(Number(bal)/1e6).toFixed(2)}, need $${(Number(usdtAmount)/1e6).toFixed(2)})`);
       return;
     }
     setLastAction("shop");
-    if (!usdtApproved && usdtAllowanceRaw < usdtAmount) {
+    if (!usdtApproved && allow < usdtAmount) {
       setPendingUSDTApproval(true);
+      toast(`[1/2] Approving $${(Number(usdtAmount)/1e6).toFixed(2)} USDT — confirm in MiniPay…`, { icon: "🔑", duration: 10000 });
       writeContract({
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
@@ -205,6 +227,7 @@ const [isSigning, setIsSigning] = useState(false);
       });
     } else {
       setUsdtApproved(false);
+      toast(`[2/2] Buying (fn: ${functionName}, allowance: $${(Number(allow)/1e6).toFixed(2)})…`, { icon: "🛒", duration: 10000 });
       writeContract({
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
@@ -215,17 +238,17 @@ const [isSigning, setIsSigning] = useState(false);
   };
 
   const buyFoodWithUSDT = (priceOverride?: bigint) =>
-    executeUSDTBuy("buyFoodWithUSDT", priceOverride ?? PRICE_FOOD_USDT, [], "apple");
+    executeUSDTBuy("buyFoodWithUSDT", priceOverride ?? PRICE_FOOD_USDT);
   const buySuperFoodWithUSDT = (priceOverride?: bigint) =>
-    executeUSDTBuy("buySuperFoodWithUSDT", priceOverride ?? PRICE_SUPER_FOOD_USDT, [], "golden_apple");
+    executeUSDTBuy("buySuperFoodWithUSDT", priceOverride ?? PRICE_SUPER_FOOD_USDT);
   const buyEnergyDrinkWithUSDT = (priceOverride?: bigint) =>
-    executeUSDTBuy("buyEnergyDrinkWithUSDT", priceOverride ?? PRICE_ENERGY_DRINK_USDT, [], "energy_drink");
+    executeUSDTBuy("buyEnergyDrinkWithUSDT", priceOverride ?? PRICE_ENERGY_DRINK_USDT);
   const buyShieldWithUSDT = (priceOverride?: bigint) =>
-    executeUSDTBuy("buyShieldWithUSDT", priceOverride ?? PRICE_SHIELD_USDT, [], "shield");
+    executeUSDTBuy("buyShieldWithUSDT", priceOverride ?? PRICE_SHIELD_USDT);
   const revivePetWithUSDT = () =>
-    executeUSDTBuy("revivePetWithUSDT", PRICE_REVIVE_USDT, [], "revive");
+    executeUSDTBuy("revivePetWithUSDT", PRICE_REVIVE_USDT);
   const buyCosmeticWithUSDT = (cosmeticId: string, usdtPrice: bigint) =>
-    executeUSDTBuy("buyCosmeticWithUSDT", usdtPrice, [cosmeticId, usdtPrice], cosmeticId);
+    executeUSDTBuy("buyCosmeticWithUSDT", usdtPrice, [cosmeticId, usdtPrice]);
 
   const toggleCosmetic = (id: string) => {
     setLastAction("shop");
