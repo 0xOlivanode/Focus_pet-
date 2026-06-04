@@ -3,28 +3,27 @@
 import {
   useReadContracts,
   useWaitForTransactionReceipt,
+  useWriteContract,
 } from "wagmi";
-import { useUnifiedWriteContract } from "@/hooks/useUnifiedWriteContract";
 import { FocusPetABI } from "@/config/abi";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { erc20Abi } from "viem";
 
 import { CONTRACT_ADDRESS } from "@/config/contracts";
+import { useAuth } from "@/hooks/useAuth";
 
 const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
-// CIP-64 fee-currency adapter for USDT. Passed explicitly on USDT transactions
-// so detectMiniPayFeeCurrency (which makes an extra HTTP call) is bypassed —
-// we already know the user has USDT from the balance check in executeUSDTBuy.
-const USDT_FEE_ADAPTER = "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72" as const;
+// CIP-64 fee-currency adapter for USDT — tells MiniPay to deduct gas in USDT.
+// Passed explicitly so we never fall back to USDm (which most users don't have).
+const USDT_FEE_ADAPTER = "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72" as `0x${string}`;
 
 // USDT price constants (6 decimals, matching contract)
-const PRICE_FOOD_USDT = BigInt(100_000);
+const PRICE_FOOD_USDT       = BigInt(100_000);
 const PRICE_SUPER_FOOD_USDT = BigInt(250_000);
 const PRICE_ENERGY_DRINK_USDT = BigInt(200_000);
-const PRICE_SHIELD_USDT = BigInt(500_000);
-const PRICE_REVIVE_USDT = BigInt(250_000);
-import { erc20Abi } from "viem";
-import { useAuth } from "@/hooks/useAuth";
+const PRICE_SHIELD_USDT     = BigInt(500_000);
+const PRICE_REVIVE_USDT     = BigInt(250_000);
 
 export function useFocusPet() {
   // Use useAuth so the address is available as soon as Web3Auth connects,
@@ -56,7 +55,7 @@ export function useFocusPet() {
     data: singleHash,
     isPending: isSinglePending,
     error: writeError,
-  } = useUnifiedWriteContract();
+  } = useWriteContract();
 
   const {
     isLoading: isConfirming,
@@ -380,6 +379,11 @@ export function useFocusPet() {
       const executeBuy = async () => {
         const item = pendingItem;
         setPendingItem(null); // Clear first to prevent loops
+
+        // Refetch on-chain state so MiniPay's RPC node has indexed the new
+        // allowance before we simulate the buy. Without this, eth_estimateGas
+        // sees the pre-approval allowance and rejects the tx.
+        await refetchAll();
 
         if (item.functionName) {
           writeContract({

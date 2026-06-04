@@ -4,8 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowRight, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { isAddress } from "viem";
-import { useWaitForTransactionReceipt } from "wagmi";
-import { useUnifiedWriteContract } from "@/hooks/useUnifiedWriteContract";
+import { useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
 import { CONTRACT_ADDRESS } from "@/config/contracts";
 import toast from "react-hot-toast";
@@ -44,7 +43,7 @@ export function MigratePetModal({ isOpen, onClose, hasPet }: Props) {
     isPending,
     data: txHash,
     reset,
-  } = useUnifiedWriteContract();
+  } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess: isDone } =
     useWaitForTransactionReceipt({ hash: txHash });
