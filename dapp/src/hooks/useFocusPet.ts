@@ -3,77 +3,17 @@
 import {
   useReadContracts,
   useWaitForTransactionReceipt,
+  useWriteContract,
 } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { createWalletClient, custom, encodeFunctionData, erc20Abi, type Abi } from "viem";
-import { celo } from "wagmi/chains";
+import { erc20Abi } from "viem";
 
 import { CONTRACT_ADDRESS } from "@/config/contracts";
 import { useAuth } from "@/hooks/useAuth";
 
-// Bypass wagmi's prepareTransactionRequest which routes through Alchemy and
-// fails on Celo CIP-64 feeCurrency params. Send directly through MiniPay's
-// window.ethereum provider instead.
-function useMiniPayWrite() {
-  const [hash, setHash] = useState<`0x${string}` | undefined>(undefined);
-  const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const send = useCallback(async (params: {
-    address: `0x${string}`;
-    abi: Abi | readonly unknown[];
-    functionName: string;
-    args?: readonly unknown[];
-    gas?: bigint;
-    feeCurrency?: `0x${string}`;
-  }): Promise<`0x${string}`> => {
-    setError(null);
-    setIsPending(true);
-    try {
-      const walletClient = createWalletClient({
-        chain: celo,
-        transport: custom((window as any).ethereum),
-      });
-      const [account] = await walletClient.getAddresses();
-      const data = encodeFunctionData({
-        abi: params.abi as Abi,
-        functionName: params.functionName,
-        args: params.args ?? [],
-      });
-      const txHash = await walletClient.sendTransaction({
-        account,
-        to: params.address,
-        data,
-        gas: params.gas,
-        feeCurrency: params.feeCurrency,
-        chain: celo,
-      } as any);
-      setHash(txHash);
-      return txHash;
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setError(e);
-      throw e;
-    } finally {
-      setIsPending(false);
-    }
-  }, []);
-
-  const write = useCallback((params: Parameters<typeof send>[0]) => {
-    send(params).catch(() => {});
-  }, [send]);
-
-  const writeAsync = send;
-
-  return { write, writeAsync, hash, isPending, error };
-}
-
 const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
-// CIP-64 fee-currency adapter for USDT — tells MiniPay to deduct gas in USDT.
-// Passed explicitly so we never fall back to USDm (which most users don't have).
-const USDT_FEE_ADAPTER = "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72" as `0x${string}`;
 
 // USDT price constants (6 decimals, matching contract)
 const PRICE_FOOD_USDT       = BigInt(100_000);
@@ -88,31 +28,27 @@ export function useFocusPet() {
   // the Web3Auth EIP1193 provider address when wagmiAddress is not yet set.
   const { address } = useAuth();
 
-  const txOverrides = {};
-
-  const [isSigning, setIsSigning] = useState(false);
+const [isSigning, setIsSigning] = useState(false);
   const [lastAction, setLastAction] = useState<
     "focus" | "shop" | "profile" | null
   >(null);
   const [hasToasted, setHasToasted] = useState(false);
-  const [pendingItem, setPendingItem] = useState<{
-    id: string;
-    price?: number;
-    functionName?: string;
-    args?: any[];
-  } | null>(null);
+  // After approve confirms, prompt user to tap again so the buy fires from a
+  // direct user gesture — MiniPay blocks eth_sendTransaction from useEffect.
+  const [pendingUSDTApproval, setPendingUSDTApproval] = useState(false);
+  const [usdtApproved, setUsdtApproved] = useState(false);
   const [pendingSession, setPendingSession] = useState<{
     minutes: number;
     multiplier: number;
   } | null>(null);
 
   const {
-    write: writeContract,
-    writeAsync: writeContractAsync,
-    hash: singleHash,
+    writeContract,
+    writeContractAsync,
+    data: singleHash,
     isPending: isSinglePending,
     error: writeError,
-  } = useMiniPayWrite();
+  } = useWriteContract();
 
   const {
     isLoading: isConfirming,
@@ -136,20 +72,19 @@ export function useFocusPet() {
       const err = writeError as any;
       const name: string = err?.name ?? "";
       const code: number = err?.code ?? err?.cause?.code ?? 0;
-      const msg: string = err?.message ?? err?.cause?.message ?? "unknown";
-      console.error("[FocusPet] writeError", { name, code, msg });
-      if (name === "UserRejectedRequestError" || code === 4001) return;
-      const label = `[${name || code}]: ${msg}`;
-      toast.error(label, { duration: 20000 });
+      // Log full error for debugging (visible in browser console / Vercel logs)
+      console.error("[FocusPet] writeError", writeError);
+      // User-friendly message per MiniPay docs — prefer code/name over message text
+      if (name === "UserRejectedRequestError" || code === 4001 || code === -32604) return;
+      toast.error("Transaction failed. Please try again.");
     }
   }, [writeError]);
 
   useEffect(() => {
     if (receiptError) {
-      const err = receiptError as any;
-      const msg: string = err?.message ?? err?.cause?.message ?? "unknown";
-      console.error("[FocusPet] receiptError", err);
-      toast.error(`Reverted: ${msg}`, { duration: 20000 });
+      // Log full error for debugging
+      console.error("[FocusPet] receiptError", receiptError);
+      toast.error("Transaction failed. Please try again.");
     }
   }, [receiptError]);
 
@@ -236,7 +171,7 @@ export function useFocusPet() {
         setHasToasted(true);
         refetchAll();
       } else if (lastAction === "shop") {
-        if (!pendingItem) {
+        if (!pendingUSDTApproval) {
           setHasToasted(true);
           toast.success("Purchase Successful!\nYour items are ready.");
           refetchAll();
@@ -255,36 +190,27 @@ export function useFocusPet() {
     args: any[] = [],
     itemId?: string,
   ) => {
-    const bal = usdtBalanceRaw;
-    const allow = usdtAllowanceRaw;
-    console.log("[BUY]", functionName, { bal: bal.toString(), allow: allow.toString(), need: usdtAmount.toString() });
-
-    if (bal < usdtAmount) {
-      toast.error(`Insufficient USDT (have ${Number(bal)/1e6} need ${Number(usdtAmount)/1e6})`);
+    if (usdtBalanceRaw < usdtAmount) {
+      toast.error("Insufficient USDT balance.");
       return;
     }
     setLastAction("shop");
-    if (allow < usdtAmount) {
-      toast(`Step 1/2: Approving ${Number(usdtAmount)/1e6} USDT…`, { icon: "🔑", duration: 8000 });
-      if (itemId) setPendingItem({ id: itemId, functionName, args });
+    if (!usdtApproved && usdtAllowanceRaw < usdtAmount) {
+      setPendingUSDTApproval(true);
       writeContract({
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
         args: [CONTRACT_ADDRESS, usdtAmount],
-        gas: BigInt(100_000),
-        feeCurrency: USDT_FEE_ADAPTER,
-      } as any);
+      });
     } else {
-      toast(`Sending buy (allowance ok: ${Number(allow)/1e6})…`, { icon: "🛒", duration: 6000 });
+      setUsdtApproved(false);
       writeContract({
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: functionName as any,
         args: args as any,
-        gas: BigInt(600_000),
-        feeCurrency: USDT_FEE_ADAPTER,
-      } as any);
+      });
     }
   };
 
@@ -304,7 +230,6 @@ export function useFocusPet() {
   const toggleCosmetic = (id: string) => {
     setLastAction("shop");
     writeContract({
-      ...txOverrides,
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
       functionName: "toggleCosmetic",
@@ -320,7 +245,6 @@ export function useFocusPet() {
     }
     setLastAction("profile");
     writeContract({
-      ...txOverrides,
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
       functionName: "setNames",
@@ -332,7 +256,6 @@ export function useFocusPet() {
   const deleteUser = () => {
     setLastAction("profile");
     writeContract({
-      ...txOverrides,
       address: CONTRACT_ADDRESS,
       abi: FocusPetABI,
       functionName: "deleteUser",
@@ -360,8 +283,7 @@ export function useFocusPet() {
     try {
       setIsSigning(true);
       await writeContractAsync({
-        ...txOverrides,
-        address: CONTRACT_ADDRESS,
+          address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: "focusSession",
         args: [BigInt(Math.max(1, Math.round(minutes * 60)))],
@@ -434,36 +356,19 @@ export function useFocusPet() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Automated Buy Logic (Sequential Transactions) ---
+  // After approve confirms, refetch so the fresh allowance is cached, then
+  // prompt the user to tap Buy again. MiniPay requires a direct user gesture
+  // for eth_sendTransaction — auto-triggering from useEffect returns "Permission denied".
   useEffect(() => {
-    if (isConfirmed && pendingItem && lastAction === "shop") {
-      const executeBuy = async () => {
-        const item = pendingItem;
-        setPendingItem(null);
-
-        toast("Step 2/2: Approve confirmed, fetching allowance…", { icon: "✅", duration: 5000 });
-        await refetchAll();
-
-        const freshAllow = usdtAllowanceRaw;
-        console.log("[AUTO-BUY]", item.functionName, { freshAllow: freshAllow.toString(), args: item.args });
-        toast(`Step 2/2: Sending buy (fn=${item.functionName}, allow=${Number(freshAllow)/1e6})…`, { icon: "🚀", duration: 8000 });
-
-        if (item.functionName) {
-          writeContract({
-            ...txOverrides,
-            address: CONTRACT_ADDRESS,
-            abi: FocusPetABI,
-            functionName: item.functionName as any,
-            args: item.args as any,
-            gas: BigInt(600_000),
-            feeCurrency: USDT_FEE_ADAPTER,
-          } as any);
-        }
-      };
-
-      executeBuy();
+    if (isConfirmed && pendingUSDTApproval && lastAction === "shop") {
+      setPendingUSDTApproval(false);
+      setHasToasted(true);
+      refetchAll().then(() => {
+        setUsdtApproved(true);
+        toast("Approved! Tap Buy again to complete your purchase.", { icon: "✅", duration: 10000 });
+      });
     }
-  }, [isConfirmed, pendingItem, lastAction]);
+  }, [isConfirmed, pendingUSDTApproval, lastAction, refetchAll]);
 
   // Helper to determine if user has a pet (birthTime > 0)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
