@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/",
+        has: [{ type: "host", value: "app.focus-pet.xyz" }],
+        destination: "/app",
+        permanent: false,
+      },
+    ];
+  },
   // Allow ngrok and any tunnel host for local MiniPay testing
   allowedDevOrigins: ["*.ngrok-free.app", "*.ngrok.io", "*.loca.lt"],
   experimental: {

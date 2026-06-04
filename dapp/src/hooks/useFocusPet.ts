@@ -76,25 +76,29 @@ export function useFocusPet() {
 
   useEffect(() => {
     if (writeError) {
-      console.error("Contract Write Error:", writeError);
-      const name = (writeError as any)?.name ?? "";
-      const code = (writeError as any)?.code ?? 0;
-      if (name === "EstimateGasExecutionError" || code === -32000) {
-        toast.error("Transaction failed — insufficient gas or contract error.");
-      } else if (name === "InsufficientFundsError" || code === -32603) {
-        toast.error("Insufficient funds for network fee.");
-      } else if (name === "UserRejectedRequestError" || code === 4001) {
+      const err = writeError as any;
+      const name: string = err?.name ?? "";
+      const code: number = err?.code ?? err?.cause?.code ?? 0;
+      const msg: string = err?.message ?? err?.cause?.message ?? "unknown";
+      const shortMsg = msg.length > 120 ? msg.slice(0, 120) + "…" : msg;
+
+      console.error("[FocusPet] writeError", { name, code, msg });
+
+      if (name === "UserRejectedRequestError" || code === 4001) {
         // user cancelled — no toast
       } else {
-        toast.error("Transaction failed — please try again.");
+        toast.error(`TX failed [${name || code}]: ${shortMsg}`, { duration: 8000 });
       }
     }
   }, [writeError]);
 
   useEffect(() => {
     if (receiptError) {
-      console.error("Receipt Error (tx reverted):", receiptError);
-      toast.error("Transaction reverted on-chain — please try again.");
+      const err = receiptError as any;
+      const msg: string = err?.message ?? err?.cause?.message ?? "unknown";
+      const shortMsg = msg.length > 120 ? msg.slice(0, 120) + "…" : msg;
+      console.error("[FocusPet] receiptError", err);
+      toast.error(`Reverted: ${shortMsg}`, { duration: 8000 });
     }
   }, [receiptError]);
 
@@ -200,12 +204,17 @@ export function useFocusPet() {
     args: any[] = [],
     itemId?: string,
   ) => {
-    if (usdtBalanceRaw < usdtAmount) {
-      toast.error("Insufficient USDT balance");
+    const bal = usdtBalanceRaw;
+    const allow = usdtAllowanceRaw;
+    console.log("[BUY]", functionName, { bal: bal.toString(), allow: allow.toString(), need: usdtAmount.toString() });
+
+    if (bal < usdtAmount) {
+      toast.error(`Insufficient USDT (have ${Number(bal)/1e6} need ${Number(usdtAmount)/1e6})`);
       return;
     }
     setLastAction("shop");
-    if (usdtAllowanceRaw < usdtAmount) {
+    if (allow < usdtAmount) {
+      toast(`Step 1/2: Approving ${Number(usdtAmount)/1e6} USDT…`, { icon: "🔑", duration: 8000 });
       if (itemId) setPendingItem({ id: itemId, functionName, args });
       writeContract({
         address: USDT_ADDRESS as `0x${string}`,
@@ -216,6 +225,7 @@ export function useFocusPet() {
         feeCurrency: USDT_FEE_ADAPTER,
       } as any);
     } else {
+      toast(`Sending buy (allowance ok: ${Number(allow)/1e6})…`, { icon: "🛒", duration: 6000 });
       writeContract({
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
@@ -378,12 +388,14 @@ export function useFocusPet() {
     if (isConfirmed && pendingItem && lastAction === "shop") {
       const executeBuy = async () => {
         const item = pendingItem;
-        setPendingItem(null); // Clear first to prevent loops
+        setPendingItem(null);
 
-        // Refetch on-chain state so MiniPay's RPC node has indexed the new
-        // allowance before we simulate the buy. Without this, eth_estimateGas
-        // sees the pre-approval allowance and rejects the tx.
+        toast("Step 2/2: Approve confirmed, fetching allowance…", { icon: "✅", duration: 5000 });
         await refetchAll();
+
+        const freshAllow = usdtAllowanceRaw;
+        console.log("[AUTO-BUY]", item.functionName, { freshAllow: freshAllow.toString(), args: item.args });
+        toast(`Step 2/2: Sending buy (fn=${item.functionName}, allow=${Number(freshAllow)/1e6})…`, { icon: "🚀", duration: 8000 });
 
         if (item.functionName) {
           writeContract({
