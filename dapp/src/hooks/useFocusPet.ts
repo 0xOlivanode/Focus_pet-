@@ -381,12 +381,6 @@ export function useFocusPet() {
         const item = pendingItem;
         setPendingItem(null); // Clear first to prevent loops
 
-        // Wait for MiniPay's RPC to index the new allowance before simulating
-        // the buy. Without this delay, viem's eth_call runs against a node that
-        // still shows allowance=0 → EstimateGasExecutionError even though the
-        // approve confirmed on-chain.
-        await new Promise((r) => setTimeout(r, 3000));
-
         if (item.functionName) {
           writeContract({
             ...txOverrides,
@@ -514,10 +508,6 @@ export function useFocusPet() {
       setXp((prev) => prev + finalXP);
       setTotalTime((prev) => prev + seconds);
       setHealth((prev) => Math.min(100, prev + 5));
-
-      toast.success(
-        `Session Recorded! 🏆\nYour pet gained ${finalXP.toLocaleString()} XP! ${isNight ? "🦉 Night Owl Bonus applied! " : ""}(Multipliers applied: ${totalMultiplier.toFixed(1)}x) ⚡️`,
-      );
       setPendingSession(null);
       refetchAll();
     }

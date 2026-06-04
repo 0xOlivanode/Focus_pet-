@@ -19,13 +19,11 @@ const USDM_FEE      = "0x765DE816845861e75A25fCA122bb6898B8B1282a" as const; // 
 
 // Detect the best feeCurrency for the user: USDT > USDC > USDm (fallback).
 // Uses HTTP RPC so it doesn't go through the MiniPay WebView.
-const ALCHEMY_RPC = "https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17";
-
 async function detectMiniPayFeeCurrency(account: `0x${string}`): Promise<`0x${string}`> {
   try {
     const client = createPublicClient({
       chain: celo,
-      transport: http(ALCHEMY_RPC),
+      transport: http("https://forno.celo.org"),
     });
     const [usdtBal, usdcBal] = await Promise.all([
       client.readContract({ address: USDT_TOKEN, abi: erc20Abi, functionName: "balanceOf", args: [account] }),
