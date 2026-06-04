@@ -20,7 +20,7 @@ const PRICE_SUPER_FOOD_USDT = BigInt(250_000);
 const PRICE_ENERGY_DRINK_USDT = BigInt(200_000);
 const PRICE_SHIELD_USDT = BigInt(500_000);
 const PRICE_REVIVE_USDT = BigInt(250_000);
-import { formatEther, erc20Abi } from "viem";
+import { formatEther, erc20Abi, maxUint256 } from "viem";
 import { useAuth } from "@/hooks/useAuth";
 
 export function useFocusPet() {
@@ -308,7 +308,7 @@ export function useFocusPet() {
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
-        args: [CONTRACT_ADDRESS, usdtAmount],
+        args: [CONTRACT_ADDRESS, maxUint256],
         gas: BigInt(100_000),
       } as any);
     } else {

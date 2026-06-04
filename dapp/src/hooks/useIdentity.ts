@@ -49,8 +49,10 @@ export function useIdentity() {
     }
 
     try {
-      // Don't flash "loading" during background polling
-      if (!isVerifying && !isPendingVerification) setStatus("loading");
+      // Don't flash "loading" during background polling.
+      // queueMicrotask defers the setState out of any active render cycle
+      // (e.g. React Query's Hydrate), silencing the dev-mode cross-component warning.
+      if (!isVerifying && !isPendingVerification) queueMicrotask(() => setStatus("loading"));
 
       const claimSDK = new ClaimSDK({
         account: address,
