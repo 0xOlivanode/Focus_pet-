@@ -3,15 +3,72 @@
 import {
   useReadContracts,
   useWaitForTransactionReceipt,
-  useWriteContract,
 } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { erc20Abi } from "viem";
+import { createWalletClient, custom, encodeFunctionData, erc20Abi, type Abi } from "viem";
+import { celo } from "wagmi/chains";
 
 import { CONTRACT_ADDRESS } from "@/config/contracts";
 import { useAuth } from "@/hooks/useAuth";
+
+// Bypass wagmi's prepareTransactionRequest which routes through Alchemy and
+// fails on Celo CIP-64 feeCurrency params. Send directly through MiniPay's
+// window.ethereum provider instead.
+function useMiniPayWrite() {
+  const [hash, setHash] = useState<`0x${string}` | undefined>(undefined);
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const send = useCallback(async (params: {
+    address: `0x${string}`;
+    abi: Abi | readonly unknown[];
+    functionName: string;
+    args?: readonly unknown[];
+    gas?: bigint;
+    feeCurrency?: `0x${string}`;
+  }): Promise<`0x${string}`> => {
+    setError(null);
+    setIsPending(true);
+    try {
+      const walletClient = createWalletClient({
+        chain: celo,
+        transport: custom((window as any).ethereum),
+      });
+      const [account] = await walletClient.getAddresses();
+      const data = encodeFunctionData({
+        abi: params.abi as Abi,
+        functionName: params.functionName,
+        args: params.args ?? [],
+      });
+      const txHash = await walletClient.sendTransaction({
+        account,
+        to: params.address,
+        data,
+        gas: params.gas,
+        feeCurrency: params.feeCurrency,
+        chain: celo,
+      } as any);
+      setHash(txHash);
+      return txHash;
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setError(e);
+      throw e;
+    } finally {
+      setIsPending(false);
+    }
+  }, []);
+
+  const write = useCallback((params: Parameters<typeof send>[0]) => {
+    send(params).catch(() => {});
+  }, [send]);
+
+  const writeAsync = send;
+
+  return { write, writeAsync, hash, isPending, error };
+}
 
 const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
 // CIP-64 fee-currency adapter for USDT — tells MiniPay to deduct gas in USDT.
@@ -50,12 +107,12 @@ export function useFocusPet() {
   } | null>(null);
 
   const {
-    writeContract,
-    writeContractAsync,
-    data: singleHash,
+    write: writeContract,
+    writeAsync: writeContractAsync,
+    hash: singleHash,
     isPending: isSinglePending,
     error: writeError,
-  } = useWriteContract();
+  } = useMiniPayWrite();
 
   const {
     isLoading: isConfirming,
@@ -80,15 +137,10 @@ export function useFocusPet() {
       const name: string = err?.name ?? "";
       const code: number = err?.code ?? err?.cause?.code ?? 0;
       const msg: string = err?.message ?? err?.cause?.message ?? "unknown";
-      const shortMsg = msg.length > 120 ? msg.slice(0, 120) + "…" : msg;
-
       console.error("[FocusPet] writeError", { name, code, msg });
-
-      if (name === "UserRejectedRequestError" || code === 4001) {
-        // user cancelled — no toast
-      } else {
-        toast.error(`TX failed [${name || code}]: ${shortMsg}`, { duration: 8000 });
-      }
+      if (name === "UserRejectedRequestError" || code === 4001) return;
+      const label = `[${name || code}]: ${msg}`;
+      toast.error(label, { duration: 20000 });
     }
   }, [writeError]);
 
@@ -96,9 +148,8 @@ export function useFocusPet() {
     if (receiptError) {
       const err = receiptError as any;
       const msg: string = err?.message ?? err?.cause?.message ?? "unknown";
-      const shortMsg = msg.length > 120 ? msg.slice(0, 120) + "…" : msg;
       console.error("[FocusPet] receiptError", err);
-      toast.error(`Reverted: ${shortMsg}`, { duration: 8000 });
+      toast.error(`Reverted: ${msg}`, { duration: 20000 });
     }
   }, [receiptError]);
 
