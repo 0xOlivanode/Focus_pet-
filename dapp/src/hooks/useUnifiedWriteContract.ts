@@ -1,7 +1,7 @@
 "use client";
 
 import { useWriteContract } from "wagmi";
-import { createWalletClient, createPublicClient, custom, http, erc20Abi, encodeFunctionData, type Abi } from "viem";
+import { createWalletClient, createPublicClient, custom, http, erc20Abi, type Abi } from "viem";
 import { celo } from "wagmi/chains";
 import { getWeb3AuthProvider } from "@/lib/web3AuthConnector";
 import { useWeb3Auth } from "@web3auth/modal/react";
@@ -100,37 +100,22 @@ export function useUnifiedWriteContract() {
           const account = accounts[0] as `0x${string}`;
           if (!account) throw new Error("MiniPay not connected — reload and try again");
 
-          // No `chain` here — MiniPay's provider owns the chain. Passing chain:celo
-          // causes viem to validate the wallet's reported chain ID against 42220,
-          // which fails in testnet/developer mode (11142220) and on any chain mismatch.
           const walletClient = createWalletClient({
+            chain: celo,
             transport: custom(nativeMiniPayEthereum as any),
           });
 
           const feeCurrency = params.feeCurrency ?? await detectMiniPayFeeCurrency(account);
 
-          // Encode calldata manually and use sendTransaction — the canonical
-          // MiniPay pattern. walletClient.writeContract runs prepareTransactionRequest
-          // which calls eth_estimateGas through MiniPay's provider; that pre-flight
-          // fails on deployed (but not ngrok) causing silent tx rejections.
-          // sendTransaction skips all pre-flight and goes straight to eth_sendTransaction.
-          const data = encodeFunctionData({
-            abi: params.abi as Abi,
-            functionName: params.functionName,
-            args: (params.args ?? []) as unknown[],
-          });
-
           // 90-second timeout — prevents isSigning from locking the UI forever
           // if MiniPay's WebView hangs on eth_gasPrice / eth_sendTransaction.
           const txHash = await Promise.race([
-            walletClient.sendTransaction({
+            walletClient.writeContract({
+              ...(params as any),
               account,
-              to: params.address,
-              data,
-              gas: params.gas,
-              value: params.value,
+              chain: celo,
               feeCurrency,
-            } as any),
+            } as Parameters<typeof walletClient.writeContract>[0]),
             new Promise<never>((_, reject) =>
               setTimeout(() => reject(new Error("MiniPay request timed out — please try again")), 90_000)
             ),
