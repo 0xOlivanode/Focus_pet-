@@ -10,7 +10,6 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { celo } from "viem/chains";
 import { createClient } from "@supabase/supabase-js";
-import { PrivyClient } from "@privy-io/server-auth";
 
 // ── Tunables ────────────────────────────────────────────────────────────────
 const AMOUNT       = parseEther("0.1");  // enough for ~200-800 txns on Celo
@@ -47,58 +46,6 @@ export async function POST(req: NextRequest) {
     // ── 1. Input validation ────────────────────────────────────────────────
     if (!address || !isAddress(address)) {
       return NextResponse.json({ error: "Invalid address" }, { status: 400 });
-    }
-
-    // ── 2. Privy auth — blocks all bots calling the API directly ──────────
-    const rawAuth = req.headers.get("authorization") ?? "";
-    const token = rawAuth.startsWith("Bearer ") ? rawAuth.slice(7) : null;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    let privyUserId: string;
-    let privyLinkedAccounts: any[] = [];
-    try {
-      const privy = new PrivyClient(
-        process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "cmmw8pr3l00lr0cjp282x5v3l",
-        process.env.PRIVY_APP_SECRET!,
-      );
-      const claims = await privy.verifyAuthToken(token as string);
-      privyUserId = claims.userId;
-
-      // Fetch user once — reused for ownership check + identity check below
-      const user = await privy.getUser(privyUserId);
-      privyLinkedAccounts = user.linkedAccounts ?? [];
-
-      // Address must actually belong to this Privy user
-      const ownedAddresses = privyLinkedAccounts
-        .filter((a: any) => a.type === "wallet" || a.type === "smart_wallet")
-        .map((a: any) => (a.address as string).toLowerCase());
-      if (!ownedAddresses.includes(address.toLowerCase())) {
-        return NextResponse.json(
-          { error: "Address not associated with your account" },
-          { status: 403 },
-        );
-      }
-    } catch {
-      return NextResponse.json({ error: "Invalid auth token" }, { status: 401 });
-    }
-
-    // ── 2b. Require a real social/email identity ───────────────────────────
-    // Rejects pure embedded-wallet-only Privy accounts (what bots auto-create).
-    // To pass, the user must have linked Google, Twitter, email, etc.
-    if (!ADMIN_BYPASS.has(address.toLowerCase())) {
-      const SOCIAL_TYPES = new Set([
-        "email", "phone", "google_oauth", "twitter_oauth", "discord_oauth",
-        "github_oauth", "linkedin_oauth", "apple_oauth", "farcaster",
-      ]);
-      const hasSocialOrEmail = privyLinkedAccounts.some((a: any) => SOCIAL_TYPES.has(a.type));
-      if (!hasSocialOrEmail) {
-        return NextResponse.json(
-          { error: "Please link an email or social account to your profile first." },
-          { status: 403 },
-        );
-      }
     }
 
     const TREASURY_PRIVATE_KEY = (
@@ -146,30 +93,6 @@ export async function POST(req: NextRequest) {
     const balance = await publicClient.getBalance({ address: address as `0x${string}` });
     if (balance >= THRESHOLD) {
       return NextResponse.json({ success: true, funded: false, message: "Sufficient balance." });
-    }
-
-    // ── 4. Per-Privy-user lifetime limit ──────────────────────────────────
-    // One Privy account = one funded address, ever. The bot creates fresh
-    // Privy accounts each time, but this is the check that makes that costly.
-    if (!ADMIN_BYPASS.has(normalized)) {
-      const { data: privyGrant, error: privyErr } = await supabase
-        .from("faucet_grants")
-        .select("address")
-        .eq("privy_user_id", privyUserId)
-        .neq("tx_hash", "failed")
-        .maybeSingle();
-
-      if (privyErr) {
-        console.error("Faucet privy_user_id check error:", privyErr);
-        return NextResponse.json({ error: "Faucet temporarily unavailable." }, { status: 503 });
-      }
-
-      if (privyGrant !== null && privyGrant!.address !== normalized) {
-        return NextResponse.json(
-          { error: "This account has already received a faucet grant." },
-          { status: 429 },
-        );
-      }
     }
 
     // ── 5. Per-address cooldown ────────────────────────────────────────────
@@ -234,11 +157,11 @@ export async function POST(req: NextRequest) {
     const nextCount = (existing?.grant_count ?? 0) + 1;
     const reserveResult = existing
       ? await supabase.from("faucet_grants").update({
-          ip, privy_user_id: privyUserId, tx_hash: "pending", amount: "0.1",
+          ip, tx_hash: "pending", amount: "0.1",
           last_funded_at: new Date().toISOString(), grant_count: nextCount,
         }).eq("address", normalized)
       : await supabase.from("faucet_grants").insert({
-          address: normalized, ip, privy_user_id: privyUserId,
+          address: normalized, ip,
           tx_hash: "pending", amount: "0.1",
           last_funded_at: new Date().toISOString(), grant_count: nextCount,
         });
@@ -270,7 +193,7 @@ export async function POST(req: NextRequest) {
     await supabase.from("faucet_grants").update({ tx_hash: hash }).eq("address", normalized);
 
     console.log(
-      `Faucet: sent 0.1 CELO to ${normalized} (privy: ${privyUserId}, grant #${nextCount}, tx: ${hash})`,
+      `Faucet: sent 0.1 CELO to ${normalized} (grant #${nextCount}, tx: ${hash})`,
     );
 
     return NextResponse.json({ success: true, funded: true, hash });

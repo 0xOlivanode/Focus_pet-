@@ -3,11 +3,9 @@
 import { useState, useEffect } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useAuth } from "@/hooks/useAuth";
-import { useIsMiniPay } from "@/hooks/useMiniPay";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatEther } from "viem";
 import toast from "react-hot-toast";
 
 // ── Launch discount config ─────────────────────────────────────────────────────
@@ -52,12 +50,10 @@ interface ShopItem {
 export default function ShopPage() {
   const { isAuthenticated, isReady } = useAuth();
   const router = useRouter();
-  const isMiniPay = useIsMiniPay();
   const [category, setCategory] = useState<Category>("consumables");
   const [now, setNow] = useState(Date.now());
 
   const {
-    gBalance,
     health,
     isPending,
     isConfirming,
@@ -66,11 +62,6 @@ export default function ShopPage() {
     isProcessing,
     writeError,
     receiptError,
-    buyFood,
-    buySuperFood,
-    buyEnergyDrink,
-    buyShield,
-    buyCosmetic,
     toggleCosmetic,
     inventory,
     boostEndTime,
@@ -107,17 +98,11 @@ export default function ShopPage() {
     return null;
   }
 
-  const launchActive = isMiniPay && now < LAUNCH_END_MS;
+  const launchActive = now < LAUNCH_END_MS;
   const countdown = getLaunchCountdown(now);
 
   const isBoostActive = boostEndTime * 1000 > Date.now();
-  const balanceFormatted = gBalance
-    ? parseFloat(formatEther(gBalance)).toFixed(2)
-    : "0.00";
   const usdtBalanceFormatted = (Number(usdtBalanceRaw) / 1e6).toFixed(2);
-
-  const canAfford = (price: number) =>
-    gBalance !== undefined && gBalance >= BigInt(price) * BigInt(10 ** 18);
 
   const canAffordUSDT = (usdtPrice: bigint) => usdtBalanceRaw >= usdtPrice;
 
@@ -146,7 +131,7 @@ export default function ShopPage() {
         usdtDisplay: fmtUsdt(displayPrice(ORIG_FOOD)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_FOOD) : undefined,
         tag: "+20 Health",
-        action: isMiniPay ? () => buyFoodWithUSDT() : buyFood,
+        action: () => buyFoodWithUSDT(),
         disabled: health >= 100,
         disabledLabel: health >= 100 ? "Health Full" : undefined,
       },
@@ -159,7 +144,7 @@ export default function ShopPage() {
         usdtDisplay: fmtUsdt(displayPrice(ORIG_SUPER_FOOD)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_SUPER_FOOD) : undefined,
         tag: "Max Health",
-        action: isMiniPay ? () => buySuperFoodWithUSDT() : buySuperFood,
+        action: () => buySuperFoodWithUSDT(),
         disabled: health >= 100,
         disabledLabel: health >= 100 ? "Health Full" : undefined,
       },
@@ -174,7 +159,7 @@ export default function ShopPage() {
         usdtDisplay: fmtUsdt(displayPrice(ORIG_ENERGY)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_ENERGY) : undefined,
         tag: "2x XP (24h)",
-        action: isMiniPay ? () => buyEnergyDrinkWithUSDT() : buyEnergyDrink,
+        action: () => buyEnergyDrinkWithUSDT(),
         disabled: isBoostActive,
         disabledLabel: isBoostActive ? "Boost Active" : undefined,
       },
@@ -187,7 +172,7 @@ export default function ShopPage() {
         usdtDisplay: fmtUsdt(displayPrice(ORIG_SHIELD)),
         originalUsdtDisplay: launchActive ? fmtUsdt(ORIG_SHIELD) : undefined,
         tag: "Streak Protection",
-        action: isMiniPay ? () => buyShieldWithUSDT() : buyShield,
+        action: () => buyShieldWithUSDT(),
         disabled: shieldCount > 0,
         disabledLabel: shieldCount > 0 ? "Shield Active" : undefined,
       },
@@ -204,9 +189,7 @@ export default function ShopPage() {
         tag: "Cosmetic",
         action: inventory?.sunglasses
           ? () => toggleCosmetic("sunglasses")
-          : isMiniPay
-            ? () => buyCosmeticWithUSDT("sunglasses", ORIG_SHADES)
-            : () => buyCosmetic("sunglasses", 50),
+          : () => buyCosmeticWithUSDT("sunglasses", ORIG_SHADES),
         disabled: false,
         owned: inventory?.sunglasses,
         equipped: equippedCosmetics?.sunglasses,
@@ -222,9 +205,7 @@ export default function ShopPage() {
         tag: "Legendary",
         action: inventory?.crown
           ? () => toggleCosmetic("crown")
-          : isMiniPay
-            ? () => buyCosmeticWithUSDT("crown", ORIG_CROWN)
-            : () => buyCosmetic("crown", 500),
+          : () => buyCosmeticWithUSDT("crown", ORIG_CROWN),
         disabled: false,
         owned: inventory?.crown,
         equipped: equippedCosmetics?.crown,
@@ -330,9 +311,7 @@ export default function ShopPage() {
           <div className="flex items-center gap-2 px-5 py-2.5 bg-[#111111] border border-neutral-800 rounded-full">
             <span className="text-neutral-500 text-sm">Balance</span>
             <span className="text-white text-sm font-semibold tabular-nums">
-              {isMiniPay
-                ? `${usdtBalanceFormatted} USDT`
-                : `${balanceFormatted} G$`}
+              {usdtBalanceFormatted} USDT
             </span>
           </div>
         </div>
@@ -376,9 +355,7 @@ export default function ShopPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence mode="wait">
             {items[category].map((item, i) => {
-              const affordable = isMiniPay
-                ? canAffordUSDT(item.usdtPrice ?? BigInt(0))
-                : canAfford(item.price);
+              const affordable = canAffordUSDT(item.usdtPrice ?? BigInt(0));
 
               const blocked =
                 isPending || item.disabled || (!item.owned && !affordable);
@@ -391,13 +368,13 @@ export default function ShopPage() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ delay: i * 0.05 }}
                   className={`flex flex-col bg-[#111111] border rounded-2xl overflow-hidden transition-colors ${
-                    launchActive && isMiniPay
+                    launchActive
                       ? "border-amber-500/15"
                       : "border-neutral-800"
                   } ${!blocked ? "hover:border-neutral-600" : "opacity-50"}`}
                 >
                   {/* Discount badge */}
-                  {launchActive && isMiniPay && !item.owned && (
+                  {launchActive && !item.owned && (
                     <div className="flex justify-end px-3 pt-3">
                       <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase tracking-widest">
                         −30%
@@ -406,7 +383,7 @@ export default function ShopPage() {
                   )}
 
                   {/* Image area */}
-                  <div className={`relative w-full aspect-4/3 bg-[#111111] flex items-center justify-center overflow-hidden ${launchActive && isMiniPay && !item.owned ? "pt-0" : ""}`}>
+                  <div className={`relative w-full aspect-4/3 bg-[#111111] flex items-center justify-center overflow-hidden ${launchActive && !item.owned ? "pt-0" : ""}`}>
                     {item.image && (
                       <div className="w-full h-full flex items-center justify-center p-8">
                         <img
@@ -425,7 +402,7 @@ export default function ShopPage() {
                     )}
                     {!item.owned && !affordable && !item.disabled && (
                       <span className="absolute top-3 right-3 text-[11px] font-medium px-2.5 py-1 bg-black/60 border border-neutral-700 rounded-full text-neutral-500">
-                        Insufficient {isMiniPay ? "USDT" : "G$"}
+                        Insufficient USDT
                       </span>
                     )}
                   </div>
@@ -444,7 +421,7 @@ export default function ShopPage() {
                   <div className="flex items-center justify-between px-4 pb-4 pt-1">
                     {item.owned && category === "cosmetics" ? (
                       <span className="text-neutral-600 text-sm">Owned</span>
-                    ) : isMiniPay && item.usdtDisplay ? (
+                    ) : item.usdtDisplay ? (
                       <div className="flex flex-col">
                         <span className="text-white text-lg font-semibold tabular-nums leading-tight">
                           {item.usdtDisplay}
@@ -456,11 +433,7 @@ export default function ShopPage() {
                           </span>
                         )}
                       </div>
-                    ) : (
-                      <span className="text-white text-lg font-semibold tabular-nums">
-                        {item.price} G$
-                      </span>
-                    )}
+                    ) : null}
 
                     <button
                       onClick={item.action}

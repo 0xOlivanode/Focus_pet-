@@ -15,12 +15,6 @@ import {
   ZapOff,
   Moon,
 } from "lucide-react";
-import { useStreaming } from "@/hooks/useStreaming";
-import dynamic from "next/dynamic";
-const SuperchargeModal = dynamic(
-  () => import("./SuperchargeModal").then((m) => m.SuperchargeModal),
-  { ssr: false },
-);
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -74,10 +68,6 @@ export function PetView({
     [],
   );
   const lastXpRef = React.useRef(xp);
-
-  const { isStreaming, startSupercharge, stopSupercharge, flowRate } =
-    useStreaming();
-  const [superchargeModalOpen, setSuperchargeModalOpen] = React.useState(false);
 
   // Handle XP Popups
   React.useEffect(() => {
@@ -585,15 +575,6 @@ export function PetView({
             </button>
           </Tooltip>
         </motion.div> */}
-
-          {/* Supercharge Modal */}
-          <SuperchargeModal
-            isOpen={superchargeModalOpen}
-            onClose={() => setSuperchargeModalOpen(false)}
-            isStreaming={isStreaming}
-            onStart={startSupercharge}
-            onStop={stopSupercharge}
-          />
 
           {/* Thought Bubble */}
           <AnimatePresence>

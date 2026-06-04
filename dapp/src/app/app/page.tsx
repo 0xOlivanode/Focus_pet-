@@ -14,60 +14,35 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useFocusPet } from "@/hooks/useFocusPet";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
-import { useIdentityContext } from "@/contexts/IdentityContext";
-import { EngagementRewardBanner } from "@/components/EngagementRewardBanner";
 import { CompetitionBanner } from "@/components/CompetitionBanner";
 
 import { useAccount, useBalance } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { useWeb3AuthUser } from "@web3auth/modal/react";
 import { formatEther } from "viem";
-import { PrivyConnectButton } from "@/components/PrivyConnectButton";
 import { SocialShare } from "@/components/SocialShare";
 import { BoostsSheet } from "@/components/BoostsSheet";
 import dynamic from "next/dynamic";
-const ClaimReward = dynamic(
-  () => import("@/components/ClaimReward").then((mod) => mod.ClaimReward),
-  { ssr: false },
-);
 const OnboardingModal = dynamic(
   () => import("@/components/OnboardingModal").then((m) => m.OnboardingModal),
-  { ssr: false },
-);
-const SuperchargeModal = dynamic(
-  () => import("@/components/SuperchargeModal").then((m) => m.SuperchargeModal),
   { ssr: false },
 );
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
-  Gift,
-  AlertCircle,
   Loader2,
-  HelpCircle,
-  User,
-  Edit2,
-  X,
-  Clock,
-  Share2,
-  Menu,
   Copy,
-  Heart,
   Zap,
   FastForward,
 } from "lucide-react";
-import { VerifiedBadge } from "@/components/VerifiedBadge";
 import toast, { Toast } from "react-hot-toast";
 import { useAudio } from "@/hooks/useAudio";
 import { SoundMenu } from "@/components/SoundMenu";
 import { StreakFlame } from "./../../components/StreakFlame";
 import { NamingModal } from "@/components/NamingModal";
-import { useStreaming } from "@/hooks/useStreaming";
 import { Navbar } from "@/components/Navbar";
 import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
 import { AppWelcome } from "@/components/AppWelcome";
-import { DailyActionButton } from "@/components/DailyActionButton";
 import { InviteButton } from "@/components/InviteButton";
 import { useIsMiniPay } from "@/hooks/useMiniPay";
 
@@ -85,14 +60,9 @@ function AppPageContent() {
     isConnecting,
     isReconnecting,
   } = useAccount();
-  const { isAuthenticated, isReady, logout, authType, authenticated, address } =
-    useAuth();
-  // Compound isConnected: true as soon as any auth provider (wagmi, Web3Auth, Privy)
-  // has established a connection. Using wagmi-only isConnected leaves Web3Auth users
-  // stuck on the loading screen while the wagmi bridge completes (up to 15 s → logout).
-  const isConnected = wagmiConnected || isAuthenticated;
+  const { isAuthenticated, isReady, logout, authType, address } = useAuth();
+  const isConnected = wagmiConnected;
   const { data: celoBalance } = useBalance({ address });
-  const { userInfo } = useWeb3AuthUser();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -100,10 +70,6 @@ function AppPageContent() {
     petData,
     hasPet,
     recordSession,
-    gBalance,
-    approveG,
-    buyFood,
-    revivePet,
     isPending,
     isConfirming,
     isConfirmed,
@@ -125,21 +91,12 @@ function AppPageContent() {
     username,
     petName,
     lastAction,
-    allowance,
-    refetchAllowance,
-    refetchGBalance,
-    buySuperFood,
-    buyEnergyDrink,
-    buyShield,
-    buyCosmetic,
     boostEndTime,
     shieldCount,
     activeCosmetic,
     toggleCosmetic,
     inventory,
     totalDonated,
-    handleSyncImpact,
-    isSyncImpactLoading,
     equippedCosmetics,
     isNight,
   } = useFocusPet();
@@ -148,19 +105,8 @@ function AppPageContent() {
   const isMiniPayEnv = useIsMiniPay();
 
   const { refetch: refetchLeaderboard } = useLeaderboard();
-  const { isVerifying, setIsVerifying, isVerified } = useIdentityContext();
-  const {
-    isStreaming,
-    isStreamPending,
-    flowRate,
-    lastUpdated,
-    globalUbiBalance,
-    startSupercharge,
-    stopSupercharge,
-  } = useStreaming();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isSuperchargeOpen, setIsSuperchargeOpen] = useState(false);
   const [isBoostsOpen, setIsBoostsOpen] = useState(false);
   const [isFocusing, setIsFocusing] = useState(false);
   const focusTimerRef = useRef<FocusTimerHandle>(null);
@@ -371,10 +317,6 @@ function AppPageContent() {
           await Promise.all([
             refetch(),
             refetchLeaderboard(),
-            refetchAllowance(),
-            typeof refetchGBalance === "function"
-              ? (refetchGBalance as () => void)()
-              : Promise.resolve(),
           ]);
 
           router.refresh();
@@ -427,8 +369,6 @@ function AppPageContent() {
     syncedHash,
     lastAction,
     refetch,
-    refetchAllowance,
-    refetchGBalance,
     router,
   ]);
 
@@ -467,15 +407,10 @@ function AppPageContent() {
     }
   }, [isPending, lastAction]);
 
-  // Register Web3Auth and MiniPay users in Supabase on first connection.
-  // Privy users are pre-seeded from CSV; this handles new users only.
-  // For web3auth email users, wait until userInfo is populated so we capture their email.
+  // Register MiniPay users in Supabase on first connection.
   const hasRegistered = useRef(false);
   useEffect(() => {
     if (!address || !authType || hasRegistered.current) return;
-    if (authType !== "web3auth" && authType !== "minipay") return;
-    // Web3Auth: delay until userInfo resolves so we get the email
-    if (authType === "web3auth" && userInfo === null) return;
     hasRegistered.current = true;
     fetch("/api/auth/register-user", {
       method: "POST",
@@ -483,29 +418,14 @@ function AppPageContent() {
       body: JSON.stringify({
         walletAddress: address,
         authType,
-        email: userInfo?.email ?? null,
+        email: null,
       }),
     }).catch(() => { });
-  }, [authType, address, userInfo]);
+  }, [authType, address]);
 
   const handleSessionComplete = (minutes: number) => {
     setLastSessionDuration(minutes);
-
-    // Calculate Supercharge Multiplier for XP Toast
-    const monthlyAmount =
-      isStreaming && flowRate
-        ? Number(formatEther(flowRate * BigInt(30 * 24 * 60 * 60)))
-        : 0;
-    const superchargeMultiplier =
-      monthlyAmount >= 90
-        ? 1.7
-        : monthlyAmount >= 45
-          ? 1.4
-          : monthlyAmount >= 9
-            ? 1.2
-            : 1.0;
-
-    recordSession(minutes, superchargeMultiplier);
+    recordSession(minutes, 1.0);
     setMood("happy");
     playSound("click");
   };
@@ -649,7 +569,7 @@ function AppPageContent() {
 
         {/* Hatching overlay */}
         <AnimatePresence>
-          {(isProcessing || isSyncing || isStreamPending) && (
+          {(isProcessing || isSyncing) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -771,7 +691,7 @@ function AppPageContent() {
               activeCosmetic={activeCosmetic}
               equippedCosmetics={equippedCosmetics}
               focusNote={focusNote}
-              isVerified={isVerified}
+              isVerified={false}
               isNight={isNight}
             />
           </div>
@@ -799,36 +719,9 @@ function AppPageContent() {
                   </span>
                 </div>
               )}
-              {isMiniPayEnv === false && <DailyActionButton />}
             </div>
             {/* Stats bar */}
             <div className="flex flex-wrap gap-3 items-center">
-              {/* Supercharge — hidden for MiniPay (G$ streaming feature) */}
-              {isMiniPayEnv === false && (
-                <button
-                  onClick={() => setIsSuperchargeOpen(true)}
-                  className="px-5 py-3 rounded-full text-sm font-medium whitespace-nowrap"
-                  style={
-                    isStreaming
-                      ? {
-                        background:
-                          "linear-gradient(90deg, #342804, #E73B74, #342804)",
-                        color: "#ffffff",
-                      }
-                      : { background: "#ffffff", color: "#000000" }
-                  }
-                >
-                  {isStreaming ? (
-                    <span className="flex items-center gap-2">
-                      <Zap size={14} fill="#E1AA02" color="#E1AA02" />
-                      Supercharged
-                    </span>
-                  ) : (
-                    "Supercharge"
-                  )}
-                </button>
-              )}
-
               {/* Boosts */}
               {(() => {
                 const boostActive =
@@ -912,14 +805,6 @@ function AppPageContent() {
                             {username || "focuser"}
                           </p>
                         </button>
-                        {isVerified && isMiniPayEnv === false && (
-                          <Image
-                            src="/SealCheck.svg"
-                            width={16}
-                            height={16}
-                            alt="Verified"
-                          />
-                        )}
                       </div>
                     </div>
                   </div>
@@ -958,14 +843,6 @@ function AppPageContent() {
                           {username || "focuser"}
                         </p>
                       </button>
-                      {isVerified && isMiniPayEnv === false && (
-                        <Image
-                          src="/SealCheck.svg"
-                          width={16}
-                          height={16}
-                          alt="Verified"
-                        />
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1022,7 +899,7 @@ function AppPageContent() {
                   }}
                   onPause={() => setMood("sleeping")}
                   onNoteChange={setFocusNote}
-                  isSupercharged={isStreaming}
+                  isSupercharged={false}
                   streak={streak}
                   isNight={isNight}
                   boostEndTime={Number(boostEndTime)}
@@ -1035,12 +912,6 @@ function AppPageContent() {
             </div>
           </div>
         </div>
-        {isMiniPayEnv === false && (
-          <div className="max-w-2xl mx-auto">
-            <EngagementRewardBanner />
-          </div>
-        )}
-
         {/* MiniPay required footer links */}
         {isMiniPayEnv && (
           <div className="pt-6 pb-10 flex items-center justify-center gap-3 flex-wrap px-4">
@@ -1094,17 +965,6 @@ function AppPageContent() {
         shieldCount={shieldCount}
       />
 
-      {isMiniPayEnv === false && (
-        <SuperchargeModal
-          isOpen={isSuperchargeOpen}
-          onClose={() => setIsSuperchargeOpen(false)}
-          isStreaming={isStreaming}
-          flowRate={flowRate ?? undefined}
-          onStart={startSupercharge}
-          onStop={stopSupercharge}
-        />
-      )}
-
       <NamingModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
@@ -1116,7 +976,7 @@ function AppPageContent() {
 
       {/* Full-screen processing overlay */}
       <AnimatePresence>
-        {(isProcessing || isSyncing || isStreamPending) && (
+        {(isProcessing || isSyncing) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1156,26 +1016,18 @@ function AppPageContent() {
 
             <div className="text-center">
               <h2 className="text-white text-lg font-semibold mb-1">
-                {isStreamPending
-                  ? isStreaming
-                    ? "Stopping Stream…"
-                    : "Initiating Stream…"
-                  : isSyncing
-                    ? "Saving progress…"
-                    : "Processing…"}
+                {isSyncing ? "Saving progress…" : "Processing…"}
               </h2>
               <p className="text-neutral-500 text-sm">
-                {isStreamPending
-                  ? "Confirm in your app…"
-                  : isSigning
-                    ? "Getting ready…"
-                    : isSyncing
-                      ? "Saving…"
-                      : isPending
-                        ? "Confirm in your app…"
-                        : isConfirming
-                          ? "Saving…"
-                          : "Almost there…"}
+                {isSigning
+                  ? "Getting ready…"
+                  : isSyncing
+                    ? "Saving…"
+                    : isPending
+                      ? "Confirm in your app…"
+                      : isConfirming
+                        ? "Saving…"
+                        : "Almost there…"}
               </p>
             </div>
           </motion.div>

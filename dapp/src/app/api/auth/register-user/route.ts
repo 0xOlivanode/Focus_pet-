@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
     }
 
-    if (!["web3auth", "minipay"].includes(authType)) {
+    if (!authType || typeof authType !== "string") {
       return NextResponse.json({ error: "Invalid authType" }, { status: 400 });
     }
 

@@ -3,12 +3,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { useIsMiniPay } from "@/hooks/useMiniPay";
 import { Navbar } from "@/components/Navbar";
 import { fetchUserHistory, UserHistory, DailyActivity } from "@/lib/subgraph";
 import { getPetStage, STAGE_THRESHOLD } from "@/utils/pet";
-import { useStreaming } from "@/hooks/useStreaming";
-import { formatEther } from "viem";
 import { motion } from "framer-motion";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -17,17 +14,6 @@ function fmtHours(sec: number) {
   const h = sec / 3600;
   return h >= 1 ? `${h.toFixed(1)} hrs` : `${(sec / 60).toFixed(0)} min`;
 }
-
-function fmtG(wei: string) {
-  return (Number(wei) / 1e18).toFixed(2);
-}
-
-const RANK_TIERS = [
-  { min: 500, name: "Guardian of G$" },
-  { min: 100, name: "Social Hero" },
-  { min: 10, name: "Impact Maker" },
-  { min: 0, name: "Focus Novice" },
-];
 
 const STAGES = [
   { label: "Egg", min: 0, max: STAGE_THRESHOLD.BABY },
@@ -124,15 +110,9 @@ function XPChart({
 export default function ActivitiesPage() {
   const { isAuthenticated, isReady, address } = useAuth();
   const router = useRouter();
-  const isMiniPay = useIsMiniPay();
-  const { globalUbiBalance, isStreaming, flowRate, lastUpdated } =
-    useStreaming();
-
   const [history, setHistory] = useState<UserHistory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [xpRange, setXpRange] = useState<"week" | "month">("week");
-
-  const [streamedDonation, setStreamedDonation] = useState(0);
 
   useEffect(() => {
     if (!isReady || !isAuthenticated) return;
@@ -142,20 +122,6 @@ export default function ActivitiesPage() {
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, [address, isReady, isAuthenticated]);
-
-  // Live stream ticker
-  useEffect(() => {
-    if (!isStreaming || !flowRate || !lastUpdated) {
-      setStreamedDonation(0);
-      return;
-    }
-    const fps = parseFloat(formatEther(flowRate));
-    const now = BigInt(Math.floor(Date.now() / 1000));
-    const passed = now > lastUpdated ? Number(now - lastUpdated) : 0;
-    setStreamedDonation(fps * passed);
-    const t = setInterval(() => setStreamedDonation((p) => p + fps), 1000);
-    return () => clearInterval(t);
-  }, [isStreaming, flowRate, lastUpdated]);
 
   if (!isReady) return null;
   if (!isAuthenticated) {
@@ -169,24 +135,11 @@ export default function ActivitiesPage() {
   const xp = user ? Number(user.xp) : 0;
   const streak = user ? Number(user.streak) : 0;
   const focusTime = user ? Number(user.totalFocusTime) : 0;
-  const totalDonated = user?.totalDonated ?? "0";
   const birthTime = user ? Number(user.birthTime) : 0;
   const stage = getPetStage(xp);
   const daysActive = birthTime
     ? Math.floor((Date.now() / 1000 - birthTime) / 86400)
     : 0;
-
-  const donatedAmt = parseFloat(fmtG(totalDonated));
-  const rank =
-    RANK_TIERS.find((t) => donatedAmt >= t.min) ??
-    RANK_TIERS[RANK_TIERS.length - 1];
-
-  const communityLabel = globalUbiBalance
-    ? parseFloat(formatEther(globalUbiBalance)).toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
-    : "0.00";
 
   const currentStage =
     STAGES.find((s) => focusTime >= s.min && focusTime < s.max) ?? STAGES[STAGES.length - 1];
@@ -209,11 +162,10 @@ export default function ActivitiesPage() {
   const avgPerSession =
     totalSessions > 0 ? Math.round(focusTime / totalSessions) : 0;
 
-  const allStats = [
+  const stats = [
     { label: "Total XP", value: xp.toLocaleString() },
     { label: "Focus Time", value: fmtHours(focusTime) },
     { label: "Streak", value: `${streak} days` },
-    { label: "UBI Donated", value: `${fmtG(totalDonated)} G$` },
     { label: "Days Active", value: `${daysActive}` },
     {
       label: "Pet Stage",
@@ -225,77 +177,15 @@ export default function ActivitiesPage() {
       value: avgPerSession > 0 ? fmtHours(avgPerSession) : "—",
     },
   ];
-  const stats = isMiniPay
-    ? allStats.filter((s) => s.label !== "UBI Donated")
-    : allStats;
 
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar onOpenProfile={() => router.push("/app?openProfile=true")} />
 
       <div className="px-5 sm:px-8 lg:px-[80px] py-12">
-        {/* ── Hero ─────────────────────────────────────────── */}
-        {!isMiniPay && (
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start mb-10 justify-between">
-            {/* Left: title + description */}
-            <div className="lg:w-[340px] shrink-0">
-              <p className="text-neutral-500 text-sm mb-3">
-                Your focus helps fund global UBI
-              </p>
-              <h1 className="text-[72px] sm:text-[88px] font-medium leading-none tracking-tight mb-6">
-                Social
-                <br />
-                Impact
-              </h1>
-              <p className="text-neutral-500 text-sm leading-relaxed">
-                FocusPet is built on GoodDollar, a UBI protocol serving thousands
-                globally. Every focus session and purchase streams value directly
-                to the pool.
-              </p>
-            </div>
-
-            {/* Right: community + your total card */}
-            <div className="min-w-0">
-              <div className="border border-neutral-800 rounded-2xl overflow-hidden">
-                <div className="grid grid-cols-2 divide-x divide-dashed divide-neutral-700">
-                  {/* Community */}
-                  <div className="pl-10 py-[80px] pr-[160px] bg-[#0F0F0F]">
-                    <p className="text-neutral-500 text-xl mb-1">Community</p>
-                    <p className="text-xl sm:text-[32px] font-mono font-medium tabular-nums tracking-tight">
-                      {communityLabel}{" "}
-                      <span className="text-neutral-500">G$</span>
-                    </p>
-                  </div>
-
-                  {/* Your Total */}
-                  <div className="px-10 py-[80px] bg-[#0C0C0C] relative">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-neutral-500 text-xl ">Your Total</p>
-                      <span className="text-xs font-medium px-3 py-1.5 bg-[#1a1a1a] border border-neutral-800 rounded-full text-neutral-300">
-                        {rank.name}
-                      </span>
-                    </div>
-                    <p className="text-xl sm:text-[32px] font-mono font-medium tabular-nums tracking-tight">
-                      {fmtG(totalDonated)}{" "}
-                      <span className="text-neutral-500">G$</span>
-                    </p>
-                    {isStreaming && (
-                      <p className="text-xs text-neutral-600 mt-2 tabular-nums">
-                        +{streamedDonation.toFixed(4)} live
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isMiniPay && (
-          <h1 className="text-3xl sm:text-[40px] font-medium tracking-tight mb-8">
-            Your Activity
-          </h1>
-        )}
+        <h1 className="text-3xl sm:text-[40px] font-medium tracking-tight mb-8">
+          Your Activity
+        </h1>
 
         {isLoading ? (
           <div className="space-y-4">

@@ -9,9 +9,8 @@ import { FocusPetABI } from "@/config/abi";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
+import { CONTRACT_ADDRESS } from "@/config/contracts";
 
-const G_DOLLAR_ADDRESS = GOOD_DOLLAR_ADDRESSES.CELO_MAINNET;
 const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
 
 // USDT price constants (6 decimals, matching contract)
@@ -20,7 +19,7 @@ const PRICE_SUPER_FOOD_USDT = BigInt(250_000);
 const PRICE_ENERGY_DRINK_USDT = BigInt(200_000);
 const PRICE_SHIELD_USDT = BigInt(500_000);
 const PRICE_REVIVE_USDT = BigInt(250_000);
-import { formatEther, erc20Abi } from "viem";
+import { erc20Abi } from "viem";
 import { useAuth } from "@/hooks/useAuth";
 
 export function useFocusPet() {
@@ -33,7 +32,7 @@ export function useFocusPet() {
 
   const [isSigning, setIsSigning] = useState(false);
   const [lastAction, setLastAction] = useState<
-    "focus" | "shop" | "profile" | "sync" | null
+    "focus" | "shop" | "profile" | null
   >(null);
   const [hasToasted, setHasToasted] = useState(false);
   const [pendingItem, setPendingItem] = useState<{
@@ -96,8 +95,6 @@ export function useFocusPet() {
     }
   }, [receiptError]);
 
-  // --- GoodDollar Integration ---
-
   const {
     data: multicallData,
     refetch: refetchAll,
@@ -105,59 +102,49 @@ export function useFocusPet() {
     isError: isPetLoadError,
   } = useReadContracts({
     contracts: [
+      // [0] pets
       {
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: "pets",
         args: [address as `0x${string}`],
       },
-      {
-        address: G_DOLLAR_ADDRESS,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [address as `0x${string}`],
-      },
-      {
-        address: G_DOLLAR_ADDRESS,
-        abi: erc20Abi,
-        functionName: "allowance",
-        args: [address as `0x${string}`, CONTRACT_ADDRESS],
-      },
+      // [1] ownedCosmetics: sunglasses
       {
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: "ownedCosmetics",
         args: [address as `0x${string}`, "sunglasses"],
       },
+      // [2] ownedCosmetics: crown
       {
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: "ownedCosmetics",
         args: [address as `0x${string}`, "crown"],
       },
+      // [3] isCosmeticEquipped: sunglasses
       {
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: "isCosmeticEquipped",
         args: [address as `0x${string}`, "sunglasses"],
       },
+      // [4] isCosmeticEquipped: crown
       {
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: "isCosmeticEquipped",
         args: [address as `0x${string}`, "crown"],
       },
-      {
-        address: CONTRACT_ADDRESS,
-        abi: FocusPetABI,
-        functionName: "goodDollar",
-      },
+      // [5] USDT balanceOf
       {
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
         functionName: "balanceOf",
         args: [address as `0x${string}`],
       },
+      // [6] USDT allowance
       {
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
@@ -175,19 +162,14 @@ export function useFocusPet() {
 
   // Extract from Multicall Array
   const petData = multicallData?.[0]?.result;
-  const gBalance = multicallData?.[1]?.result;
-  const allowance = multicallData?.[2]?.result;
-  const isSunglassesOwned = multicallData?.[3]?.result;
-  const isCrownOwned = multicallData?.[4]?.result;
-  const isSunglassesEquipped = multicallData?.[5]?.result;
-  const isCrownEquipped = multicallData?.[6]?.result;
-  const goodDollarOnChain = multicallData?.[7]?.result;
-  const usdtBalanceRaw = multicallData?.[8]?.result ? (multicallData[8].result as bigint) : BigInt(0);
-  const usdtAllowanceRaw = multicallData?.[9]?.result ? (multicallData[9].result as bigint) : BigInt(0);
+  const isSunglassesOwned = multicallData?.[1]?.result;
+  const isCrownOwned = multicallData?.[2]?.result;
+  const isSunglassesEquipped = multicallData?.[3]?.result;
+  const isCrownEquipped = multicallData?.[4]?.result;
+  const usdtBalanceRaw = multicallData?.[5]?.result ? (multicallData[5].result as bigint) : BigInt(0);
+  const usdtAllowanceRaw = multicallData?.[6]?.result ? (multicallData[6].result as bigint) : BigInt(0);
 
   const refetch = refetchAll;
-  const refetchGBalance = refetchAll;
-  const refetchAllowance = refetchAll;
 
   // Handle Post-Confirmation Success Effects
   useEffect(() => {
@@ -204,93 +186,11 @@ export function useFocusPet() {
       } else if (lastAction === "profile") {
         setHasToasted(true);
         refetchAll();
-      } else if (lastAction === "sync") {
-        setHasToasted(true);
-        toast.success(
-          "Social Impact Synced!\nYour streamed G$ has been committed to the chain. 🌍✨",
-        );
-        refetchAll();
       }
     }
   }, [finalIsConfirmed, refetchAll, lastAction, hasToasted]);
 
-  const approveG = (amount: bigint, itemId?: string, price?: number) => {
-    // Check balance first
-    const balance = gBalance ? (gBalance as bigint) : BigInt(0);
-    if (balance < amount) {
-      toast.error(
-        `Insufficient G$ Balance\nYou need ${formatEther(amount)} G$ but only have ${formatEther(balance)} G$.`,
-      );
-      return;
-    }
-
-    setLastAction("shop");
-    if (itemId) {
-      setPendingItem({ id: itemId, price });
-    }
-    writeContract({
-      ...txOverrides,
-      address: G_DOLLAR_ADDRESS,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [CONTRACT_ADDRESS, amount],
-      gas: BigInt(100000),
-    });
-  };
-
-  const executeBatchedBuy = (
-    functionName: string,
-    price: number,
-    args: any[] = [],
-    itemId?: string,
-  ) => {
-    const amount = BigInt(price) * BigInt(10 ** 18);
-    const balance = gBalance ? (gBalance as bigint) : BigInt(0);
-    const currentAllowance = allowance ? (allowance as bigint) : BigInt(0);
-
-    if (balance < amount) {
-      toast.error(
-        `Insufficient G$ Balance\nYou need ${price} G$ but only have ${formatEther(balance)} G$.`,
-      );
-      return;
-    }
-
-    setLastAction("shop");
-
-    if (currentAllowance < amount) {
-      if (itemId) {
-        setPendingItem({ id: itemId, price, functionName, args });
-      }
-      writeContract({
-        ...txOverrides,
-        address: G_DOLLAR_ADDRESS,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [CONTRACT_ADDRESS, amount],
-        gas: BigInt(100_000),
-      } as any);
-    } else {
-      writeContract({
-        ...txOverrides,
-        address: CONTRACT_ADDRESS,
-        abi: FocusPetABI,
-        functionName: functionName as any,
-        args: args as any,
-        gas: BigInt(400_000),
-      } as any);
-    }
-  };
-
-  const buyFood = () => executeBatchedBuy("buyFood", 10, [], "apple");
-  const buySuperFood = () =>
-    executeBatchedBuy("buySuperFood", 30, [], "golden_apple");
-  const buyEnergyDrink = () =>
-    executeBatchedBuy("buyEnergyDrink", 25, [], "energy_drink");
-  const buyShield = () => executeBatchedBuy("buyShield", 100, [], "shield");
-  const buyCosmetic = (id: string, price: number) =>
-    executeBatchedBuy("buyCosmetic", price, [id, BigInt(price)], id);
-
-  // ── USDT buy functions (for MiniPay) ──────────────────────────────────────
+  // ── USDT buy functions ──────────────────────────────────────────────────────
   const executeUSDTBuy = (
     functionName: string,
     usdtAmount: bigint,
@@ -346,8 +246,6 @@ export function useFocusPet() {
       gas: BigInt(100_000),
     });
   };
-
-  const revivePet = () => executeBatchedBuy("revivePet", 50);
 
   const setNames = (username: string, petName: string) => {
     if (!hasPet) {
@@ -488,16 +386,6 @@ export function useFocusPet() {
             args: item.args as any,
             gas: BigInt(600_000),
           } as any);
-        } else {
-          // Fallback for older patterns
-          await refetchAllowance();
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          if (item.id === "apple") buyFood();
-          else if (item.id === "golden_apple") buySuperFood();
-          else if (item.id === "energy_drink") buyEnergyDrink();
-          else if (item.id === "shield") buyShield();
-          else if (item.id === "revive") revivePet();
-          else if (item.price) buyCosmetic(item.id, item.price);
         }
       };
 
@@ -634,21 +522,6 @@ export function useFocusPet() {
   ]);
 
   useEffect(() => {
-    if (
-      goodDollarOnChain &&
-      (goodDollarOnChain as string) ===
-        "0x0000000000000000000000000000000000000000"
-    ) {
-      console.error(
-        "🚨 FocusPet Contract is UNINITIALIZED! Please call initialize() on Remix.",
-      );
-      toast.error(
-        "Contract Error\nFocusPet contract is not initialized. Please contact admin.",
-      );
-    }
-  }, [goodDollarOnChain]);
-
-  useEffect(() => {
     setHealth(rawHealth);
     setXp(rawXp);
     setTotalTime(rawTotalTime);
@@ -673,25 +546,6 @@ export function useFocusPet() {
     }
   }, [rawHealth, rawXp, lastInteraction, hasPet]);
 
-  // Write: Sync Impact
-  const { writeContractAsync: writeSyncImpact, isPending: isSyncImpactLoading } =
-    useUnifiedWriteContract();
-
-  const handleSyncImpact = async () => {
-    setLastAction("sync");
-    try {
-      await writeSyncImpact({
-        address: CONTRACT_ADDRESS,
-        abi: FocusPetABI,
-        functionName: "syncImpact",
-        gas: BigInt(200_000),
-      });
-    } catch (error: any) {
-      console.error("Sync impact failed:", error);
-      toast.error("Sync failed\nPlease try again later.");
-    }
-  };
-
   return {
     petData,
     hasPet,
@@ -704,13 +558,7 @@ export function useFocusPet() {
     refetch,
     // Actions
     recordSession,
-    buyFood,
-    buySuperFood,
-    buyEnergyDrink,
-    buyShield,
-    buyCosmetic,
-    revivePet,
-    // USDT variants
+    // USDT buy functions
     buyFoodWithUSDT,
     buySuperFoodWithUSDT,
     buyEnergyDrinkWithUSDT,
@@ -720,10 +568,6 @@ export function useFocusPet() {
     usdtBalanceRaw,
     setNames,
     deleteUser,
-    // Economy
-    gBalance,
-    approveG,
-    refetchGBalance,
     // UX
     isSigning,
     isProcessing: isSigning || finalIsPending || finalIsConfirming,
@@ -735,15 +579,13 @@ export function useFocusPet() {
     username,
     petName,
     lastAction,
-    allowance: allowance ? (allowance as bigint) : BigInt(0),
-    refetchAllowance,
     streak: virtualStreak,
     streakBonus,
     weather,
     // Boosts & Cosmetics
     boostEndTime,
     shieldCount,
-    activeCosmetic, // Keep for compatibility if needed
+    activeCosmetic,
     equippedCosmetics: {
       sunglasses: !!isSunglassesEquipped,
       crown: !!isCrownEquipped,
@@ -753,9 +595,6 @@ export function useFocusPet() {
       sunglasses: !!isSunglassesOwned,
       crown: !!isCrownOwned,
     },
-    writeSyncImpact,
-    handleSyncImpact,
-    isSyncImpactLoading,
     totalDonated,
     isNight,
   };
