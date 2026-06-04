@@ -13,10 +13,6 @@ import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
 
 const G_DOLLAR_ADDRESS = GOOD_DOLLAR_ADDRESSES.CELO_MAINNET;
 const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
-// CIP-64 fee-currency adapter for USDT. Passed explicitly on USDT transactions
-// so detectMiniPayFeeCurrency (which makes an extra forno.celo.org call) is
-// bypassed — we already know the user has USDT from the balance check.
-const USDT_FEE_ADAPTER = "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72" as const;
 
 // USDT price constants (6 decimals, matching contract)
 const PRICE_FOOD_USDT = BigInt(100_000);
@@ -46,17 +42,6 @@ export function useFocusPet() {
     functionName?: string;
     args?: any[];
   } | null>(null);
-  // Tracks a pending USDT approval — after it confirms we refetch allowance and
-  // prompt the user to tap the buy button again rather than auto-triggering the
-  // buy from a useEffect. Auto-triggering causes a race where viem's eth_call
-  // simulation runs before MiniPay's RPC reflects the new allowance, producing
-  // an EstimateGasExecutionError even though the approve confirmed on-chain.
-  const [pendingUSDTApproval, setPendingUSDTApproval] = useState(false);
-  // Local flag set after approval confirms. Bypasses the multicall-cached
-  // usdtAllowanceRaw check until the refetch completes — prevents the stale
-  // allowance window from triggering a second approve (which reverts on
-  // Tether-derived contracts that prohibit changing a non-zero allowance).
-  const [usdtApproved, setUsdtApproved] = useState(false);
   const [pendingSession, setPendingSession] = useState<{
     minutes: number;
     multiplier: number;
@@ -211,7 +196,7 @@ export function useFocusPet() {
         setHasToasted(true);
         refetchAll();
       } else if (lastAction === "shop") {
-        if (!pendingItem && !pendingUSDTApproval) {
+        if (!pendingItem) {
           setHasToasted(true);
           toast.success("Purchase Successful!\nYour items are ready.");
           refetchAll();
@@ -228,20 +213,6 @@ export function useFocusPet() {
       }
     }
   }, [finalIsConfirmed, refetchAll, lastAction, hasToasted]);
-
-  // After a USDT max-approve confirms, refetch so usdtAllowanceRaw reflects
-  // maxUint256, then prompt the user to tap the buy button again. This avoids
-  // the race where an auto-triggered buy tx is simulated before MiniPay's RPC
-  // has indexed the new allowance, causing a spurious EstimateGasExecutionError.
-  useEffect(() => {
-    if (finalIsConfirmed && pendingUSDTApproval && lastAction === "shop") {
-      setHasToasted(true);
-      setPendingUSDTApproval(false);
-      setUsdtApproved(true);
-      refetchAll();
-      toast.success("Approved! Tap the item again to complete your purchase.");
-    }
-  }, [finalIsConfirmed, pendingUSDTApproval, lastAction, refetchAll]);
 
   const approveG = (amount: bigint, itemId?: string, price?: number) => {
     // Check balance first
@@ -324,22 +295,21 @@ export function useFocusPet() {
     functionName: string,
     usdtAmount: bigint,
     args: any[] = [],
-    _itemId?: string,
+    itemId?: string,
   ) => {
     if (usdtBalanceRaw < usdtAmount) {
       toast.error("Insufficient USDT balance");
       return;
     }
     setLastAction("shop");
-    if (!usdtApproved && usdtAllowanceRaw < usdtAmount) {
-      setPendingUSDTApproval(true);
+    if (usdtAllowanceRaw < usdtAmount) {
+      if (itemId) setPendingItem({ id: itemId, functionName, args });
       writeContract({
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
         args: [CONTRACT_ADDRESS, usdtAmount],
         gas: BigInt(100_000),
-        feeCurrency: USDT_FEE_ADAPTER,
       } as any);
     } else {
       writeContract({
@@ -348,7 +318,6 @@ export function useFocusPet() {
         functionName: functionName as any,
         args: args as any,
         gas: BigInt(600_000),
-        feeCurrency: USDT_FEE_ADAPTER,
       } as any);
     }
   };
@@ -517,7 +486,7 @@ export function useFocusPet() {
             abi: FocusPetABI,
             functionName: item.functionName as any,
             args: item.args as any,
-            gas: BigInt(400_000),
+            gas: BigInt(600_000),
           } as any);
         } else {
           // Fallback for older patterns
