@@ -7,14 +7,7 @@ import {
 import { FocusPetABI } from "@/config/abi";
 import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import {
-  createWalletClient,
-  custom,
-  encodeFunctionData,
-  erc20Abi,
-  type Abi,
-} from "viem";
-import { celo } from "wagmi/chains";
+import { encodeFunctionData, erc20Abi, type Abi } from "viem";
 
 import { CONTRACT_ADDRESS } from "@/config/contracts";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,16 +37,11 @@ function useMiniPayWrite() {
     setError(null);
     setIsPending(true);
     try {
-      // eth_requestAccounts authorizes the session — required by MiniPay
-      // before eth_sendTransaction is accepted.
       const ethereum = (window as any).ethereum;
-      const accounts = await ethereum.request({ method: "eth_requestAccounts" }) as string[];
-      const account  = accounts[0] as `0x${string}`;
 
-      const walletClient = createWalletClient({
-        chain: celo,
-        transport: custom(ethereum),
-      });
+      // Authorize the session before sending
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      const from = accounts[0] as `0x${string}`;
 
       const data = encodeFunctionData({
         abi: params.abi as Abi,
@@ -61,19 +49,27 @@ function useMiniPayWrite() {
         args: params.args ?? [],
       });
 
-      const txHash = await walletClient.sendTransaction({
-        account,
-        to: params.address,
+      // Call eth_sendTransaction directly on window.ethereum — bypasses viem's
+      // prepareTransactionRequest which strips feeCurrency before the RPC call.
+      const txParams: Record<string, string> = {
+        from,
+        to:   params.address,
         data,
-        gas: params.gas,
-        feeCurrency: params.feeCurrency,
-        chain: celo,
-      } as any);
+      };
+      if (params.gas)        txParams.gas        = `0x${params.gas.toString(16)}`;
+      if (params.feeCurrency) txParams.feeCurrency = params.feeCurrency;
+
+      const txHash = await ethereum.request({
+        method: "eth_sendTransaction",
+        params: [txParams],
+      }) as `0x${string}`;
 
       setHash(txHash);
       return txHash;
-    } catch (err) {
+    } catch (err: any) {
+      // Attach the raw RPC code so the error toast can show it
       const e = err instanceof Error ? err : new Error(String(err));
+      (e as any).rpcCode = err?.code ?? err?.cause?.code ?? "?";
       setError(e);
       throw e;
     } finally {
@@ -162,12 +158,12 @@ const [isSigning, setIsSigning] = useState(false);
   useEffect(() => {
     if (writeError) {
       const err = writeError as any;
-      const name: string = err?.name ?? "";
-      const code: number = err?.code ?? err?.cause?.code ?? 0;
-      const msg: string = err?.message ?? err?.cause?.message ?? String(writeError);
+      const name: string  = err?.name ?? "";
+      const code: number  = err?.code ?? err?.cause?.code ?? err?.rpcCode ?? 0;
+      const msg: string   = err?.message ?? err?.cause?.message ?? String(writeError);
       console.error("[FocusPet] writeError", writeError);
       if (name === "UserRejectedRequestError" || code === 4001 || code === -32604) return;
-      copyableErrorToast(msg);
+      copyableErrorToast(`code=${code} | ${msg}`);
     }
   }, [writeError]);
 
@@ -281,18 +277,13 @@ const [isSigning, setIsSigning] = useState(false);
     usdtAmount: bigint,
     args: any[] = [],
   ) => {
-    const bal = usdtBalanceRaw;
-    const allow = usdtAllowanceRaw;
-    console.log("[BUY]", functionName, { bal: bal.toString(), allow: allow.toString(), need: usdtAmount.toString(), usdtApproved });
-
-    if (bal < usdtAmount) {
-      toast.error(`Insufficient USDT (have $${(Number(bal)/1e6).toFixed(2)}, need $${(Number(usdtAmount)/1e6).toFixed(2)})`);
+    if (usdtBalanceRaw < usdtAmount) {
+      toast.error("Insufficient USDT balance.");
       return;
     }
     setLastAction("shop");
-    if (!usdtApproved && allow < usdtAmount) {
+    if (!usdtApproved && usdtAllowanceRaw < usdtAmount) {
       setPendingUSDTApproval(true);
-      toast(`[1/2] Approving $${(Number(usdtAmount)/1e6).toFixed(2)} USDT — confirm in MiniPay…`, { icon: "🔑", duration: 10000 });
       writeContract({
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
@@ -303,7 +294,6 @@ const [isSigning, setIsSigning] = useState(false);
       });
     } else {
       setUsdtApproved(false);
-      toast(`[2/2] Buying (fn: ${functionName}, allowance: $${(Number(allow)/1e6).toFixed(2)})…`, { icon: "🛒", duration: 10000 });
       writeContract({
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
