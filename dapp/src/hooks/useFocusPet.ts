@@ -12,6 +12,10 @@ import toast from "react-hot-toast";
 import { CONTRACT_ADDRESS } from "@/config/contracts";
 
 const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
+// CIP-64 fee-currency adapter for USDT. Passed explicitly on USDT transactions
+// so detectMiniPayFeeCurrency (which makes an extra HTTP call) is bypassed —
+// we already know the user has USDT from the balance check in executeUSDTBuy.
+const USDT_FEE_ADAPTER = "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72" as const;
 
 // USDT price constants (6 decimals, matching contract)
 const PRICE_FOOD_USDT = BigInt(100_000);
@@ -210,6 +214,7 @@ export function useFocusPet() {
         functionName: "approve",
         args: [CONTRACT_ADDRESS, usdtAmount],
         gas: BigInt(100_000),
+        feeCurrency: USDT_FEE_ADAPTER,
       } as any);
     } else {
       writeContract({
@@ -218,6 +223,7 @@ export function useFocusPet() {
         functionName: functionName as any,
         args: args as any,
         gas: BigInt(600_000),
+        feeCurrency: USDT_FEE_ADAPTER,
       } as any);
     }
   };
@@ -375,7 +381,11 @@ export function useFocusPet() {
         const item = pendingItem;
         setPendingItem(null); // Clear first to prevent loops
 
-        console.log("🚀 Auto-triggering buy for:", item.id);
+        // Wait for MiniPay's RPC to index the new allowance before simulating
+        // the buy. Without this delay, viem's eth_call runs against a node that
+        // still shows allowance=0 → EstimateGasExecutionError even though the
+        // approve confirmed on-chain.
+        await new Promise((r) => setTimeout(r, 3000));
 
         if (item.functionName) {
           writeContract({
@@ -385,6 +395,7 @@ export function useFocusPet() {
             functionName: item.functionName as any,
             args: item.args as any,
             gas: BigInt(600_000),
+            feeCurrency: USDT_FEE_ADAPTER,
           } as any);
         }
       };
