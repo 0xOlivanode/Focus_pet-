@@ -7,7 +7,7 @@ import {
 import { FocusPetABI } from "@/config/abi";
 import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { encodeFunctionData, erc20Abi, type Abi } from "viem";
+import { encodeFunctionData, erc20Abi, maxUint256, type Abi } from "viem";
 
 import { CONTRACT_ADDRESS } from "@/config/contracts";
 import { useAuth } from "@/hooks/useAuth";
@@ -284,11 +284,12 @@ const [isSigning, setIsSigning] = useState(false);
     setLastAction("shop");
     if (!usdtApproved && usdtAllowanceRaw < usdtAmount) {
       setPendingUSDTApproval(true);
+      // maxUint256 = approve once, never again — all future purchases skip this step
       writeContract({
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
-        args: [CONTRACT_ADDRESS, usdtAmount],
+        args: [CONTRACT_ADDRESS, maxUint256],
         gas: BigInt(100_000),
         feeCurrency: USDT_FEE,
       });
