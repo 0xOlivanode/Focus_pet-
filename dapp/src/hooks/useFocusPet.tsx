@@ -3,17 +3,91 @@
 import {
   useReadContracts,
   useWaitForTransactionReceipt,
-  useWriteContract,
 } from "wagmi";
 import { FocusPetABI } from "@/config/abi";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { erc20Abi } from "viem";
+import {
+  createWalletClient,
+  custom,
+  encodeFunctionData,
+  erc20Abi,
+  type Abi,
+} from "viem";
+import { celo } from "wagmi/chains";
 
 import { CONTRACT_ADDRESS } from "@/config/contracts";
 import { useAuth } from "@/hooks/useAuth";
 
-const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
+const USDT_ADDRESS    = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
+// CIP-64 fee-currency adapter — tells MiniPay to charge gas in USDT.
+const USDT_FEE        = "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72" as const;
+
+// Sends a transaction through MiniPay's injected provider.
+// Calls eth_requestAccounts first to ensure the session is authorized,
+// then uses a viem walletClient with chain: celo so feeCurrency / CIP-64
+// is serialized correctly — bypassing wagmi's public transport (Alchemy)
+// which rejects Celo-specific tx fields.
+function useMiniPayWrite() {
+  const [hash, setHash]       = useState<`0x${string}` | undefined>(undefined);
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError]     = useState<Error | null>(null);
+
+  const sendAsync = useCallback(async (params: {
+    address: `0x${string}`;
+    abi: Abi | readonly unknown[];
+    functionName: string;
+    args?: readonly unknown[];
+    gas?: bigint;
+    feeCurrency?: `0x${string}`;
+  }): Promise<`0x${string}`> => {
+    setError(null);
+    setIsPending(true);
+    try {
+      // eth_requestAccounts authorizes the session — required by MiniPay
+      // before eth_sendTransaction is accepted.
+      const ethereum = (window as any).ethereum;
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      const account  = accounts[0] as `0x${string}`;
+
+      const walletClient = createWalletClient({
+        chain: celo,
+        transport: custom(ethereum),
+      });
+
+      const data = encodeFunctionData({
+        abi: params.abi as Abi,
+        functionName: params.functionName,
+        args: params.args ?? [],
+      });
+
+      const txHash = await walletClient.sendTransaction({
+        account,
+        to: params.address,
+        data,
+        gas: params.gas,
+        feeCurrency: params.feeCurrency,
+        chain: celo,
+      } as any);
+
+      setHash(txHash);
+      return txHash;
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setError(e);
+      throw e;
+    } finally {
+      setIsPending(false);
+    }
+  }, []);
+
+  const send = useCallback(
+    (params: Parameters<typeof sendAsync>[0]) => { sendAsync(params).catch(() => {}); },
+    [sendAsync],
+  );
+
+  return { send, sendAsync, hash, isPending, error };
+}
 
 function copyableErrorToast(msg: string) {
   toast.error(
@@ -61,12 +135,12 @@ const [isSigning, setIsSigning] = useState(false);
   } | null>(null);
 
   const {
-    writeContract,
-    writeContractAsync,
-    data: singleHash,
+    send: writeContract,
+    sendAsync: writeContractAsync,
+    hash: singleHash,
     isPending: isSinglePending,
     error: writeError,
-  } = useWriteContract();
+  } = useMiniPayWrite();
 
   const {
     isLoading: isConfirming,
@@ -224,6 +298,8 @@ const [isSigning, setIsSigning] = useState(false);
         abi: erc20Abi,
         functionName: "approve",
         args: [CONTRACT_ADDRESS, usdtAmount],
+        gas: BigInt(100_000),
+        feeCurrency: USDT_FEE,
       });
     } else {
       setUsdtApproved(false);
@@ -233,6 +309,8 @@ const [isSigning, setIsSigning] = useState(false);
         abi: FocusPetABI,
         functionName: functionName as any,
         args: args as any,
+        gas: BigInt(600_000),
+        feeCurrency: USDT_FEE,
       });
     }
   };
