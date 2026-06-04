@@ -13,6 +13,10 @@ import { CONTRACT_ADDRESS, GOOD_DOLLAR_ADDRESSES } from "@/config/contracts";
 
 const G_DOLLAR_ADDRESS = GOOD_DOLLAR_ADDRESSES.CELO_MAINNET;
 const USDT_ADDRESS = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
+// CIP-64 fee-currency adapter for USDT. Passed explicitly on USDT transactions
+// so detectMiniPayFeeCurrency (which makes an extra forno.celo.org call) is
+// bypassed — we already know the user has USDT from the balance check.
+const USDT_FEE_ADAPTER = "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72" as const;
 
 // USDT price constants (6 decimals, matching contract)
 const PRICE_FOOD_USDT = BigInt(100_000);
@@ -20,7 +24,7 @@ const PRICE_SUPER_FOOD_USDT = BigInt(250_000);
 const PRICE_ENERGY_DRINK_USDT = BigInt(200_000);
 const PRICE_SHIELD_USDT = BigInt(500_000);
 const PRICE_REVIVE_USDT = BigInt(250_000);
-import { formatEther, erc20Abi, maxUint256 } from "viem";
+import { formatEther, erc20Abi } from "viem";
 import { useAuth } from "@/hooks/useAuth";
 
 export function useFocusPet() {
@@ -48,6 +52,11 @@ export function useFocusPet() {
   // simulation runs before MiniPay's RPC reflects the new allowance, producing
   // an EstimateGasExecutionError even though the approve confirmed on-chain.
   const [pendingUSDTApproval, setPendingUSDTApproval] = useState(false);
+  // Local flag set after approval confirms. Bypasses the multicall-cached
+  // usdtAllowanceRaw check until the refetch completes — prevents the stale
+  // allowance window from triggering a second approve (which reverts on
+  // Tether-derived contracts that prohibit changing a non-zero allowance).
+  const [usdtApproved, setUsdtApproved] = useState(false);
   const [pendingSession, setPendingSession] = useState<{
     minutes: number;
     multiplier: number;
@@ -228,6 +237,7 @@ export function useFocusPet() {
     if (finalIsConfirmed && pendingUSDTApproval && lastAction === "shop") {
       setHasToasted(true);
       setPendingUSDTApproval(false);
+      setUsdtApproved(true);
       refetchAll();
       toast.success("Approved! Tap the item again to complete your purchase.");
     }
@@ -321,14 +331,15 @@ export function useFocusPet() {
       return;
     }
     setLastAction("shop");
-    if (usdtAllowanceRaw < usdtAmount) {
+    if (!usdtApproved && usdtAllowanceRaw < usdtAmount) {
       setPendingUSDTApproval(true);
       writeContract({
         address: USDT_ADDRESS as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
-        args: [CONTRACT_ADDRESS, maxUint256],
+        args: [CONTRACT_ADDRESS, usdtAmount],
         gas: BigInt(100_000),
+        feeCurrency: USDT_FEE_ADAPTER,
       } as any);
     } else {
       writeContract({
@@ -337,6 +348,7 @@ export function useFocusPet() {
         functionName: functionName as any,
         args: args as any,
         gas: BigInt(600_000),
+        feeCurrency: USDT_FEE_ADAPTER,
       } as any);
     }
   };
