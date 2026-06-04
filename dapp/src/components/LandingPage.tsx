@@ -1,9 +1,8 @@
-"use client";
-
 import { ArrowRight, Zap, Trophy, Coins } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useLeaderboard } from "@/hooks/useLeaderboard";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "/app";
 
 const FEATURES = [
   {
@@ -44,13 +43,6 @@ const STEPS = [
 ];
 
 export function LandingPage() {
-  const { totalUsers } = useLeaderboard();
-  const APP_URL =
-    typeof window !== "undefined" &&
-    window.location.hostname === "focus-pet.xyz"
-      ? "https://app.focus-pet.xyz"
-      : "/app";
-
   return (
     <div className="min-h-screen text-white bg-black  overflow-x-hidden">
       <div className="bg-black min-h-screen flex flex-col">
@@ -99,7 +91,7 @@ export function LandingPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-[#282828] border border-[#282828]">
               <div className="px-5 sm:px-[31px] py-6 sm:py-10">
                 <h3 className="text-xl sm:text-2xl font-anton leading-none mb-1">
-                  {totalUsers > 0 ? `${totalUsers.toLocaleString()}+` : "350+"}
+                  600+
                 </h3>
                 <p className="text-xs sm:text-sm text-neutral-400">Focusers</p>
               </div>
