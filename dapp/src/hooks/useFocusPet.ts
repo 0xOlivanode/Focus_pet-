@@ -336,7 +336,7 @@ export function useFocusPet() {
         abi: FocusPetABI,
         functionName: functionName as any,
         args: args as any,
-        gas: BigInt(400_000),
+        gas: BigInt(600_000),
       } as any);
     }
   };
