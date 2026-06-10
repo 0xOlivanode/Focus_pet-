@@ -10,13 +10,11 @@ import React, {
 } from "react";
 import { usePathname } from "next/navigation";
 
-type SoundType = "click" | "hover" | "success" | "hatch" | "pop" | "buy";
+type SoundType = "click" | "success" | "hatch" | "pop";
 
 interface AudioContextType {
-  isMuted: boolean; // SFX mute
-  isMusicMuted: boolean; // Music mute
-  toggleMute: () => void; // Toggle SFX
-  toggleMusic: () => void; // Toggle Music
+  isMuted: boolean;
+  toggleMute: () => void;
   playSound: (type: SoundType) => void;
   ambientTrack: string | null;
   setAmbientTrack: (track: "rain" | "lofi" | null) => void;
@@ -43,11 +41,9 @@ export function AudioProvider({
 
   const audioCache = useRef<Record<SoundType, HTMLAudioElement | null>>({
     click: null,
-    hover: null,
     success: null,
     hatch: null,
     pop: null,
-    buy: null,
   });
 
   useEffect(() => {
@@ -58,44 +54,10 @@ export function AudioProvider({
     };
 
     loadAudio("click", "/sounds/click.wav");
-    loadAudio("hover", "/sounds/hover.wav");
     loadAudio("success", "/sounds/success.wav");
     loadAudio("hatch", "/sounds/success.wav");
     loadAudio("pop", "/sounds/pop.wav");
-    loadAudio("buy", "/sounds/buy.wav");
   }, []);
-
-  const [isMusicMuted, setIsMusicMuted] = useState(true);
-  const musicRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("focus-pet-music-muted");
-    if (stored) {
-      setIsMusicMuted(JSON.parse(stored));
-    }
-
-    const music = new Audio("/sounds/background.mp3");
-    music.loop = true;
-    music.volume = 0.1;
-    music.currentTime = 3;
-    musicRef.current = music;
-
-    return () => {
-      music.pause();
-      musicRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    const music = musicRef.current;
-    if (!music) return;
-    const shouldPlay = !isMusicMuted && pathname?.startsWith("/app");
-    if (!shouldPlay) {
-      music.pause();
-    } else {
-      music.play().catch((e) => console.log("Autoplay waiting", e));
-    }
-  }, [isMusicMuted, pathname]);
 
   const [ambientTrack, setAmbientTrackState] = useState<string | null>(null);
   const ambientRef = useRef<HTMLAudioElement | null>(null);
@@ -140,14 +102,6 @@ export function AudioProvider({
     });
   }, []);
 
-  const toggleMusic = useCallback(() => {
-    setIsMusicMuted((prev) => {
-      const newState = !prev;
-      localStorage.setItem("focus-pet-music-muted", JSON.stringify(newState));
-      return newState;
-    });
-  }, []);
-
   const setAmbientTrack = useCallback((track: "rain" | "lofi" | null) => {
     setAmbientTrackState(track);
   }, []);
@@ -170,7 +124,6 @@ export function AudioProvider({
       if (audio) {
         const sound = audio.cloneNode() as HTMLAudioElement;
         sound.volume = 0.4;
-        if (type === "hover") sound.volume = 0.2;
         if (type === "click") {
           sound.volume = 0.3;
           vibrate(5);
@@ -188,9 +141,7 @@ export function AudioProvider({
     <AudioContext.Provider
       value={{
         isMuted,
-        isMusicMuted,
         toggleMute,
-        toggleMusic,
         playSound,
         ambientTrack,
         setAmbientTrack,
