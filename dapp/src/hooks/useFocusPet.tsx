@@ -125,6 +125,8 @@ const [isSigning, setIsSigning] = useState(false);
   // direct user gesture — MiniPay blocks eth_sendTransaction from useEffect.
   const [pendingUSDTApproval, setPendingUSDTApproval] = useState(false);
   const [usdtApproved, setUsdtApproved] = useState(false);
+  const [pendingBuyTx, setPendingBuyTx] = useState(false);
+  const [expectedBuyHash, setExpectedBuyHash] = useState<`0x${string}` | undefined>();
   const [pendingSession, setPendingSession] = useState<{
     minutes: number;
     multiplier: number;
@@ -259,8 +261,10 @@ const [isSigning, setIsSigning] = useState(false);
         setHasToasted(true);
         refetchAll();
       } else if (lastAction === "shop") {
-        if (!pendingUSDTApproval) {
+        if (pendingBuyTx && singleHash && singleHash === expectedBuyHash) {
           setHasToasted(true);
+          setPendingBuyTx(false);
+          setExpectedBuyHash(undefined);
           toast.success("Purchase Successful!\nYour items are ready.");
           refetchAll();
         }
@@ -269,7 +273,7 @@ const [isSigning, setIsSigning] = useState(false);
         refetchAll();
       }
     }
-  }, [finalIsConfirmed, refetchAll, lastAction, hasToasted]);
+  }, [finalIsConfirmed, refetchAll, lastAction, hasToasted, pendingBuyTx, singleHash, expectedBuyHash]);
 
   // ── USDT buy functions ──────────────────────────────────────────────────────
   const executeUSDTBuy = (
@@ -294,14 +298,17 @@ const [isSigning, setIsSigning] = useState(false);
       });
     } else {
       setUsdtApproved(false);
-      writeContract({
+      setPendingBuyTx(true);
+      writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: FocusPetABI,
         functionName: functionName as any,
         args: args as any,
         gas: BigInt(600_000),
         feeCurrency: USDT_FEE,
-      });
+      })
+        .then((hash) => setExpectedBuyHash(hash))
+        .catch(() => setPendingBuyTx(false));
     }
   };
 
