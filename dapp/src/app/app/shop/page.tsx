@@ -8,7 +8,7 @@ import { Navbar } from "@/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ── Launch discount ────────────────────────────────────────────────────────────
-const LAUNCH_END_MS   = new Date("2026-06-11T23:59:59Z").getTime();
+const LAUNCH_END_MS   = new Date("2026-06-26T22:00:00Z").getTime();
 const DISCOUNT_FACTOR = 70n; // 70% of original = 30% off
 
 function applyDiscount(price: bigint): bigint {
