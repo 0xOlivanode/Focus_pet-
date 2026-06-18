@@ -262,7 +262,7 @@ export default function ShopPage() {
                       30% off — Launch Week
                     </p>
                     <p className="text-neutral-500 text-xs font-medium mt-0.5">
-                      Discounted prices applied automatically. Ends June 11.
+                      Discounted prices applied automatically. Ends June 26.
                     </p>
                   </div>
                 </div>
