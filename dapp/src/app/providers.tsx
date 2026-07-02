@@ -44,7 +44,7 @@ export const miniPayConnector = injected({
 });
 
 const transport = fallback([
-  http("https://celo-mainnet.g.alchemy.com/v2/YcblzW7m_-ItUCMj1Mu17"),
+  http(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL!),
   http("https://forno.celo.org"),
   http("https://rpc.ankr.com/celo"),
 ]);
