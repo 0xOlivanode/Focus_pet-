@@ -7,7 +7,8 @@ import {
 import { FocusPetABI } from "@/config/abi";
 import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { encodeFunctionData, erc20Abi, type Abi } from "viem";
+import { encodeFunctionData, erc20Abi, type Abi, concat } from "viem";
+import { toDataSuffix } from "@celo/attribution-tags";
 
 import { CONTRACT_ADDRESS } from "@/config/contracts";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,13 +49,16 @@ function useMiniPayWrite() {
         functionName: params.functionName,
         args: params.args ?? [],
       });
+      
+      const tag = toDataSuffix("celo_r95pts8c");
+      const taggedData = concat([data, tag]);
 
       // Call eth_sendTransaction directly on window.ethereum — bypasses viem's
       // prepareTransactionRequest which strips feeCurrency before the RPC call.
       const txParams: Record<string, string> = {
         from,
         to:   params.address,
-        data,
+        data: taggedData,
       };
       if (params.gas)        txParams.gas        = `0x${params.gas.toString(16)}`;
       if (params.feeCurrency) txParams.feeCurrency = params.feeCurrency;

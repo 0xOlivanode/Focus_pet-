@@ -46,6 +46,11 @@ export async function GET(request: Request) {
   const stage    = searchParams.get("stage") ?? "egg";
   const focusHrs = Number(searchParams.get("hrs") ?? 0);
 
+  // Cache personalised cards for 1h, default card for 24h
+  const maxAge = username ? 3600 : 86400;
+
+  const cacheHeaders = { "Cache-Control": `public, max-age=${maxAge}, s-maxage=${maxAge}, stale-while-revalidate=3600` };
+
   // ─── Personalised pet card ───────────────────────────────────────────────
   if (username) {
     const petEmoji  = STAGE_EMOJI[stage] ?? "🥚";
@@ -170,7 +175,7 @@ export async function GET(request: Request) {
           ))}
         </div>
       </div>,
-      { width: 1200, height: 630 },
+      { width: 1200, height: 630, headers: cacheHeaders },
     );
   }
 
@@ -220,6 +225,6 @@ export async function GET(request: Request) {
         <div style={{ display: "flex", fontSize: "30px", fontWeight: 700, color: "#94a3b8" }}>Earn G$</div>
       </div>
     </div>,
-    { width: 1200, height: 630 },
+    { width: 1200, height: 630, headers: cacheHeaders },
   );
 }
